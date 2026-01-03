@@ -1,5 +1,11 @@
 # Project Development Standards
 
+## Reference documentation
+
+- docs/GUIDE.md
+- docs/ARCHITECTURE.md
+- docs/PROGRESS.md
+
 ## Python Package Management
 
 - **Use uv to manage project dependencies**
@@ -18,7 +24,7 @@
 - **Feature Development Process**
   - Before developing a new feature, create a new feature branch from the main branch
   - Branch naming convention: `feature/<feature-name>` or `fix/<bug-name>`
-  - After development is complete, merge back into the main branch via a Pull Request and update progress in dev-docs/PROGRESS.md
+  - After development is complete, merge back into the main branch via a Pull Request and update progress in docs/PROGRESS.md
 
 ## Development Principles
 
