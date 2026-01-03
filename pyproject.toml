@@ -1,9 +1,22 @@
 [project]
 name = "astinus"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-driven narrative single-player TTRPG engine with multi-agent architecture"
 readme = "README.md"
 requires-python = ">=3.14"
+license = {text = "MIT"}
+authors = [
+    {name = "Rene", email = "rene.h.y.zhou@gmail.com"},
+]
+keywords = ["ttrpg", "ai", "gaming", "narrative", "agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Games/Entertainment :: Role-Playing",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "fastapi>=0.128.0",
     "httpx>=0.28.1",
