@@ -1,12 +1,10 @@
 """Tests for game API endpoints."""
 
 import os
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import status
 from fastapi.testclient import TestClient
-from langchain_core.messages import AIMessage
 
 from src.backend.main import app
 

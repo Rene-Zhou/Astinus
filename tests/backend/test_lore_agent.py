@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -40,7 +40,7 @@ class TestLoreAgent:
     async def test_process_simple_query(self, lore_agent, world_loader):
         """Test processing a simple lore query."""
         # Load the demo pack
-        world_pack = world_loader.load("demo_pack")
+        world_loader.load("demo_pack")
 
         # Query about the manor
         result = await lore_agent.process({

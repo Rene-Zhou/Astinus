@@ -17,8 +17,6 @@ from src.backend.models.world_pack import (
     NPCBody,
     NPCData,
     NPCSoul,
-    WorldPack,
-    WorldPackInfo,
 )
 
 # Set fake API key for tests

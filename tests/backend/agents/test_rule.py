@@ -7,8 +7,6 @@ import pytest
 from langchain_core.messages import AIMessage
 
 from src.backend.agents.rule import RuleAgent
-from src.backend.models.character import PlayerCharacter
-from src.backend.models.dice_check import DiceCheckRequest
 
 # Set fake API key for tests
 os.environ["OPENAI_API_KEY"] = "sk-test-fake-key-for-testing"

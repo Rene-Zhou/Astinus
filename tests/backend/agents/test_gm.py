@@ -1,7 +1,6 @@
 """Tests for GMAgent."""
 
 import os
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -16,8 +15,6 @@ from src.backend.models.world_pack import (
     NPCBody,
     NPCData,
     NPCSoul,
-    WorldPack,
-    WorldPackInfo,
 )
 
 # Set fake API key for tests
@@ -271,7 +268,7 @@ class TestGMAgent:
             "lang": "cn",
         }
 
-        result = await gm_agent.process(input_data)
+        await gm_agent.process(input_data)
 
         # Check turn incremented
         assert sample_game_state.turn_count == initial_turn + 1

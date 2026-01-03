@@ -4,7 +4,6 @@ Tests for the dice rolling system.
 Ported from weave with additions for i18n support.
 """
 
-import pytest
 
 from src.backend.services.dice import DicePool, DiceResult, Outcome
 

@@ -7,7 +7,7 @@ import pytest
 from langchain_core.messages import AIMessage
 
 from src.backend.agents.npc import NPCAgent
-from src.backend.models.world_pack import NPCData, NPCBody, NPCSoul
+from src.backend.models.world_pack import NPCBody, NPCData, NPCSoul
 
 # Set fake API key for tests
 os.environ["OPENAI_API_KEY"] = "sk-test-fake-key-for-testing"

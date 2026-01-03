@@ -13,7 +13,7 @@ from src.backend.models.narrative import (
     SceneTransition,
     SceneType,
 )
-from src.backend.models.world_pack import WorldPack, LocationData
+from src.backend.models.world_pack import LocationData, WorldPack
 
 
 class NarrativeManager:

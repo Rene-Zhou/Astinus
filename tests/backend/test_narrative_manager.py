@@ -1,6 +1,7 @@
 """Tests for Narrative Manager."""
 
 from pathlib import Path
+
 import pytest
 
 from src.backend.services.narrative import NarrativeManager
@@ -117,7 +118,7 @@ class TestNarrativeManager:
 
         # Get current scene
         scene = narrative_manager.get_current_scene()
-        initial_npc_count = len(scene.active_npcs)
+        len(scene.active_npcs)
 
         # Add NPC to scene
         narrative_manager.add_npc_to_scene(scene.id, "chen_ling")

@@ -11,7 +11,7 @@ Based on GUIDE.md Section 4.3 (Lore Agent's retrieval strategy).
 
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 
 from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.services.world import WorldPackLoader

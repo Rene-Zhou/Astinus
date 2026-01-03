@@ -1,0 +1,322 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://astinus.dev/schemas/world_pack.json",
+  "title": "WorldPack",
+  "description": "Schema for Astinus World Pack data files",
+  "type": "object",
+  "required": ["info", "entries", "npcs", "locations"],
+  "properties": {
+    "info": {
+      "$ref": "#/definitions/WorldPackInfo"
+    },
+    "entries": {
+      "type": "object",
+      "description": "Lore entries keyed by uid string",
+      "patternProperties": {
+        "^[0-9]+$": {
+          "$ref": "#/definitions/LoreEntry"
+        }
+      },
+      "additionalProperties": false
+    },
+    "npcs": {
+      "type": "object",
+      "description": "NPCs keyed by id",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "$ref": "#/definitions/NPCData"
+        }
+      },
+      "additionalProperties": false
+    },
+    "locations": {
+      "type": "object",
+      "description": "Locations keyed by id",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "$ref": "#/definitions/LocationData"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "LocalizedString": {
+      "type": "object",
+      "description": "Localized string with cn/en translations",
+      "required": ["cn", "en"],
+      "properties": {
+        "cn": {
+          "type": "string",
+          "description": "Simplified Chinese text"
+        },
+        "en": {
+          "type": "string",
+          "description": "English text"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorldPackInfo": {
+      "type": "object",
+      "description": "Metadata for a world pack",
+      "required": ["name", "description"],
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "description": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version",
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "author": {
+          "type": "string",
+          "description": "Pack author",
+          "default": "Unknown"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LoreEntry": {
+      "type": "object",
+      "description": "A lore entry for world background information",
+      "required": ["uid", "key", "content"],
+      "properties": {
+        "uid": {
+          "type": "integer",
+          "description": "Unique identifier",
+          "minimum": 1
+        },
+        "key": {
+          "type": "array",
+          "description": "Primary trigger keywords (OR logic)",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "secondary_keys": {
+          "type": "array",
+          "description": "Secondary trigger keywords (AND logic)",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "content": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "comment": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/LocalizedString"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Editor notes (not sent to AI)",
+          "default": null
+        },
+        "constant": {
+          "type": "boolean",
+          "description": "Always include in context (use sparingly)",
+          "default": false
+        },
+        "selective": {
+          "type": "boolean",
+          "description": "Only load when triggered",
+          "default": true
+        },
+        "order": {
+          "type": "integer",
+          "description": "Insertion order (lower = earlier)",
+          "default": 100,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "NPCSoul": {
+      "type": "object",
+      "description": "NPC narrative layer (The Soul)",
+      "required": ["name", "description", "personality", "speech_style"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "NPC identifier name",
+          "minLength": 1
+        },
+        "description": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "personality": {
+          "type": "array",
+          "description": "3-5 personality adjectives",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "maxItems": 5
+        },
+        "speech_style": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "example_dialogue": {
+          "type": "array",
+          "description": "Few-shot examples",
+          "items": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "type": "string"
+              },
+              "char": {
+                "type": "string"
+              }
+            },
+            "required": ["user", "char"],
+            "additionalProperties": false
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "NPCBody": {
+      "type": "object",
+      "description": "NPC data layer (The Body)",
+      "required": ["location"],
+      "properties": {
+        "location": {
+          "type": "string",
+          "description": "Current scene/location ID",
+          "minLength": 1
+        },
+        "inventory": {
+          "type": "array",
+          "description": "Items held by NPC",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "relations": {
+          "type": "object",
+          "description": "Relationship scores with entities (-100 to +100)",
+          "patternProperties": {
+            ".*": {
+              "type": "integer",
+              "minimum": -100,
+              "maximum": 100
+            }
+          },
+          "default": {}
+        },
+        "tags": {
+          "type": "array",
+          "description": "Current status tags (injured, angry, etc.)",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "memory": {
+          "type": "object",
+          "description": "Key event memories",
+          "patternProperties": {
+            ".*": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "NPCData": {
+      "type": "object",
+      "description": "Complete NPC definition combining soul and body layers",
+      "required": ["id", "soul", "body"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique NPC identifier (snake_case)",
+          "pattern": "^[a-z_]+$"
+        },
+        "soul": {
+          "$ref": "#/definitions/NPCSoul"
+        },
+        "body": {
+          "$ref": "#/definitions/NPCBody"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LocationData": {
+      "type": "object",
+      "description": "A location/scene in the world",
+      "required": ["id", "name", "description"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique location identifier (snake_case)",
+          "pattern": "^[a-z_]+$"
+        },
+        "name": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "description": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "connected_locations": {
+          "type": "array",
+          "description": "IDs of adjacent locations",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+$"
+          },
+          "default": []
+        },
+        "present_npc_ids": {
+          "type": "array",
+          "description": "NPCs currently at this location",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+$"
+          },
+          "default": []
+        },
+        "items": {
+          "type": "array",
+          "description": "Interactable items in the scene",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "tags": {
+          "type": "array",
+          "description": "Location tags (dark, dangerous, etc.)",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

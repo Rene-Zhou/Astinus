@@ -6,7 +6,6 @@ from src.backend.api.websockets import (
     ConnectionManager,
     MessageType,
     StreamMessage,
-    stream_content,
 )
 
 

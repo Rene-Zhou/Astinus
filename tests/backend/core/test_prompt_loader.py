@@ -1,7 +1,5 @@
 """Tests for PromptLoader."""
 
-from pathlib import Path
-from textwrap import dedent
 
 import pytest
 import yaml

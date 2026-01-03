@@ -5,8 +5,8 @@ import pytest
 from src.backend.models.narrative import (
     NarrativeGraph,
     Scene,
-    SceneType,
     SceneTransition,
+    SceneType,
     TransitionCondition,
 )
 

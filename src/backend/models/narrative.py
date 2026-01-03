@@ -111,12 +111,7 @@ class Scene(BaseModel):
 
     def can_transition_to(self, target_scene_id: str) -> bool:
         """Check if transition to target scene is allowed."""
-        for transition in self.transitions:
-            if transition.target_scene_id == target_scene_id:
-                # For now, allow if no condition or condition is met
-                # In full implementation, evaluate the condition
-                return True
-        return False
+        return any(transition.target_scene_id == target_scene_id for transition in self.transitions)
 
     def get_available_transitions(self) -> list[SceneTransition]:
         """Get list of available transitions (conditions met)."""
