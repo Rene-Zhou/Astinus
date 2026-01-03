@@ -7,11 +7,12 @@ Uses singleton pattern to ensure single ChromaDB client instance.
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import Any
 
 import chromadb
-from chromadb.api.types import Documents, EmbeddingFunction, Embeddings, Metadatas
+from chromadb.api.types import EmbeddingFunction
 
 
 class VectorStoreService:
@@ -39,10 +40,10 @@ class VectorStoreService:
         ... )
     """
 
-    _instance: "VectorStoreService | None" = None
+    _instance: VectorStoreService | None = None
     _client: chromadb.PersistentClient | None = None
 
-    def __new__(cls, db_path: str | Path | None = None) -> "VectorStoreService":
+    def __new__(cls, db_path: str | Path | None = None) -> VectorStoreService:
         """
         Implement singleton pattern.
 
@@ -206,11 +207,8 @@ class VectorStoreService:
             collection_name: Name of the collection to delete
         """
         client = self._get_client()
-        try:
+        with contextlib.suppress(ValueError):
             client.delete_collection(name=collection_name)
-        except ValueError:
-            # Collection doesn't exist - ignore
-            pass
 
     def list_collections(self) -> list[str]:
         """

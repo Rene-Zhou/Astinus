@@ -12,6 +12,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from src.backend.core.schemas import validate_world_pack
 from src.backend.models.world_pack import WorldPack
+from src.backend.services.vector_store import VectorStoreService
 
 
 class WorldPackLoader:
@@ -27,15 +28,24 @@ class WorldPackLoader:
         >>> npc = pack.get_npc("chen_ling")
     """
 
-    def __init__(self, packs_dir: Path | str):
+    def __init__(
+        self,
+        packs_dir: Path | str,
+        vector_store: VectorStoreService | None = None,
+        enable_vector_indexing: bool = True,
+    ):
         """
         Initialize the loader.
 
         Args:
             packs_dir: Directory containing world pack JSON files
+            vector_store: Optional VectorStoreService for indexing lore entries
+            enable_vector_indexing: Whether to index lore entries (default: True)
         """
         self.packs_dir = Path(packs_dir)
         self._cache: dict[str, WorldPack] = {}
+        self.vector_store = vector_store
+        self.enable_vector_indexing = enable_vector_indexing
 
     def load(self, pack_id: str, use_cache: bool = True) -> WorldPack:
         """
@@ -100,9 +110,64 @@ class WorldPackLoader:
                 f"  Details: {e}"
             ) from e
 
+        # Index lore entries if vector indexing is enabled
+        if self.enable_vector_indexing and self.vector_store is not None:
+            self._index_lore_entries(pack_id, pack)
+
         # Cache and return
         self._cache[pack_id] = pack
         return pack
+
+    def _index_lore_entries(self, pack_id: str, pack: WorldPack) -> None:
+        """
+        Index lore entries for vector search.
+
+        Creates separate documents for Chinese and English versions of each entry.
+
+        Args:
+            pack_id: World pack identifier
+            pack: Loaded WorldPack
+        """
+        if not pack.entries:
+            return
+
+        collection_name = f"lore_entries_{pack_id}"
+
+        # Prepare documents and metadata
+        documents = []
+        metadatas = []
+        ids = []
+
+        for entry in pack.entries.values():
+            # Chinese document
+            documents.append(entry.content.cn)
+            metadatas.append({
+                "uid": entry.uid,
+                "keys": ",".join(entry.key),  # Store as comma-separated string
+                "order": entry.order,
+                "lang": "cn",
+                "constant": entry.constant,
+            })
+            ids.append(f"{pack_id}_lore_{entry.uid}_cn")
+
+            # English document
+            documents.append(entry.content.en)
+            metadatas.append({
+                "uid": entry.uid,
+                "keys": ",".join(entry.key),
+                "order": entry.order,
+                "lang": "en",
+                "constant": entry.constant,
+            })
+            ids.append(f"{pack_id}_lore_{entry.uid}_en")
+
+        # Add to vector store
+        self.vector_store.add_documents(
+            collection_name=collection_name,
+            documents=documents,
+            metadatas=metadatas,
+            ids=ids,
+        )
 
     def list_available(self) -> list[str]:
         """
