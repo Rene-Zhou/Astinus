@@ -48,6 +48,7 @@ Astinus/
 │   ├── saves/                # SQLite databases for save games
 │   └── vector_store/         # ChromaDB persistence directory
 │
+├── locale/                   # Localization resources (en, cn) with fallback metadata
 ├── docs/                     # Documentation
 ├── tests/                    # Pytest suite
 ├── config/                   # Configuration files (LLM keys, settings)
@@ -134,3 +135,19 @@ Located in `src/backend/services/dice.py`.
 1. **Story Packs**: The YAML structure in `cli-ttrpg/story_packs` is largely compatible. We will write a migration script to convert them to the `Astinus` World Pack format (adding Vector embeddings).
 2. **Dice Logic**: Port `src/weave/game/dice.py` to `src/backend/services/dice.py`.
 3. **Agents**: Refactor `src/weave/agents` to use LangChain's `Runnable` interfaces instead of raw API calls.
+
+## 8. Internationalization Strategy
+
+### 8.1 Resource Organization
+- All user-facing strings must live in locale bundles under `locale/<lang-code>/*.json` (or equivalent), following the `en` and `cn` baseline.
+- Textual widgets load through a dedicated localization service that supports runtime language switching and pluralization.
+- Backend services expose language-neutral identifiers; FastAPI responses select message templates based on the `Accept-Language` header with fallback to project default.
+
+### 8.2 Content Assets
+- World packs and prompt templates store multi-language payloads (`content.cn`, `content.en`) as described in `GUIDE.md`, and deployments must run validation to guarantee parity across required locales.
+- Narrative graph metadata, dice messages, and error descriptions follow the same structured format to avoid hardcoded literals in code.
+
+### 8.3 Tooling & Testing
+- Introduce localization linters in CI to detect missing keys, orphaned strings, and untranslated content.
+- Automated tests must cover at least `en` and `cn` rendering paths for the TUI and key REST endpoints.
+- Developer documentation should outline the process for adding new locales, including translation memory updates and fallback behavior.

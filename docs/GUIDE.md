@@ -11,6 +11,9 @@ Astinus（阿斯特纽斯）是一个 AI 驱动的叙事导向的类 ttrpg 游�
 | **上下文隔离** | 每个 NPC 只知道自己该知道的事，不同的 agent 上下文隔离，由 GM agnet 统筹 |
 | **规则透明** | 骰子判定公开，玩家能理解为何成功/失败 |
 | **模块化叙事** | 故事包可插拔，引擎与内容分离 |
+| **多语言支持** | 前端界面、系统提示与叙事资产必须通过本地化资源加载，至少提供简体中文（cn）与英文（en）版本 |
+
+为了落实多语言原则，所有前端界面文本、系统提示与日志摘要必须通过可扩展的本地化资源表或 i18n 管线加载，禁止直接硬编码在控件或脚本中。世界包、Agent 提示模板以及任意面向玩家的叙事文本都需要为至少 `cn` 与 `en` 提供独立内容，并在缺失翻译时定义合理的回退策略。
 
 ## 2. Agent 架构
 
@@ -194,18 +197,30 @@ class GameState:
 ```json
 {
   "info": {
-    "name": "艾泽拉斯",
-    "description": "一个充满魔法、冲突与冒险的高奇幻世界。",
+    "name": {
+      "cn": "艾泽拉斯",
+      "en": "Azeroth"
+    },
+    "description": {
+      "cn": "一个充满魔法、冲突与冒险的高奇幻世界。",
+      "en": "A high fantasy world filled with magic, conflict, and adventure."
+    },
     "version": "1.0.0",
     "author": "Astinus Team"
   },
   "entries": {
     "1": {
       "uid": 1,
-      "key": ["暴风城", "人类主城"],
-      "secondary_keys": ["联盟"],
-      "comment": "人类的主要聚集地",
-      "content": "暴风城是艾泽拉斯人类王国的最后堡垒，位于艾尔文森林的西北部。它是一座宏伟的城市，由坚固的石墙保护，是联盟的政治和军事中心。",
+      "key": ["暴风城", "Stormwind"],
+      "secondary_keys": ["联盟", "Alliance"],
+      "comment": {
+        "cn": "人类的主要聚集地",
+        "en": "Primary gathering place for humans."
+      },
+      "content": {
+        "cn": "暴风城是艾泽拉斯人类王国的最后堡垒，位于艾尔文森林的西北部。它是一座宏伟的城市，由坚固的石墙保护，是联盟的政治和军事中心。",
+        "en": "Stormwind is the last bastion of the human kingdoms in Azeroth, located in the northwest of Elwynn Forest. Enclosed by sturdy stone walls, it serves as the political and military center of the Alliance."
+      },
       "constant": false,
       "selective": true,
       "order": 100
@@ -221,8 +236,8 @@ class GameState:
 | **uid** | Integer | 词条的唯一标识符。 |
 | **key** | Array[String] | **触发关键词**。当玩家输入或当前上下文中出现这些词时，Lore Agent 会考虑提取此词条。 |
 | **secondary_keys** | Array[String] | **辅助关键词**。如果设置，仅当主关键词存在且辅助关键词也存在时，才会触发（逻辑 AND）。 |
-| **content** | String | **设定内容**。这是实际会被注入到 LLM 上下文中的文本。应简洁明了，直接描述事实。 |
-| **comment** | String | **备注**。仅供编辑者查看的说明，不会发送给 AI。 |
+| **content** | Dict[String, String] | **设定内容**。以语言代码为键的内容映射，至少包含 `cn` 与 `en`。在缺失语言时需定义回退策略，避免玩家看到错误语言。 |
+| **comment** | Dict[String, String] 或 String | **备注**。仅供编辑者查看的说明，可以存储多语言文本，默认不发送给 AI。 |
 | **constant** | Boolean | **常驻**。如果为 `true`，该词条将始终存在于上下文中，不依赖关键词触发（慎用，以免占用过多 Token）。 |
 | **selective** | Boolean | **选择性触发**。通常为 `true`，表示仅在触发时加载。 |
 | **order** | Integer | **插入顺序**。决定词条在 Prompt 中的排列顺序，数值越小越靠前。 |
