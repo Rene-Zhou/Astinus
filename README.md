@@ -31,7 +31,7 @@ Astinus 是一个基于 AI 多智能体架构的叙事导向桌面角色扮演�
 
 ```bash
 # 克隆仓库
-git clone <repository-url>
+git clone https://github.com/Rene-Zhou/Astinus.git
 cd Astinus
 
 # 安装依赖
@@ -209,5 +209,5 @@ GM Agent 负责为每个子 Agent 准备精准的上下文切片，确保：
 
 ## 联系方式
 
-- 项目主页: [GitHub Repository](https://github.com/your-username/Astinus)
-- 问题反馈: [GitHub Issues](https://github.com/your-username/Astinus/issues)
+- 项目主页: [GitHub Repository](https://github.com/Rene-Zhou/Astinus)
+- 问题反馈: [GitHub Issues](https://github.com/Rene-Zhou/Astinus/issues)
