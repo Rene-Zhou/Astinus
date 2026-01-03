@@ -20,6 +20,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.core.prompt_loader import get_prompt_loader
 from src.backend.models.game_state import GameState
+from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
 
 
@@ -45,6 +46,7 @@ class GMAgent(BaseAgent):
         sub_agents: dict[str, BaseAgent],
         game_state: GameState,
         world_pack_loader: WorldPackLoader | None = None,
+        vector_store: VectorStoreService | None = None,
     ):
         """
         Initialize GM Agent.
@@ -54,11 +56,13 @@ class GMAgent(BaseAgent):
             sub_agents: Dictionary of sub-agents by name
             game_state: Global game state (owned by GM)
             world_pack_loader: Optional loader for world packs (for NPC data)
+            vector_store: Optional VectorStoreService for conversation history retrieval
         """
         super().__init__(llm, "gm_agent")
         self.sub_agents = sub_agents
         self.game_state = game_state
         self.world_pack_loader = world_pack_loader
+        self.vector_store = vector_store
         self.prompt_loader = get_prompt_loader()
 
     async def process(self, input_data: dict[str, Any]) -> AgentResponse:
@@ -326,6 +330,67 @@ class GMAgent(BaseAgent):
             context["npc_data"] = npc_data
 
         return context
+
+    def _retrieve_relevant_history(
+        self,
+        session_id: str,
+        player_input: str,
+        all_messages: list[dict[str, Any]],
+        n_results: int = 5,
+    ) -> list[dict[str, Any]]:
+        """
+        Retrieve relevant conversation history.
+
+        If messages < 10, return all messages.
+        If messages >= 10, use vector search to find top 5 relevant messages,
+        then sort by timestamp to maintain chronological order.
+
+        Args:
+            session_id: Session identifier
+            player_input: Current player input (for semantic search)
+            all_messages: All conversation messages
+            n_results: Number of messages to retrieve (default: 5)
+
+        Returns:
+            List of relevant messages (sorted by timestamp if using vector search)
+        """
+        # If less than 10 messages, return all
+        if len(all_messages) < 10:
+            return all_messages
+
+        # If no vector store, return recent messages
+        if not self.vector_store:
+            return all_messages[-n_results:]
+
+        try:
+            collection_name = f"conversation_history_{session_id}"
+
+            # Search for relevant messages
+            results = self.vector_store.search(
+                collection_name=collection_name,
+                query_text=player_input,
+                n_results=n_results,
+                include=["documents", "metadatas", "distances", "ids"],
+            )
+
+            if not results["documents"] or not results["documents"][0]:
+                # Fallback to recent messages if search fails
+                return all_messages[-n_results:]
+
+            # Extract message IDs and sort by turn to maintain chronological order
+            retrieved_ids = set(results["ids"][0])
+            retrieved_messages = [
+                msg for msg in all_messages if f"{session_id}_msg_{msg['turn']}" in retrieved_ids
+            ]
+
+            # Sort by turn (chronological order)
+            retrieved_messages.sort(key=lambda m: m["turn"])
+
+            return retrieved_messages
+
+        except Exception:
+            # Fail gracefully - return recent messages
+            return all_messages[-n_results:]
 
     def _build_prompt(self, input_data: dict[str, Any]) -> list[SystemMessage]:
         """

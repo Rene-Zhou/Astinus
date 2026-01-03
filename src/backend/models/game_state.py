@@ -4,6 +4,7 @@ Game state models.
 Defines GameState - the global truth owned by GM Agent.
 """
 
+import contextlib
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -107,7 +108,9 @@ class GameState(BaseModel):
         self,
         role: str,
         content: str,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
+        vector_store=None,
+        collection_name: str | None = None,
     ) -> None:
         """
         Add a message to conversation history.
@@ -116,6 +119,8 @@ class GameState(BaseModel):
             role: "user" or "assistant"
             content: Message content
             metadata: Optional metadata (agent name, phase, etc.)
+            vector_store: Optional VectorStoreService for indexing
+            collection_name: Optional collection name for vector storage
         """
         message = {
             "role": role,
@@ -127,6 +132,24 @@ class GameState(BaseModel):
             message["metadata"] = metadata
 
         self.messages.append(message)
+
+        # Index in vector store if provided
+        if vector_store and collection_name:
+            message_id = f"{self.session_id}_msg_{len(self.messages)}"
+            with contextlib.suppress(Exception):
+                vector_store.add_documents(
+                    collection_name=collection_name,
+                    documents=[content],
+                    metadatas=[
+                        {
+                            "role": role,
+                            "turn": self.turn_count,
+                            "timestamp": message["timestamp"],
+                        }
+                    ],
+                    ids=[message_id],
+                )
+
         self.updated_at = datetime.now()
 
     def get_recent_messages(self, count: int = 5) -> list[dict[str, Any]]:

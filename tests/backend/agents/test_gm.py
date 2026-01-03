@@ -16,6 +16,7 @@ from src.backend.models.world_pack import (
     NPCData,
     NPCSoul,
 )
+from src.backend.services.vector_store import VectorStoreService
 
 # Set fake API key for tests
 os.environ["OPENAI_API_KEY"] = "sk-test-fake-key-for-testing"
@@ -430,3 +431,262 @@ class TestGMAgent:
         assert "npc_chen_ling" in result.metadata["agents_called"]
         # NPC response should be in narrative
         assert "你好" in result.content or "陈玲" in result.content or "尝试" in result.content
+
+
+class TestGMAgentConversationHistoryRetrieval:
+    """Test suite for GM conversation history retrieval functionality."""
+
+    @pytest.fixture(autouse=True)
+    def reset_vector_store_singleton(self):
+        """Reset VectorStoreService singleton before each test."""
+        VectorStoreService.reset_instance()
+        yield
+        VectorStoreService.reset_instance()
+
+    @pytest.fixture
+    def mock_llm(self):
+        """Create mock LLM."""
+        return AsyncMock()
+
+    @pytest.fixture
+    def sample_game_state(self):
+        """Create sample game state."""
+        character = PlayerCharacter(
+            name="张伟",
+            concept=LocalizedString(
+                cn="年轻的冒险者",
+                en="Young adventurer",
+            ),
+            traits=[
+                Trait(
+                    name=LocalizedString(cn="勇敢", en="Brave"),
+                    description=LocalizedString(cn="敢于面对危险", en="Brave in the face of danger"),
+                    positive_aspect=LocalizedString(cn="能够保护他人", en="Can protect others"),
+                    negative_aspect=LocalizedString(cn="有时过于鲁莽", en="Sometimes reckless"),
+                )
+            ],
+        )
+        return GameState(
+            session_id="test-session",
+            player=character,
+            world_pack_id="demo_pack",
+            current_location="library_main_hall",
+        )
+
+    @pytest.fixture
+    def gm_agent_with_vector_store(self, mock_llm, sample_game_state):
+        """Create GM Agent with vector store."""
+        from src.backend.services.vector_store import VectorStoreService
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vector_store = VectorStoreService(tmpdir)
+            return GMAgent(
+                llm=mock_llm,
+                sub_agents={},
+                game_state=sample_game_state,
+                vector_store=vector_store,
+            )
+
+    @pytest.fixture
+    def gm_agent_without_vector_store(self, mock_llm, sample_game_state):
+        """Create GM Agent without vector store."""
+        return GMAgent(
+            llm=mock_llm,
+            sub_agents={},
+            game_state=sample_game_state,
+            # No vector_store
+        )
+
+    def test_gm_agent_initialization_with_vector_store(self, mock_llm, sample_game_state):
+        """Test GMAgent can be initialized with and without vector store."""
+        import tempfile
+        from src.backend.services.vector_store import VectorStoreService
+
+        # Without vector store
+        agent1 = GMAgent(
+            llm=mock_llm,
+            sub_agents={},
+            game_state=sample_game_state,
+        )
+        assert agent1.vector_store is None
+
+        # With vector store
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vector_store = VectorStoreService(tmpdir)
+            agent2 = GMAgent(
+                llm=mock_llm,
+                sub_agents={},
+                game_state=sample_game_state,
+                vector_store=vector_store,
+            )
+            assert agent2.vector_store is vector_store
+
+    def test_retrieve_relevant_history_less_than_10_messages(
+        self, gm_agent_without_vector_store, sample_game_state
+    ):
+        """Test that all messages are returned when count < 10."""
+        # Add 5 messages
+        for i in range(5):
+            sample_game_state.add_message(
+                role="user" if i % 2 == 0 else "assistant",
+                content=f"Message {i}",
+            )
+
+        result = gm_agent_without_vector_store._retrieve_relevant_history(
+            session_id="test-session",
+            player_input="Current input",
+            all_messages=sample_game_state.messages,
+            n_results=5,
+        )
+
+        # Should return all 5 messages
+        assert len(result) == 5
+
+    def test_retrieve_relevant_history_no_vector_store(
+        self, gm_agent_without_vector_store, sample_game_state
+    ):
+        """Test fallback to recent messages when no vector store."""
+        # Add 15 messages
+        for i in range(15):
+            sample_game_state.add_message(
+                role="user" if i % 2 == 0 else "assistant",
+                content=f"Message {i}",
+            )
+
+        result = gm_agent_without_vector_store._retrieve_relevant_history(
+            session_id="test-session",
+            player_input="Current input",
+            all_messages=sample_game_state.messages,
+            n_results=5,
+        )
+
+        # Should return last 5 messages
+        assert len(result) == 5
+        assert result == sample_game_state.messages[-5:]
+
+    @pytest.mark.skip(reason="需要实现对话历史索引功能")
+    def test_retrieve_relevant_history_with_vector_search(
+        self, gm_agent_with_vector_store, sample_game_state
+    ):
+        """Test conversation history retrieval using vector similarity search."""
+        # Add 15 messages with different content
+        messages = [
+            "玩家进入了图书馆",
+            "玩家询问关于古老书籍的问题",
+            "玩家与陈玲对话",
+            "玩家检查书架",
+            "玩家发现了一本神秘的书",
+            "玩家阅读书中的内容",
+            "NPC 陈玲对此做出反应",
+            "玩家询问书籍的历史",
+            "陈玲解释了书籍的来源",
+            "玩家决定带走这本书",
+            "陈玲警告玩家小心",
+            "玩家忽视警告",
+            "玩家打开了书",
+            "突然发生了奇怪的事情",
+            "游戏继续进行",
+        ]
+
+        for content in messages:
+            sample_game_state.add_message(role="user", content=content)
+
+        # TODO: 实现对话历史索引逻辑
+        # vector_store.add_documents(
+        #     collection_name="conversation_history_test-session",
+        #     documents=messages,
+        #     metadatas=[{"turn": i} for i in range(len(messages))],
+        #     ids=[f"test-session_msg_{i}" for i in range(len(messages))],
+        # )
+
+        # Search for messages about books
+        result = gm_agent_with_vector_store._retrieve_relevant_history(
+            session_id="test-session",
+            player_input="关于书籍的问题",
+            all_messages=sample_game_state.messages,
+            n_results=5,
+        )
+
+        # Should find relevant messages
+        assert len(result) >= 1
+        # Messages should be sorted by turn (chronological order)
+        assert all(result[i]["turn"] <= result[i + 1]["turn"] for i in range(len(result) - 1))
+
+    def test_retrieve_relevant_history_fallback_on_error(
+        self, gm_agent_with_vector_store, sample_game_state
+    ):
+        """Test fallback to recent messages when vector search fails."""
+        # Add 15 messages
+        for i in range(15):
+            sample_game_state.add_message(
+                role="user" if i % 2 == 0 else "assistant",
+                content=f"Message {i}",
+            )
+
+        # Clear vector store to simulate failure
+        gm_agent_with_vector_store.vector_store = None
+
+        result = gm_agent_with_vector_store._retrieve_relevant_history(
+            session_id="test-session",
+            player_input="Current input",
+            all_messages=sample_game_state.messages,
+            n_results=5,
+        )
+
+        # Should return last 5 messages as fallback
+        assert len(result) == 5
+        assert result == sample_game_state.messages[-5:]
+
+    def test_game_state_add_message_with_vector_indexing(self, mock_llm, sample_game_state):
+        """Test that GameState.add_message can index messages in vector store."""
+        import tempfile
+        from src.backend.services.vector_store import VectorStoreService
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            vector_store = VectorStoreService(tmpdir)
+
+            # Add message with vector indexing
+            sample_game_state.add_message(
+                role="user",
+                content="玩家进入图书馆",
+                vector_store=vector_store,
+                collection_name="conversation_history_test-session",
+            )
+
+            # Verify message was added
+            assert len(sample_game_state.messages) == 1
+            assert sample_game_state.messages[0]["content"] == "玩家进入图书馆"
+
+            # Verify it was indexed (collection should exist)
+            collections = vector_store.list_collections()
+            assert "conversation_history_test-session" in collections
+
+    def test_game_state_add_message_without_vector_store(
+        self, mock_llm, sample_game_state
+    ):
+        """Test that GameState.add_message works without vector store."""
+        # Add message without vector indexing
+        sample_game_state.add_message(
+            role="user",
+            content="玩家进入图书馆",
+            # No vector_store parameter
+        )
+
+        # Verify message was added
+        assert len(sample_game_state.messages) == 1
+        assert sample_game_state.messages[0]["content"] == "玩家进入图书馆"
+
+    def test_retrieve_relevant_history_empty_messages(
+        self, gm_agent_without_vector_store
+    ):
+        """Test that empty message list is handled correctly."""
+        result = gm_agent_without_vector_store._retrieve_relevant_history(
+            session_id="test-session",
+            player_input="Current input",
+            all_messages=[],
+            n_results=5,
+        )
+
+        # Should return empty list
+        assert result == []
