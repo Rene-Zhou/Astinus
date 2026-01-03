@@ -1,7 +1,8 @@
 """Tests for GMAgent."""
 
 import os
-from unittest.mock import AsyncMock
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langchain_core.messages import AIMessage
@@ -11,6 +12,13 @@ from src.backend.agents.gm import GMAgent
 from src.backend.models.character import PlayerCharacter, Trait
 from src.backend.models.game_state import GameState
 from src.backend.models.i18n import LocalizedString
+from src.backend.models.world_pack import (
+    NPCBody,
+    NPCData,
+    NPCSoul,
+    WorldPack,
+    WorldPackInfo,
+)
 
 # Set fake API key for tests
 os.environ["OPENAI_API_KEY"] = "sk-test-fake-key-for-testing"
@@ -323,3 +331,105 @@ class TestGMAgent:
 
         assert plan["success"] is False
         assert "Failed to parse" in plan["error"]
+
+    @pytest.mark.asyncio
+    async def test_slice_context_for_npc_with_world_pack(
+        self, mock_llm, mock_rule_agent, sample_game_state
+    ):
+        """Test NPC context slicing with world pack loader."""
+        # Create mock world pack loader
+        mock_loader = MagicMock()
+        mock_npc = NPCData(
+            id="chen_ling",
+            soul=NPCSoul(
+                name="陈玲",
+                description=LocalizedString(
+                    cn="年轻的图书馆员",
+                    en="Young librarian",
+                ),
+                personality=["内向", "好奇"],
+                speech_style=LocalizedString(
+                    cn="说话轻柔",
+                    en="Speaks softly",
+                ),
+            ),
+            body=NPCBody(
+                location="library",
+                inventory=[],
+                relations={"player": 10},
+                tags=["工作中"],
+                memory={},
+            ),
+        )
+        mock_world_pack = MagicMock()
+        mock_world_pack.get_npc.return_value = mock_npc
+        mock_loader.load.return_value = mock_world_pack
+
+        gm_agent = GMAgent(
+            llm=mock_llm,
+            sub_agents={"rule": mock_rule_agent},
+            game_state=sample_game_state,
+            world_pack_loader=mock_loader,
+        )
+
+        context = gm_agent._slice_context_for_npc("chen_ling", "你好", "cn")
+
+        assert "npc_data" in context
+        assert context["npc_data"]["id"] == "chen_ling"
+        assert context["npc_data"]["soul"]["name"] == "陈玲"
+        assert context["player_input"] == "你好"
+        assert context["context"]["location"] == "暗室"
+
+    @pytest.mark.asyncio
+    async def test_slice_context_for_npc_without_world_pack(
+        self, gm_agent
+    ):
+        """Test NPC context slicing without world pack loader."""
+        context = gm_agent._slice_context_for_npc("chen_ling", "你好", "cn")
+
+        # Should still work, just without npc_data
+        assert "npc_id" in context
+        assert context["npc_id"] == "chen_ling"
+        assert context["player_input"] == "你好"
+        assert "npc_data" not in context
+
+    @pytest.mark.asyncio
+    async def test_process_with_npc_agent(
+        self, mock_llm, sample_game_state
+    ):
+        """Test processing with NPC agent dispatch."""
+        # Create mock NPC agent
+        mock_npc_agent = AsyncMock()
+        mock_npc_agent.ainvoke = AsyncMock(
+            return_value=AgentResponse(
+                content="你...你好。有什么事吗？",
+                metadata={"npc_id": "chen_ling", "emotion": "shy"},
+                success=True,
+            )
+        )
+
+        gm_agent = GMAgent(
+            llm=mock_llm,
+            sub_agents={"npc_chen_ling": mock_npc_agent},
+            game_state=sample_game_state,
+        )
+
+        # Mock LLM to dispatch to NPC agent
+        mock_llm.ainvoke.return_value = AIMessage(
+            content="""{
+                "player_intent": "talk",
+                "agents_to_call": ["npc_chen_ling"],
+                "context_slices": {},
+                "reasoning": "玩家想和陈玲对话"
+            }"""
+        )
+
+        result = await gm_agent.process({
+            "player_input": "我想和陈玲说话",
+            "lang": "cn",
+        })
+
+        assert result.success is True
+        assert "npc_chen_ling" in result.metadata["agents_called"]
+        # NPC response should be in narrative
+        assert "你好" in result.content or "陈玲" in result.content or "尝试" in result.content

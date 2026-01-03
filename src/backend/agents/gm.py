@@ -20,6 +20,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.core.prompt_loader import get_prompt_loader
 from src.backend.models.game_state import GameState
+from src.backend.services.world import WorldPackLoader
 
 
 class GMAgent(BaseAgent):
@@ -43,6 +44,7 @@ class GMAgent(BaseAgent):
         llm,
         sub_agents: dict[str, BaseAgent],
         game_state: GameState,
+        world_pack_loader: WorldPackLoader | None = None,
     ):
         """
         Initialize GM Agent.
@@ -51,10 +53,12 @@ class GMAgent(BaseAgent):
             llm: Language model instance
             sub_agents: Dictionary of sub-agents by name
             game_state: Global game state (owned by GM)
+            world_pack_loader: Optional loader for world packs (for NPC data)
         """
         super().__init__(llm, "gm_agent")
         self.sub_agents = sub_agents
         self.game_state = game_state
+        self.world_pack_loader = world_pack_loader
         self.prompt_loader = get_prompt_loader()
 
     async def process(self, input_data: dict[str, Any]) -> AgentResponse:
@@ -295,13 +299,33 @@ class GMAgent(BaseAgent):
             if msg.get("metadata", {}).get("npc_id") == npc_id
         ]
 
-        return {
+        # Try to get NPC data from world pack
+        npc_data = None
+        if self.world_pack_loader:
+            try:
+                world_pack = self.world_pack_loader.load(self.game_state.world_pack_id)
+                npc = world_pack.get_npc(npc_id)
+                if npc:
+                    npc_data = npc.model_dump()
+            except Exception:
+                # If we can't load the NPC, we'll pass None
+                pass
+
+        context = {
             "npc_id": npc_id,
             "player_input": player_input,
             "recent_messages": npc_messages,
             "lang": lang,
+            "context": {
+                "location": self.game_state.current_location,
+            },
             # Note: No access to other NPCs, other locations, etc.
         }
+
+        if npc_data:
+            context["npc_data"] = npc_data
+
+        return context
 
     def _build_prompt(self, input_data: dict[str, Any]) -> list[SystemMessage]:
         """

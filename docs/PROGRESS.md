@@ -100,10 +100,17 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 **Week 3 总计**: 33个测试通过, Agent覆盖率: 92-98%
 
-### Phase 3: Agent 协作与 API 集成
-- 3.1 GM Agent 主循环
-- 3.2 NPC / Lore / Rule 交互管线
-- 3.3 FastAPI + WebSocket 流式输出
+### Phase 3: Agent 协作与 API 集成 ✅ 已完成
+
+#### Week 1: Agent 协作基础设施 ✅ 已完成
+| 任务 | 状态 | 备注 |
+|------|------|------|
+| 3.1 NPC Agent | ✅ 已完成 | 基于 NPCData(Soul+Body) 生成角色对话 + 16个测试, 89%覆盖率 |
+| 3.2 GM Agent 增强 | ✅ 已完成 | 支持 WorldPackLoader 获取 NPC 数据、完整上下文切片 + 17个测试, 90%覆盖率 |
+| 3.3 Agent 管线集成 | ✅ 已完成 | GM → Rule / NPC / Lore 完整协作流程 + 7个集成测试 |
+| 3.4 WebSocket 流式输出 | ✅ 已完成 | ConnectionManager、分块流式传输、状态/内容/完成消息协议 + 14个测试 |
+
+**Week 1 总计**: 54个新测试通过, 总测试数: 324个, 84%覆盖率
 
 ### Phase 4: Narrative Graph 与世界包
 - 4.1 世界包 JSON/YAML 解析与索引
@@ -120,6 +127,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
+| 2026-01-03 | Phase 3 完成 | `feature/phase3-agent-collaboration` | 完成 Agent 协作与 API 集成：NPC Agent、GM 增强、Agent 管线、WebSocket 流式。54个新测试，324总测试，84%覆盖率 |
 | 2026-01-03 | Phase 2 Week 3 完成 | `feature/week3-core-agents` | 完成 Core Agents：RuleAgent + GMAgent + 集成测试。33个测试，92-98%覆盖率 |
 | 2026-01-03 | Phase 2 Week 2 完成 | `master` | 完成 Agent Infrastructure：BaseAgent、LLM Provider、PromptLoader。64个测试，89-96%覆盖率 |
 | 2026-01-03 | Phase 2 Week 1 完成 | `master` | 完成 Foundation Layer：数据模型、骰子系统、I18nService。121个测试，95%覆盖率 |
@@ -137,7 +145,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 ### 中优先级
 - Story Pack 格式与迁移脚本未落地。
-- Prompt 管理方案（Jinja2 模板 + 版本管理）待实现。
+- ~~Prompt 管理方案（Jinja2 模板 + 版本管理）待实现。~~ ✅ 已完成（PromptLoader + YAML/Jinja2）
 - 配置与密钥管理策略需文档（区分本地/生产）。
 
 ### 低优先级
@@ -148,28 +156,18 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 ## 下一步计划
 
-### 立即执行（Phase 2 Week 2）
-1. ~~使用 `uv add` 声明后端/前端核心依赖。~~ ✅ 已完成
-2. ~~创建基础目录与占位模块，确保导入路径正确。~~ ✅ 已完成
-3. ~~引入 `pytest`, `ruff`/`ruff-lsp`, `mypy` 等工具，建立最小测试管线。~~ ✅ 已完成
-4. ~~实现 i18n 加载服务，清点现有文案来源并迁移至资源文件。~~ ✅ 已完成
-5. 实现 LangChain Agent 基类（BaseAgent as Runnable）。
-6. 创建 Prompt 模板系统（YAML + Jinja2 + 双语支持）。
-7. 配置 GitHub Actions CI 流水线（或其他 CI 工具）。
+### 立即执行（Phase 4）
+1. 实现世界包 JSON/YAML 解析与索引。
+2. 添加 ChromaDB 依赖，实现向量检索。
+3. 设计剧情节点图 / 场景管理系统。
+4. 配置 GitHub Actions CI 流水线。
 
-### 短期目标（Phase 2 Week 2-4）
-- ~~为 `GameState`, `Character`, `Dice` 等核心模块编写接口草稿与对应测试。~~ ✅ 已完成
-- 起草 LangChain Agent 接口定义（BaseAgent Runnable），确保与指南文档一致。
-- 实现 Rule Agent 与 GM Agent，建立星型拓扑架构。
-- 搭建 FastAPI 应用骨架，提供健康检查与游戏接口。
-- 推出世界包与 Prompt 模板的 `cn`/`en` 双语草案，并接入验证脚本。
+### 短期目标（Phase 4-5）
+- 实现 ChromaDB 向量检索，支持语义搜索 Lore 条目。
+- 设计并实现 Textual TUI 布局。
+- 完善掷骰交互界面与 WebSocket 实时更新。
 
-### 中期目标（Phase 3-4）
-- 完成 GM Agent 主循环与子 Agent 调度。
-- 实现世界包加载与 ChromaDB 构建流程。
-- 设计掷骰交互的 API 契约与 WebSocket 事件格式。
-
-### 长期目标（Phase 5）
+### 中期目标（Phase 5）
 - 实现 Textual TUI 端到端体验。
 - 打磨 UX、日志、监控与可观测性。
 - 完整撰写发布前质量策略（测试矩阵、Beta 计划）。
