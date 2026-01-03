@@ -83,11 +83,13 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 **Week 1 总计**: 121个测试通过, 95%整体覆盖率
 
-#### Week 2: Agent Infrastructure ⏳ 下一步
+#### Week 2: Agent Infrastructure ✅ 已完成
 | 任务 | 状态 | 备注 |
 |------|------|------|
-| 2.2.1 LangChain Agent Base | 📋 待开始 | BaseAgent(Runnable) + LLM Provider Factory |
-| 2.2.2 Prompt Template System | 📋 待开始 | YAML prompts with Jinja2 + cn/en support |
+| 2.2.1 LangChain Agent Base | ✅ 已完成 | BaseAgent(Runnable) + LLM Provider Factory + 38个测试, 89%/74%覆盖率 |
+| 2.2.2 Prompt Template System | ✅ 已完成 | PromptLoader + YAML/Jinja2 + rule_agent/gm_agent模板 + 26个测试, 96%覆盖率 |
+
+**Week 2 总计**: 64个测试通过, 新增依赖: langchain-openai, pyyaml, jinja2
 
 ### Phase 3: Agent 协作与 API 集成
 - 3.1 GM Agent 主循环
@@ -109,6 +111,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
+| 2026-01-03 | Phase 2 Week 2 完成 | `master` | 完成 Agent Infrastructure：BaseAgent、LLM Provider、PromptLoader。64个测试，89-96%覆盖率 |
 | 2026-01-03 | Phase 2 Week 1 完成 | `master` | 完成 Foundation Layer：数据模型、骰子系统、I18nService。121个测试，95%覆盖率 |
 | 2026-01-03 | Phase 1 基础设施搭建 | `master` | 完成项目目录结构初始化、依赖配置、开发工具设置 |
 

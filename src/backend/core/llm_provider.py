@@ -125,7 +125,7 @@ def get_llm(config: LLMConfig | None = None) -> BaseChatModel:
 
     elif config.provider == LLMProvider.ANTHROPIC:
         try:
-            from langchain_anthropic import ChatAnthropic
+            from langchain_anthropic import ChatAnthropic  # type: ignore[import-not-found]
         except ImportError as exc:
             raise ValueError(
                 "Anthropic provider requires langchain-anthropic. "
@@ -148,11 +148,11 @@ def get_llm(config: LLMConfig | None = None) -> BaseChatModel:
         if "base_url" in kwargs:
             anthropic_kwargs["base_url"] = kwargs["base_url"]
 
-        return ChatAnthropic(**anthropic_kwargs)
+        return ChatAnthropic(**anthropic_kwargs)  # type: ignore[no-any-return]
 
     elif config.provider == LLMProvider.OLLAMA:
         try:
-            from langchain_ollama import ChatOllama
+            from langchain_ollama import ChatOllama  # type: ignore[import-not-found]
         except ImportError as exc:
             raise ValueError(
                 "Ollama provider requires langchain-ollama. "
@@ -167,7 +167,7 @@ def get_llm(config: LLMConfig | None = None) -> BaseChatModel:
         if "base_url" in kwargs:
             ollama_kwargs["base_url"] = kwargs["base_url"]
 
-        return ChatOllama(**ollama_kwargs)
+        return ChatOllama(**ollama_kwargs)  # type: ignore[no-any-return]
 
     else:
         raise ValueError(f"Unsupported provider: {config.provider}")
