@@ -14,7 +14,13 @@ from typing import Any
 from langchain_core.messages import SystemMessage
 
 from src.backend.agents.base import AgentResponse, BaseAgent
+from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
+
+# Hybrid search configuration
+KEYWORD_MATCH_WEIGHT = 1.0  # Strong signal from explicit keyword match
+VECTOR_MATCH_WEIGHT = 0.7  # Secondary signal from semantic similarity
+DUAL_MATCH_BOOST = 1.5  # Boost for entries matching both keyword and vector
 
 
 class LoreAgent(BaseAgent):
@@ -35,16 +41,23 @@ class LoreAgent(BaseAgent):
         ... })
     """
 
-    def __init__(self, llm, world_pack_loader: WorldPackLoader):
+    def __init__(
+        self,
+        llm,
+        world_pack_loader: WorldPackLoader,
+        vector_store: VectorStoreService | None = None,
+    ):
         """
         Initialize Lore Agent.
 
         Args:
             llm: Language model instance
             world_pack_loader: Service for loading world packs
+            vector_store: Optional VectorStoreService for semantic search
         """
         super().__init__(llm, "lore_agent")
         self.world_pack_loader = world_pack_loader
+        self.vector_store = vector_store
 
     async def process(self, input_data: dict[str, Any]) -> AgentResponse:
         """
@@ -111,7 +124,12 @@ class LoreAgent(BaseAgent):
         context: str,
     ) -> list:
         """
-        Search for relevant lore entries.
+        Search for relevant lore entries using hybrid search.
+
+        Combines keyword matching and vector similarity:
+        - Keyword matches get score = 1.0
+        - Vector matches get score = 0.7 * similarity
+        - Dual matches (both keyword + vector) get 1.5x boost
 
         Args:
             world_pack: WorldPack instance
@@ -119,12 +137,109 @@ class LoreAgent(BaseAgent):
             context: Current game context
 
         Returns:
-            List of relevant lore entries
+            List of top 5 relevant lore entries, sorted by score then order
         """
-        # Get constant entries (always included)
+        # Get constant entries (always included with highest score)
         constant_entries = world_pack.get_constant_entries()
 
-        # Search for keyword matches
+        # If no vector store, fall back to keyword-only search
+        if self.vector_store is None:
+            return self._keyword_only_search(world_pack, query, constant_entries)
+
+        # Hybrid search: combine keyword and vector scores
+        entry_scores = {}
+
+        # Step 1: Keyword matching
+        search_terms = self._extract_search_terms(query)
+        keyword_matched_uids = set()
+
+        for term in search_terms:
+            matches = world_pack.search_entries_by_keyword(term, include_secondary=True)
+            for entry in matches:
+                keyword_matched_uids.add(entry.uid)
+                if entry.uid not in entry_scores:
+                    entry_scores[entry.uid] = {
+                        "entry": entry,
+                        "score": KEYWORD_MATCH_WEIGHT,
+                        "keyword_match": True,
+                        "vector_match": False,
+                    }
+
+        # Step 2: Vector similarity search
+        try:
+            # Determine language for search
+            lang = "cn" if any("\u4e00" <= c <= "\u9fff" for c in query) else "en"
+            collection_name = f"lore_entries_{world_pack.pack_info.id}"
+
+            # Search for similar documents (top 10)
+            results = self.vector_store.search(
+                collection_name=collection_name,
+                query_text=query,
+                n_results=10,
+                where={"lang": lang},
+                include=["metadatas", "distances"],
+            )
+
+            # Process vector search results
+            if results["distances"] and results["distances"][0]:
+                for metadata, distance in zip(
+                    results["metadatas"][0], results["distances"][0], strict=True
+                ):
+                    uid = metadata["uid"]
+                    # Convert distance to similarity (lower distance = higher similarity)
+                    similarity = 1.0 - min(distance, 1.0)
+                    vector_score = VECTOR_MATCH_WEIGHT * similarity
+
+                    if uid in entry_scores:
+                        # Dual match: boost the score
+                        entry_scores[uid]["score"] *= DUAL_MATCH_BOOST
+                        entry_scores[uid]["vector_match"] = True
+                    else:
+                        # Vector-only match
+                        entry = world_pack.get_entry(uid)
+                        if entry:
+                            entry_scores[uid] = {
+                                "entry": entry,
+                                "score": vector_score,
+                                "keyword_match": False,
+                                "vector_match": True,
+                            }
+
+        except Exception:
+            # If vector search fails, continue with keyword results
+            pass
+
+        # Step 3: Add constant entries with maximum score
+        for entry in constant_entries:
+            if entry.uid not in entry_scores:
+                entry_scores[entry.uid] = {
+                    "entry": entry,
+                    "score": 2.0,  # Higher than any other score
+                    "keyword_match": False,
+                    "vector_match": False,
+                }
+
+        # Step 4: Sort by score (desc), then by order (asc)
+        sorted_entries = sorted(
+            entry_scores.values(),
+            key=lambda x: (-x["score"], x["entry"].order),
+        )
+
+        # Return top 5
+        return [item["entry"] for item in sorted_entries[:5]]
+
+    def _keyword_only_search(self, world_pack, query: str, constant_entries: list) -> list:
+        """
+        Fallback to keyword-only search when vector store is unavailable.
+
+        Args:
+            world_pack: WorldPack instance
+            query: Search query
+            constant_entries: List of constant entries
+
+        Returns:
+            List of matched entries sorted by order
+        """
         search_terms = self._extract_search_terms(query)
         matched_entries = []
 
@@ -137,7 +252,6 @@ class LoreAgent(BaseAgent):
         for entry in constant_entries + matched_entries:
             unique_entries[entry.uid] = entry
 
-        # Sort by order
         return sorted(unique_entries.values(), key=lambda e: e.order)
 
     def _extract_search_terms(self, query: str) -> list[str]:
