@@ -144,11 +144,11 @@ graph TD
     GM --> L[Lore Agent<br/>世界观检索]
     GM --> O[其他 Agent<br/>可扩展]
 
-    style GM fill:#e1f5fe
-    style R fill:#f3e5f5
-    style N fill:#f3e5f5
-    style L fill:#f3e5f5
-    style O fill:#f3e5f5
+    style GM fill:#e1f5fe,stroke:#01579b,color:#000000
+    style R fill:#f3e5f5,stroke:#4a148c,color:#000000
+    style N fill:#f3e5f5,stroke:#4a148c,color:#000000
+    style L fill:#f3e5f5,stroke:#4a148c,color:#000000
+    style O fill:#f3e5f5,stroke:#4a148c,color:#000000
 ```
 
 - **信息隔离**: 每个 Agent 只能访问必要的上下文切片
