@@ -185,9 +185,57 @@ class GameState:
 
 ## 4. 世界包结构
 
-<参考 [SillyTavern](https://github.com/SillyTavern/SillyTavern)，请帮我完成>
+世界包（World Package）是 Astinus 存储世界观设定的核心数据结构。参考 SillyTavern 的 World Info 设计，我们采用 JSON 格式来组织这些数据，以便 Lore Agent 能够高效地检索和注入上下文。
 
-## 5. NPC 构成
+### 4.1 文件格式
+
+每个世界包是一个独立的 `.json` 文件，包含该世界的元数据和一系列词条（Entries）。
+
+```json
+{
+  "info": {
+    "name": "艾泽拉斯",
+    "description": "一个充满魔法、冲突与冒险的高奇幻世界。",
+    "version": "1.0.0",
+    "author": "Astinus Team"
+  },
+  "entries": {
+    "1": {
+      "uid": 1,
+      "key": ["暴风城", "人类主城"],
+      "secondary_keys": ["联盟"],
+      "comment": "人类的主要聚集地",
+      "content": "暴风城是艾泽拉斯人类王国的最后堡垒，位于艾尔文森林的西北部。它是一座宏伟的城市，由坚固的石墙保护，是联盟的政治和军事中心。",
+      "constant": false,
+      "selective": true,
+      "order": 100
+    }
+  }
+}
+```
+
+### 4.2 词条属性详解
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| **uid** | Integer | 词条的唯一标识符。 |
+| **key** | Array[String] | **触发关键词**。当玩家输入或当前上下文中出现这些词时，Lore Agent 会考虑提取此词条。 |
+| **secondary_keys** | Array[String] | **辅助关键词**。如果设置，仅当主关键词存在且辅助关键词也存在时，才会触发（逻辑 AND）。 |
+| **content** | String | **设定内容**。这是实际会被注入到 LLM 上下文中的文本。应简洁明了，直接描述事实。 |
+| **comment** | String | **备注**。仅供编辑者查看的说明，不会发送给 AI。 |
+| **constant** | Boolean | **常驻**。如果为 `true`，该词条将始终存在于上下文中，不依赖关键词触发（慎用，以免占用过多 Token）。 |
+| **selective** | Boolean | **选择性触发**。通常为 `true`，表示仅在触发时加载。 |
+| **order** | Integer | **插入顺序**。决定词条在 Prompt 中的排列顺序，数值越小越靠前。 |
+
+### 4.3 Lore Agent 的检索策略
+
+Lore Agent 在 Demo 阶段仅进行简单的关键词匹配。向量检索（Vector Search）作为未来规划。
+
+1. **关键词匹配**：首先扫描玩家输入和最近对话，匹配 `key` 和 `secondary_keys`。
+2. **语义检索 [暂不开发]**：将 `content` 预先向量化。当 GM Agent 提出查询请求时（例如“查询关于这个纹章的历史”），Lore Agent 计算查询向量与词条向量的相似度。这对于 Demo 而言工程量过大，暂不实现。
+3. **上下文注入**：将匹配到的词条 `content` 组合，作为背景信息传递给 GM Agent 或 NPC Agent。
+
+这种结构确保了即使面对庞大的世界观设定，Agent 也能保持轻量级运行，仅在需要时获取相关知识。
 
 ## 5. NPC 构成
 
