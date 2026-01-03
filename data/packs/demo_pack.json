@@ -1,0 +1,254 @@
+{
+  "info": {
+    "name": {
+      "cn": "幽暗庄园",
+      "en": "The Dark Manor"
+    },
+    "description": {
+      "cn": "一个位于偏僻山区的神秘庄园，传说中曾发生过离奇的失踪事件。",
+      "en": "A mysterious manor in a remote mountain area, rumored to be the site of strange disappearances."
+    },
+    "version": "1.0.0",
+    "author": "Astinus Team"
+  },
+  "entries": {
+    "1": {
+      "uid": 1,
+      "key": ["幽暗庄园", "庄园", "Dark Manor", "manor"],
+      "secondary_keys": [],
+      "content": {
+        "cn": "幽暗庄园是一座建于百年前的哥特式建筑，坐落在云雾缭绕的山巅。据说这里曾是一位神秘贵族的居所，但在一场大火后，贵族一家离奇失踪，只留下这座残破的庄园和无数诡异的传说。",
+        "en": "The Dark Manor is a Gothic structure built a century ago, perched atop a mist-shrouded mountain peak. It is said to have been the residence of a mysterious noble family, but after a great fire, the family vanished without a trace, leaving behind only this crumbling manor and countless eerie legends."
+      },
+      "comment": {
+        "cn": "主要场景背景",
+        "en": "Main scene background"
+      },
+      "constant": true,
+      "selective": false,
+      "order": 1
+    },
+    "2": {
+      "uid": 2,
+      "key": ["密室", "书房", "secret room", "study"],
+      "secondary_keys": [],
+      "content": {
+        "cn": "书房的墙壁上隐藏着一个秘密入口，通往一间尘封已久的密室。密室中有一张古老的书桌，上面放着一本日记，记载着这个家族最后的秘密。",
+        "en": "Hidden within the study's walls is a secret entrance leading to a long-sealed chamber. Inside lies an ancient desk with a diary that records the family's final secrets."
+      },
+      "comment": {
+        "cn": "需要玩家发现机关才能进入",
+        "en": "Requires player to find the mechanism to enter"
+      },
+      "constant": false,
+      "selective": true,
+      "order": 50
+    },
+    "3": {
+      "uid": 3,
+      "key": ["管家", "老管家", "butler"],
+      "secondary_keys": ["庄园", "manor"],
+      "content": {
+        "cn": "传说中，庄园曾有一位忠诚的老管家，在火灾那晚拼命保护着主人的孩子。有人说他的灵魂至今仍在庄园中徘徊，寻找着那个失踪的孩子。",
+        "en": "Legend has it that the manor once had a loyal old butler who desperately protected the master's child on the night of the fire. Some say his spirit still wanders the manor, searching for that missing child."
+      },
+      "comment": null,
+      "constant": false,
+      "selective": true,
+      "order": 30
+    }
+  },
+  "npcs": {
+    "chen_ling": {
+      "id": "chen_ling",
+      "soul": {
+        "name": "陈玲",
+        "description": {
+          "cn": "陈玲是一位年轻的历史学研究生，专门研究本地区的民俗传说。她戴着一副圆框眼镜，总是随身携带一个破旧的笔记本，上面记满了关于幽暗庄园的调查笔记。虽然她表面上保持着学术的冷静，但对超自然现象有着强烈的好奇心。",
+          "en": "Chen Ling is a young history graduate student specializing in local folklore. She wears round-framed glasses and always carries a worn notebook filled with investigation notes about the Dark Manor. Though she maintains academic composure on the surface, she harbors an intense curiosity about the supernatural."
+        },
+        "personality": ["理性", "好奇", "谨慎"],
+        "speech_style": {
+          "cn": "说话条理清晰，喜欢引用史料。遇到有趣的线索时会下意识推眼镜，语速会不自觉加快。",
+          "en": "Speaks with clear logic and likes citing historical sources. When encountering interesting clues, she unconsciously pushes up her glasses and her speech unconsciously speeds up."
+        },
+        "example_dialogue": [
+          {
+            "user": "你为什么要调查这个庄园？",
+            "char": "（推了推眼镜）根据我查到的县志记载，百年前这里确实发生过一场大火...但奇怪的是，关于那个家族的后续记录完全是空白的。作为研究者，这种断层让我很在意。"
+          },
+          {
+            "user": "你相信鬼魂存在吗？",
+            "char": "（沉默片刻）从科学角度来说，我应该持怀疑态度。但是...（压低声音）我在这里听到过一些无法解释的声音。"
+          }
+        ]
+      },
+      "body": {
+        "location": "manor_entrance",
+        "inventory": ["notebook", "flashlight", "old_map"],
+        "relations": {
+          "player": 10
+        },
+        "tags": [],
+        "memory": {}
+      }
+    },
+    "old_guard": {
+      "id": "old_guard",
+      "soul": {
+        "name": "老王",
+        "description": {
+          "cn": "老王是庄园附近村子的守夜人，一位沉默寡言的老人。他的右眼有一道旧伤疤，据说是年轻时在庄园附近遇到'什么东西'留下的。他对庄园的事情讳莫如深，但如果获得他的信任，也许会透露一些关键信息。",
+          "en": "Old Wang is the night watchman of the village near the manor, a taciturn old man. He has an old scar over his right eye, said to have been left by 'something' he encountered near the manor in his youth. He is deeply secretive about manor matters, but if you gain his trust, he might reveal crucial information."
+        },
+        "personality": ["沉默", "警惕", "固执"],
+        "speech_style": {
+          "cn": "话很少，经常只用点头或摇头回应。说话时声音沙哑低沉，从不直视对方的眼睛。",
+          "en": "Speaks very little, often responding only with nods or head shakes. When he does speak, his voice is hoarse and low, never meeting the other person's eyes directly."
+        },
+        "example_dialogue": [
+          {
+            "user": "您知道庄园里发生过什么吗？",
+            "char": "（低头沉默了很久）...别去那里。"
+          },
+          {
+            "user": "您眼睛上的伤疤是怎么来的？",
+            "char": "（下意识摸了摸伤疤，眼神变得阴沉）...老事了。（转身离开）"
+          }
+        ]
+      },
+      "body": {
+        "location": "village",
+        "inventory": ["lantern", "keys"],
+        "relations": {
+          "player": -20,
+          "chen_ling": 0
+        },
+        "tags": ["suspicious_of_outsiders"],
+        "memory": {}
+      }
+    }
+  },
+  "locations": {
+    "village": {
+      "id": "village",
+      "name": {
+        "cn": "山脚村落",
+        "en": "Mountain Village"
+      },
+      "description": {
+        "cn": "一个安静的小村庄，坐落在通往庄园的山路起点。村民们对外来者并不热情，尤其是那些打听庄园的人。",
+        "en": "A quiet little village at the foot of the mountain path leading to the manor. The villagers are not welcoming to outsiders, especially those asking about the manor."
+      },
+      "connected_locations": ["mountain_path"],
+      "present_npc_ids": ["old_guard"],
+      "items": ["village_well", "old_notice_board"],
+      "tags": ["safe", "starting_area"]
+    },
+    "mountain_path": {
+      "id": "mountain_path",
+      "name": {
+        "cn": "山间小路",
+        "en": "Mountain Path"
+      },
+      "description": {
+        "cn": "一条蜿蜒曲折的小路，两旁是茂密的灌木丛。随着海拔升高，雾气越来越浓，能见度逐渐降低。",
+        "en": "A winding narrow path flanked by dense shrubbery. As the elevation increases, the fog grows thicker and visibility gradually decreases."
+      },
+      "connected_locations": ["village", "manor_entrance"],
+      "present_npc_ids": [],
+      "items": [],
+      "tags": ["outdoor", "foggy"]
+    },
+    "manor_entrance": {
+      "id": "manor_entrance",
+      "name": {
+        "cn": "庄园大门",
+        "en": "Manor Entrance"
+      },
+      "description": {
+        "cn": "两扇锈迹斑斑的铁门半开着，仿佛在无声地邀请来客。门柱上的石像狮子已经残破不堪，眼窝处长满了青苔。",
+        "en": "Two rust-covered iron gates stand half-open, as if silently inviting visitors. The stone lion statues on the gate pillars are crumbling, their eye sockets overgrown with moss."
+      },
+      "connected_locations": ["mountain_path", "manor_hall"],
+      "present_npc_ids": ["chen_ling"],
+      "items": ["rusted_gate", "stone_lions"],
+      "tags": ["creepy", "transition"]
+    },
+    "manor_hall": {
+      "id": "manor_hall",
+      "name": {
+        "cn": "庄园大厅",
+        "en": "Manor Hall"
+      },
+      "description": {
+        "cn": "宽敞的大厅已经破败不堪。吊灯早已坠落，地板上散落着碎玻璃。墙上挂着几幅模糊的肖像画，画中人的眼睛似乎在跟随着你移动。",
+        "en": "The spacious hall has fallen into disrepair. The chandelier has long since fallen, and broken glass litters the floor. Several blurry portraits hang on the walls, their subjects' eyes seeming to follow your movement."
+      },
+      "connected_locations": ["manor_entrance", "study", "dining_room"],
+      "present_npc_ids": [],
+      "items": ["fallen_chandelier", "family_portraits", "broken_staircase"],
+      "tags": ["dangerous", "main_area"]
+    },
+    "study": {
+      "id": "study",
+      "name": {
+        "cn": "书房",
+        "en": "Study"
+      },
+      "description": {
+        "cn": "一间堆满书籍的房间，大部分书页已经发黄腐烂。书桌上放着一盏油灯和一些散落的文件。墙边的书架似乎可以移动...",
+        "en": "A room filled with books, most pages yellowed and decaying. An oil lamp and scattered documents sit on the desk. The bookshelf by the wall seems movable..."
+      },
+      "connected_locations": ["manor_hall", "secret_room"],
+      "present_npc_ids": [],
+      "items": ["oil_lamp", "scattered_documents", "movable_bookshelf"],
+      "tags": ["puzzle", "contains_secret"]
+    },
+    "secret_room": {
+      "id": "secret_room",
+      "name": {
+        "cn": "密室",
+        "en": "Secret Room"
+      },
+      "description": {
+        "cn": "一个尘封已久的小房间，空气中弥漫着霉味。中央的书桌上放着一本保存完好的日记，似乎在等待有人来阅读。",
+        "en": "A long-sealed small room, the air thick with a musty smell. A well-preserved diary sits on the central desk, as if waiting for someone to read it."
+      },
+      "connected_locations": ["study"],
+      "present_npc_ids": [],
+      "items": ["ancient_diary", "dusty_desk", "hidden_safe"],
+      "tags": ["secret", "key_location", "hidden"]
+    },
+    "dining_room": {
+      "id": "dining_room",
+      "name": {
+        "cn": "餐厅",
+        "en": "Dining Room"
+      },
+      "description": {
+        "cn": "长长的餐桌上还摆着碗碟，仿佛主人刚刚离席。蜡烛台上的蜡烛早已燃尽，只剩下干枯的蜡痕。壁炉旁的角落里似乎有什么东西在发光...",
+        "en": "The long dining table still has dishes set, as if the hosts just stepped away. The candles on the candelabra have long burned out, leaving only dried wax trails. Something seems to be glowing in the corner by the fireplace..."
+      },
+      "connected_locations": ["manor_hall", "kitchen"],
+      "present_npc_ids": [],
+      "items": ["dining_table", "empty_candelabra", "glowing_object"],
+      "tags": ["mystery", "contains_item"]
+    },
+    "kitchen": {
+      "id": "kitchen",
+      "name": {
+        "cn": "厨房",
+        "en": "Kitchen"
+      },
+      "description": {
+        "cn": "厨房里弥漫着一股奇怪的气味。炉灶已经冷却多年，但锅里似乎还残留着什么东西。后门通向庄园的后花园。",
+        "en": "A strange smell permeates the kitchen. The stove has been cold for years, but something seems to remain in the pot. The back door leads to the manor's rear garden."
+      },
+      "connected_locations": ["dining_room"],
+      "present_npc_ids": [],
+      "items": ["cold_stove", "mysterious_pot", "back_door"],
+      "tags": ["exploration"]
+    }
+  }
+}
