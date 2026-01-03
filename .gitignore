@@ -8,3 +8,45 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Configuration files with sensitive data
+config/settings.yaml
+config/*.local.yaml
+
+# Database files
+data/saves/*.db
+data/saves/*.db-*
+*.sqlite
+*.sqlite3
+
+# Vector store
+data/vector_store/
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Temporary files
+*.tmp
+*.bak
+.cache/

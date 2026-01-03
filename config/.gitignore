@@ -1,0 +1,6 @@
+# Ignore actual configuration files with sensitive data
+settings.yaml
+*.local.yaml
+
+# Keep example files
+!settings.example.yaml

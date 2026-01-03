@@ -1,0 +1,66 @@
+# Astinus Configuration Template
+# Copy this file to settings.yaml and fill in your actual values
+# IMPORTANT: Do NOT commit settings.yaml to version control
+
+# AI Model Configuration
+llm:
+  # Primary provider: openai, anthropic, google, ollama
+  provider: "google"
+
+  # Model configurations for different agents
+  models:
+    gm: "gemini-3-flash-preview"  # GM Agent - narrative generation
+    npc: "gemini-3-flash-preview"  # NPC Agent - character dialogue
+    rule: "gemini-2.5-flash-lite"  # Rule Agent - deterministic logic
+    lore: "gemini-2.5-flash-lite"  # Lore Agent - information retrieval
+
+  # API Keys (leave empty for local models like ollama)
+  api_keys:
+    openai: ""
+    anthropic: ""
+    google: ""
+
+  # Model parameters
+  temperature: 0.7
+  max_tokens: 2048
+
+# Database Configuration
+database:
+  # SQLite database for game state
+  sqlite_path: "data/saves/game.db"
+
+  # ChromaDB for vector search (future feature)
+  chromadb_path: "data/vector_store"
+  enable_vector_search: false  # Not implemented in demo
+
+# Server Configuration
+server:
+  host: "127.0.0.1"
+  port: 8000
+  reload: true  # Auto-reload in development
+  log_level: "info"  # debug, info, warning, error
+
+# Game Configuration
+game:
+  # Default language: cn or en
+  default_language: "cn"
+
+  # World packs directory
+  packs_directory: "data/packs"
+
+  # Dice system
+  dice:
+    use_advantage_system: true
+    show_roll_details: true
+
+# Frontend Configuration
+frontend:
+  # TUI settings
+  theme: "dark"
+  animation_speed: "normal"  # slow, normal, fast
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/astinus.log"

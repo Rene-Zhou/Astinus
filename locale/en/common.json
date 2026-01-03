@@ -1,0 +1,34 @@
+{
+  "app": {
+    "title": "Astinus - AI-Driven TTRPG Engine",
+    "welcome": "Welcome to Astinus",
+    "loading": "Loading...",
+    "error": "Error"
+  },
+  "game": {
+    "new_game": "New Game",
+    "load_game": "Load Game",
+    "save_game": "Save Game",
+    "quit": "Quit"
+  },
+  "dice": {
+    "roll": "Roll",
+    "result": "Result",
+    "success": "Success",
+    "partial_success": "Partial Success",
+    "failure": "Failure",
+    "advantage": "Advantage",
+    "disadvantage": "Disadvantage"
+  },
+  "character": {
+    "name": "Name",
+    "concept": "Concept",
+    "traits": "Traits",
+    "tags": "Tags"
+  },
+  "errors": {
+    "connection_failed": "Connection Failed",
+    "invalid_input": "Invalid Input",
+    "file_not_found": "File Not Found"
+  }
+}
