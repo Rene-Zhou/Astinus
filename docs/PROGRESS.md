@@ -70,14 +70,24 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 | 1.2 初始化目录结构 `src/backend`, `src/frontend` | Platform Team | ✅ 已完成 |
 | 1.3 配置格式化、静态检查与 CI | DevOps | ✅ 已完成（ruff, mypy, pytest 已配置） |
 | 1.4 引入 pytest 并创建样例测试 | QA | ✅ 已完成 |
-| 1.5 建立多语言资源目录与加载服务（`locale/`、i18n 管线） | Platform Team | 🔄 部分完成（目录和示例资源已建立，加载服务待实现） |
+| 1.5 建立多语言资源目录与加载服务（`locale/`、i18n 管线） | Platform Team | ✅ 已完成（I18nService + locale 资源文件 + 21个测试） |
 
 ### Phase 2: 后端核心引擎准备 🔄 进行中
+
+#### Week 1: Foundation Layer ✅ 已完成
 | 任务 | 状态 | 备注 |
 |------|------|------|
-| 2.1 GameState & 数据模型实现 | ✅ 已完成 | LocalizedString, Trait, Character, GameState + 53个测试 |
-| 2.2 Dice 系统迁移 | ✅ 已完成 | DicePool, DiceResult, DiceCheckRequest + 47个测试, 99%覆盖率 |
-| 2.3 Agent 接口定义（LangChain Runnable） | ⏳ 下一步 |
+| 2.1.1 Data Models | ✅ 已完成 | LocalizedString, Trait, Character, GameState + 53个测试, 99%覆盖率 |
+| 2.1.2 Dice System | ✅ 已完成 | DicePool, DiceResult, DiceCheckRequest + 47个测试, 95%覆盖率 |
+| 2.1.3 I18nService | ✅ 已完成 | I18nService + system/common 双语资源 + 21个测试, 84%覆盖率 |
+
+**Week 1 总计**: 121个测试通过, 95%整体覆盖率
+
+#### Week 2: Agent Infrastructure ⏳ 下一步
+| 任务 | 状态 | 备注 |
+|------|------|------|
+| 2.2.1 LangChain Agent Base | 📋 待开始 | BaseAgent(Runnable) + LLM Provider Factory |
+| 2.2.2 Prompt Template System | 📋 待开始 | YAML prompts with Jinja2 + cn/en support |
 
 ### Phase 3: Agent 协作与 API 集成
 - 3.1 GM Agent 主循环
@@ -99,6 +109,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
+| 2026-01-03 | Phase 2 Week 1 完成 | `master` | 完成 Foundation Layer：数据模型、骰子系统、I18nService。121个测试，95%覆盖率 |
 | 2026-01-03 | Phase 1 基础设施搭建 | `master` | 完成项目目录结构初始化、依赖配置、开发工具设置 |
 
 ---
@@ -107,7 +118,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 ### 高优先级
 - ~~`pyproject.toml` 缺少核心依赖（FastAPI, Textual, LangChain, ChromaDB 等）。~~ ✅ 已完成（除 ChromaDB 外）
-- 建立 i18n 加载服务，统一管理前端与后端所有可见文本并提供 `cn`/`en` 双语（资源目录已建立）。
+- ~~建立 i18n 加载服务，统一管理前端与后端所有可见文本并提供 `cn`/`en` 双语。~~ ✅ 已完成（I18nService + locale 资源）
 - ~~尚未创建 `src` 目录与模块化结构，需尽快搭建以解锁后续任务。~~ ✅ 已完成
 - ~~缺失单元测试与 CI 流水线，阻碍 TDD 推进。~~ 🔄 单元测试框架已搭建，CI 待配置
 
@@ -124,17 +135,20 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 ## 下一步计划
 
-### 立即执行（Phase 1 后续）
+### 立即执行（Phase 2 Week 2）
 1. ~~使用 `uv add` 声明后端/前端核心依赖。~~ ✅ 已完成
 2. ~~创建基础目录与占位模块，确保导入路径正确。~~ ✅ 已完成
 3. ~~引入 `pytest`, `ruff`/`ruff-lsp`, `mypy` 等工具，建立最小测试管线。~~ ✅ 已完成
-4. 实现 i18n 加载服务，清点现有文案来源并迁移至资源文件。
-5. 配置 GitHub Actions CI 流水线（或其他 CI 工具）。
+4. ~~实现 i18n 加载服务，清点现有文案来源并迁移至资源文件。~~ ✅ 已完成
+5. 实现 LangChain Agent 基类（BaseAgent as Runnable）。
+6. 创建 Prompt 模板系统（YAML + Jinja2 + 双语支持）。
+7. 配置 GitHub Actions CI 流水线（或其他 CI 工具）。
 
-### 短期目标（完成 Phase 1 & Phase 2 启动）
-- 为 `GameState`, `Character`, `Dice` 等核心模块编写接口草稿与对应测试。
-- 起草 LangChain Agent 接口定义，确保与指南文档一致。
-- 搭建 FastAPI 应用骨架，提供健康检查与示例接口。
+### 短期目标（Phase 2 Week 2-4）
+- ~~为 `GameState`, `Character`, `Dice` 等核心模块编写接口草稿与对应测试。~~ ✅ 已完成
+- 起草 LangChain Agent 接口定义（BaseAgent Runnable），确保与指南文档一致。
+- 实现 Rule Agent 与 GM Agent，建立星型拓扑架构。
+- 搭建 FastAPI 应用骨架，提供健康检查与游戏接口。
 - 推出世界包与 Prompt 模板的 `cn`/`en` 双语草案，并接入验证脚本。
 
 ### 中期目标（Phase 3-4）

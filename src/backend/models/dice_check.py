@@ -5,6 +5,8 @@ Defines the DiceCheckRequest schema that Rule Agent generates and
 frontend displays to the player, per GUIDE.md specifications.
 """
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from .i18n import LocalizedString
@@ -54,7 +56,7 @@ class DiceCheckRequest(BaseModel):
         ..., description="Explanation of why these modifiers apply"
     )
 
-    def to_display(self, lang: str = "cn") -> dict:
+    def to_display(self, lang: str = "cn") -> dict[str, Any]:
         """
         Format for frontend display.
 
@@ -149,7 +151,7 @@ class DiceCheckResponse(BaseModel):
         ...,
         description="Action taken: 'roll', 'argue', or 'cancel'"
     )
-    dice_result: dict | None = Field(
+    dice_result: dict[str, Any] | None = Field(
         default=None,
         description="DiceResult as dict (if action='roll')"
     )

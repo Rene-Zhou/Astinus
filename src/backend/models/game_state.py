@@ -6,6 +6,7 @@ Defines GameState - the global truth owned by GM Agent.
 
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -87,15 +88,15 @@ class GameState(BaseModel):
     turn_count: int = Field(default=0, ge=0, description="Number of turns elapsed")
 
     # Communication
-    messages: list[dict] = Field(
+    messages: list[dict[str, Any]] = Field(
         default_factory=list,
         description="Full conversation history - GM's complete context"
     )
-    temp_context: dict = Field(
+    temp_context: dict[str, Any] = Field(
         default_factory=dict,
         description="Temporary context for passing data to/from sub-agents"
     )
-    last_check_result: dict | None = Field(
+    last_check_result: dict[str, Any] | None = Field(
         default=None, description="Most recent dice check outcome"
     )
 
@@ -106,7 +107,7 @@ class GameState(BaseModel):
         self,
         role: str,
         content: str,
-        metadata: dict | None = None
+        metadata: dict[str, Any] | None = None
     ) -> None:
         """
         Add a message to conversation history.
@@ -128,7 +129,7 @@ class GameState(BaseModel):
         self.messages.append(message)
         self.updated_at = datetime.now()
 
-    def get_recent_messages(self, count: int = 5) -> list[dict]:
+    def get_recent_messages(self, count: int = 5) -> list[dict[str, Any]]:
         """
         Get the N most recent messages.
 

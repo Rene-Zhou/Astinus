@@ -97,7 +97,7 @@ class DiceResult(BaseModel):
         """Legacy property - returns dropped rolls if penalty was used."""
         return self.dropped_rolls if self.is_penalty else []
 
-    def to_display(self, lang: str = "cn") -> dict[str, str]:
+    def to_display(self, lang: str = "cn") -> dict[str, str | None]:
         """
         Generate localized display strings for the roll.
 
@@ -108,33 +108,20 @@ class DiceResult(BaseModel):
             Dictionary with display strings:
             - "roll_detail": Detailed roll breakdown
             - "outcome": Outcome text
-            - "modifier_text": Modifier description (if any)
+            - "modifier_text": Modifier description (if any, otherwise None)
 
         Examples:
             >>> result.to_display("cn")
             {'roll_detail': '[6+5+2]→[6+5]↑ = 11', 'outcome': '成功', ...}
         """
-        # Import here to avoid circular dependency
-        # Will be replaced with i18n service once implemented
-        outcome_text = {
-            "cn": {
-                Outcome.CRITICAL: "大成功",
-                Outcome.SUCCESS: "成功",
-                Outcome.PARTIAL: "部分成功",
-                Outcome.FAILURE: "失败",
-            },
-            "en": {
-                Outcome.CRITICAL: "Critical Success",
-                Outcome.SUCCESS: "Success",
-                Outcome.PARTIAL: "Partial Success",
-                Outcome.FAILURE: "Failure",
-            },
-        }
+        # Import here to avoid circular dependency at module level
+        from ..core.i18n import get_i18n
 
-        modifier_text = {
-            "cn": {"bonus": "优势", "penalty": "劣势"},
-            "en": {"bonus": "Advantage", "penalty": "Disadvantage"},
-        }
+        i18n = get_i18n()
+
+        # Get outcome text from i18n service
+        outcome_key = f"system.dice.outcome.{self.outcome.value}"
+        outcome_text = i18n.get(outcome_key, lang=lang)
 
         # Build roll detail string
         parts = []
@@ -157,23 +144,26 @@ class DiceResult(BaseModel):
         # Determine modifier description
         mod_desc = None
         if self.is_bonus:
-            mod_desc = modifier_text[lang]["bonus"]
+            mod_desc = i18n.get("system.dice.modifier.bonus", lang=lang)
         elif self.is_penalty:
-            mod_desc = modifier_text[lang]["penalty"]
+            mod_desc = i18n.get("system.dice.modifier.penalty", lang=lang)
 
         return {
             "roll_detail": roll_detail,
-            "outcome": outcome_text[lang][self.outcome],
+            "outcome": outcome_text,
             "modifier_text": mod_desc,
         }
 
     def __str__(self) -> str:
         """Return a human-readable representation of the roll (Chinese)."""
+        from typing import cast
+
         display = self.to_display("cn")
-        parts = [display["roll_detail"]]
-        if display["modifier_text"]:
-            parts.append(f"({display['modifier_text']})")
-        parts.append(f"- {display['outcome']}")
+        parts = [cast(str, display["roll_detail"])]
+        mod_text = display["modifier_text"]
+        if mod_text:
+            parts.append(f"({mod_text})")
+        parts.append(f"- {cast(str, display['outcome'])}")
         return " ".join(parts)
 
     def __repr__(self) -> str:
