@@ -16,6 +16,7 @@ from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.core.i18n import get_i18n
 from src.backend.core.prompt_loader import get_prompt_loader
 from src.backend.models.world_pack import NPCData
+from src.backend.services.vector_store import VectorStoreService
 
 
 class NPCAgent(BaseAgent):
@@ -37,11 +38,18 @@ class NPCAgent(BaseAgent):
         ... })
     """
 
-    def __init__(self, llm):
-        """Initialize NPC Agent."""
+    def __init__(self, llm, vector_store: VectorStoreService | None = None):
+        """
+        Initialize NPC Agent.
+
+        Args:
+            llm: Language model instance
+            vector_store: Optional VectorStoreService for semantic memory retrieval
+        """
         super().__init__(llm, "npc_agent")
         self.i18n = get_i18n()
         self.prompt_loader = get_prompt_loader()
+        self.vector_store = vector_store
 
     async def process(self, input_data: dict[str, Any]) -> AgentResponse:
         """
@@ -155,6 +163,49 @@ class NPCAgent(BaseAgent):
             success=True,
         )
 
+    def _retrieve_relevant_memories(
+        self,
+        npc_id: str,
+        player_input: str,
+        all_memories: dict[str, list[str]],
+        n_results: int = 3,
+    ) -> list[str]:
+        """
+        Retrieve relevant memories using vector similarity search.
+
+        Args:
+            npc_id: NPC identifier
+            player_input: Current player input/query
+            all_memories: All NPC memories {event: [keywords]}
+            n_results: Number of memories to retrieve (default: 3)
+
+        Returns:
+            List of relevant memory event descriptions (top n_results)
+        """
+        # If no vector store or no memories, return empty list
+        if not self.vector_store or not all_memories:
+            return []
+
+        try:
+            collection_name = f"npc_memories_{npc_id}"
+
+            # Search for similar memories
+            results = self.vector_store.search(
+                collection_name=collection_name,
+                query_text=player_input,
+                n_results=n_results,
+                include=["documents", "metadatas", "distances"],
+            )
+
+            # Extract memory events from results
+            if results["documents"] and results["documents"][0]:
+                return results["documents"][0]
+            return []
+
+        except Exception:
+            # If search fails, return empty list (graceful degradation)
+            return []
+
     def _build_prompt(
         self,
         npc_data: dict,
@@ -177,8 +228,8 @@ class NPCAgent(BaseAgent):
         # Parse NPC data
         npc = NPCData(**npc_data)
 
-        # Build system prompt from NPC soul
-        system_parts = self._build_system_prompt(npc, lang)
+        # Build system prompt from NPC soul (with memory retrieval)
+        system_parts = self._build_system_prompt(npc, player_input, lang)
 
         # Build user prompt with context and input
         user_parts = self._build_user_prompt(npc, player_input, context, lang)
@@ -188,8 +239,20 @@ class NPCAgent(BaseAgent):
             HumanMessage(content=user_parts),
         ]
 
-    def _build_system_prompt(self, npc: NPCData, lang: str) -> str:
-        """Build system prompt from NPC soul."""
+    def _build_system_prompt(
+        self, npc: NPCData, player_input: str, lang: str
+    ) -> str:
+        """
+        Build system prompt from NPC soul with relevant memories.
+
+        Args:
+            npc: NPC data
+            player_input: Current player input (for memory retrieval)
+            lang: Language code
+
+        Returns:
+            Formatted system prompt
+        """
         soul = npc.soul
         body = npc.body
 
@@ -224,11 +287,25 @@ class NPCAgent(BaseAgent):
                 rel_desc = "友好" if rel > 0 else "敌对" if rel < 0 else "中立"
                 lines.append(f"对玩家态度：{rel_desc} ({rel})")
 
-            # Add memory
-            if body.memory:
+            # Retrieve and add relevant memories
+            relevant_memories = self._retrieve_relevant_memories(
+                npc_id=npc.id,
+                player_input=player_input,
+                all_memories=body.memory,
+                n_results=3,
+            )
+
+            if relevant_memories:
                 lines.append("")
-                lines.append("## 记忆")
-                for event, _keywords in body.memory.items():
+                lines.append("## 相关记忆")
+                for memory in relevant_memories:
+                    lines.append(f"- {memory}")
+            elif body.memory:
+                # Fallback: show a few recent memories if retrieval fails
+                lines.append("")
+                lines.append("## 近期记忆")
+                recent_memories = list(body.memory.keys())[:3]
+                for event in recent_memories:
                     lines.append(f"- {event}")
 
             # Add response format
@@ -271,10 +348,25 @@ class NPCAgent(BaseAgent):
                 rel_desc = "friendly" if rel > 0 else "hostile" if rel < 0 else "neutral"
                 lines.append(f"Attitude toward player: {rel_desc} ({rel})")
 
-            if body.memory:
+            # Retrieve and add relevant memories
+            relevant_memories = self._retrieve_relevant_memories(
+                npc_id=npc.id,
+                player_input=player_input,
+                all_memories=body.memory,
+                n_results=3,
+            )
+
+            if relevant_memories:
                 lines.append("")
-                lines.append("## Memory")
-                for event, _keywords in body.memory.items():
+                lines.append("## Relevant Memories")
+                for memory in relevant_memories:
+                    lines.append(f"- {memory}")
+            elif body.memory:
+                # Fallback: show a few recent memories if retrieval fails
+                lines.append("")
+                lines.append("## Recent Memories")
+                recent_memories = list(body.memory.keys())[:3]
+                for event in recent_memories:
                     lines.append(f"- {event}")
 
             lines.append("")
