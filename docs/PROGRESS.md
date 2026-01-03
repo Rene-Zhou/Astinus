@@ -76,8 +76,8 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 | 任务 | 状态 | 备注 |
 |------|------|------|
 | 2.1 GameState & 数据模型实现 | ✅ 已完成 | LocalizedString, Trait, Character, GameState + 53个测试 |
-| 2.2 Agent 接口定义（LangChain Runnable） | ⏳ 规划阶段 |
-| 2.3 Rule Agent 掷骰服务迁移 | ⏳ 进行中 | 准备从 weave 迁移 dice 系统 |
+| 2.2 Dice 系统迁移 | ✅ 已完成 | DicePool, DiceResult, DiceCheckRequest + 47个测试, 99%覆盖率 |
+| 2.3 Agent 接口定义（LangChain Runnable） | ⏳ 下一步 |
 
 ### Phase 3: Agent 协作与 API 集成
 - 3.1 GM Agent 主循环
