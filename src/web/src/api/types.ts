@@ -1,0 +1,361 @@
+/**
+ * Astinus API Types Definition
+ *
+ * This file serves as a reference for frontend development.
+ * It defines all types used in communication with the backend API.
+ *
+ * @see docs/WEB_FRONTEND_PLAN.md for full API documentation
+ */
+
+// ============================================================================
+// Common Types
+// ============================================================================
+
+/**
+ * Localized string supporting Chinese and English
+ */
+export interface LocalizedString {
+  cn: string;
+  en: string;
+}
+
+/**
+ * Supported languages
+ */
+export type Language = 'cn' | 'en';
+
+// ============================================================================
+// Character Types
+// ============================================================================
+
+/**
+ * Character trait with dual aspects (positive/negative)
+ */
+export interface Trait {
+  name: LocalizedString;
+  description: LocalizedString;
+  positive_aspect: LocalizedString;
+  negative_aspect: LocalizedString;
+}
+
+/**
+ * Player character data
+ */
+export interface PlayerCharacter {
+  name: string;
+  concept: LocalizedString;
+  traits: Trait[];
+  tags: string[];
+  fate_points: number;
+}
+
+// ============================================================================
+// Game State Types
+// ============================================================================
+
+/**
+ * Game phases - matches backend GamePhase enum
+ */
+export type GamePhase =
+  | 'waiting_input'  // Waiting for player input
+  | 'processing'     // GM is processing player action
+  | 'dice_check'     // Waiting for player to roll dice
+  | 'npc_response'   // NPC is responding
+  | 'narrating';     // GM is narrating outcome
+
+/**
+ * Current game state
+ */
+export interface GameState {
+  session_id: string;
+  world_pack_id: string;
+  player: PlayerCharacter;
+  current_location: string;
+  active_npc_ids: string[];
+  current_phase: GamePhase;
+  turn_count: number;
+  language: Language;
+  messages: Message[];
+}
+
+/**
+ * A single message in the conversation history
+ */
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;  // ISO 8601 format
+  turn: number;
+  metadata?: {
+    agent?: string;   // Which agent generated this (gm, npc, rule, lore)
+    phase?: GamePhase;
+    [key: string]: unknown;
+  };
+}
+
+// ============================================================================
+// Dice Types
+// ============================================================================
+
+/**
+ * Dice check request from Rule Agent
+ */
+export interface DiceCheckRequest {
+  /** What the player is trying to do */
+  intention: string;
+  /** Traits/tags affecting the roll */
+  influencing_factors: string[];
+  /** Dice notation (e.g., "2d6", "3d6kl2") */
+  dice_formula: string;
+  /** Explanation of modifiers */
+  instructions: string;
+}
+
+/**
+ * Dice roll result submitted by player
+ */
+export interface DiceResult {
+  /** Total value of the roll */
+  total: number;
+  /** All dice rolled (e.g., [3, 5, 6] for 3d6) */
+  all_rolls: number[];
+  /** Dice kept after advantage/disadvantage */
+  kept_rolls: number[];
+  /** Roll outcome */
+  outcome: DiceOutcome;
+}
+
+/**
+ * Possible outcomes of a dice roll
+ */
+export type DiceOutcome = 'critical' | 'success' | 'partial' | 'failure';
+
+// ============================================================================
+// REST API Types
+// ============================================================================
+
+// --- POST /api/v1/game/new ---
+
+export interface NewGameRequest {
+  world_pack_id?: string;   // Default: "demo_pack"
+  player_name?: string;     // Default: "玩家"
+  player_concept?: string;  // Default: "冒险者"
+}
+
+export interface NewGameResponse {
+  session_id: string;
+  player: PlayerCharacter;
+  game_state: {
+    current_location: string;
+    current_phase: GamePhase;
+    turn_count: number;
+    active_npc_ids: string[];
+  };
+  message: string;
+}
+
+// --- POST /api/v1/game/action ---
+
+export interface ActionRequest {
+  player_input: string;
+  lang?: Language;  // Default: "cn"
+}
+
+export interface ActionResponse {
+  success: boolean;
+  content: string;
+  metadata: {
+    phase?: GamePhase;
+    needs_check?: boolean;
+    dice_check?: DiceCheckRequest;
+    [key: string]: unknown;
+  };
+  error: string | null;
+}
+
+// --- GET /api/v1/game/state ---
+
+export type GetGameStateResponse = GameState;
+
+// --- POST /api/v1/game/dice-result ---
+
+export interface DiceResultRequest {
+  total: number;
+  all_rolls: number[];
+  kept_rolls: number[];
+  outcome: DiceOutcome;
+}
+
+export interface DiceResultResponse {
+  success: boolean;
+  message: string;
+  next_phase: GamePhase;
+}
+
+// --- GET /api/v1/game/messages ---
+
+export interface GetMessagesResponse {
+  messages: Message[];
+  count: number;
+}
+
+// --- POST /api/v1/game/reset ---
+
+export interface ResetResponse {
+  success: boolean;
+  message: string;
+}
+
+// --- GET /health ---
+
+export interface HealthResponse {
+  status: 'healthy' | 'unhealthy';
+  version: string;
+  agents: {
+    gm_agent: boolean;
+    rule_agent: boolean;
+  };
+}
+
+// --- GET / ---
+
+export interface RootResponse {
+  name: string;
+  version: string;
+  status: string;
+  docs: string;
+  openapi: string;
+}
+
+// ============================================================================
+// WebSocket Types
+// ============================================================================
+
+/**
+ * WebSocket message types
+ */
+export type WSMessageType =
+  | 'player_input'   // Client -> Server: Player action
+  | 'dice_result'    // Client -> Server: Dice roll result
+  | 'status'         // Server -> Client: Processing status
+  | 'content'        // Server -> Client: Streamed content chunk
+  | 'complete'       // Server -> Client: Final response
+  | 'dice_check'     // Server -> Client: Dice check required
+  | 'phase'          // Server -> Client: Phase change
+  | 'error';         // Server -> Client: Error message
+
+/**
+ * Base WebSocket message structure
+ */
+export interface WSMessage<T extends WSMessageType = WSMessageType, D = unknown> {
+  type: T;
+  data: D;
+}
+
+// --- Client -> Server Messages ---
+
+export interface WSPlayerInputMessage extends WSMessage<'player_input'> {
+  type: 'player_input';
+  content: string;
+  lang?: Language;
+  stream?: boolean;  // Default: true
+}
+
+export interface WSDiceResultMessage extends WSMessage<'dice_result'> {
+  type: 'dice_result';
+  result: number;
+  all_rolls: number[];
+  kept_rolls: number[];
+  outcome: DiceOutcome;
+}
+
+export type WSClientMessage = WSPlayerInputMessage | WSDiceResultMessage;
+
+// --- Server -> Client Messages ---
+
+export interface WSStatusMessage extends WSMessage<'status'> {
+  type: 'status';
+  data: {
+    phase: string;
+    message: string;
+  };
+}
+
+export interface WSContentMessage extends WSMessage<'content'> {
+  type: 'content';
+  data: {
+    chunk: string;
+    is_partial: boolean;
+    chunk_index: number;
+  };
+}
+
+export interface WSCompleteMessage extends WSMessage<'complete'> {
+  type: 'complete';
+  data: {
+    content: string;
+    metadata: Record<string, unknown>;
+    success: boolean;
+  };
+}
+
+export interface WSDiceCheckMessage extends WSMessage<'dice_check'> {
+  type: 'dice_check';
+  data: {
+    check_request: DiceCheckRequest;
+  };
+}
+
+export interface WSPhaseMessage extends WSMessage<'phase'> {
+  type: 'phase';
+  data: {
+    phase: GamePhase;
+  };
+}
+
+export interface WSErrorMessage extends WSMessage<'error'> {
+  type: 'error';
+  data: {
+    error: string;
+  };
+}
+
+export type WSServerMessage =
+  | WSStatusMessage
+  | WSContentMessage
+  | WSCompleteMessage
+  | WSDiceCheckMessage
+  | WSPhaseMessage
+  | WSErrorMessage;
+
+// ============================================================================
+// Connection State Types (for frontend state management)
+// ============================================================================
+
+/**
+ * WebSocket connection status
+ */
+export type ConnectionStatus =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'error';
+
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+/**
+ * API error response
+ */
+export interface APIError {
+  detail: string;
+}
+
+/**
+ * Helper to get localized string value
+ */
+export function getLocalizedValue(str: LocalizedString, lang: Language): string {
+  return str[lang] || str.cn || str.en;
+}
