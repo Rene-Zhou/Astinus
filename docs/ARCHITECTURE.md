@@ -4,11 +4,13 @@ This document defines the technical architecture, directory structure, and engin
 
 ## 1. System Overview
 
-Astinus follows a **Client-Server** architecture, even when running locally. This separation ensures scalability and allows the TUI frontend to be decoupled from the heavy AI processing logic.
+Astinus follows a **Client-Server** architecture, even when running locally. This separation ensures scalability and allows the frontend to be decoupled from the heavy AI processing logic.
 
-- **Frontend (Client)**: A Terminal User Interface (TUI) built with `Textual`. It handles user input, rendering, and state display.
+- **Frontend (Client)**: A React Web Application built with Vite + TypeScript + TailwindCSS. It handles user input, rendering, and state display via REST API and WebSocket.
 - **Backend (Server)**: A `FastAPI` application that hosts the Game Engine, Agents, and Database.
 - **AI Layer**: `LangChain` orchestrates the interaction between the Backend and LLMs.
+
+> **Note**: The original Textual TUI frontend (`src/frontend/`) has been deprecated in favor of the React Web frontend. See `docs/WEB_FRONTEND_PLAN.md` for migration details.
 
 ## 2. Directory Structure
 
@@ -35,11 +37,24 @@ Astinus/
 │   │   │   └── world.py      # World Pack Loader
 │   │   └── main.py           # App Entrypoint
 │   │
-│   ├── frontend/             # Textual TUI Application
-│   │   ├── app.py            # TUI Entrypoint
-│   │   ├── client.py         # HTTP/WebSocket Client
-│   │   ├── screens/          # Different views (Game, Character Sheet, Inventory)
-│   │   └── widgets/          # Reusable UI components (ChatBox, StatBlock)
+│   ├── web/                  # React Web Frontend (NEW)
+│   │   ├── src/
+│   │   │   ├── api/          # API Client (REST + WebSocket)
+│   │   │   ├── components/   # React Components
+│   │   │   │   ├── ChatBox/      # Narrative display & input
+│   │   │   │   ├── StatBlock/    # Character status panel
+│   │   │   │   ├── DiceRoller/   # Dice rolling interface
+│   │   │   │   └── Layout/       # Page layout components
+│   │   │   ├── pages/        # Page components (Menu, Game, Character)
+│   │   │   ├── stores/       # Zustand state management
+│   │   │   ├── hooks/        # Custom React hooks
+│   │   │   └── utils/        # Utility functions
+│   │   ├── package.json
+│   │   ├── vite.config.ts
+│   │   └── tailwind.config.js
+│   │
+│   ├── frontend/             # [DEPRECATED] Textual TUI Application
+│   │   └── ...               # To be removed after web frontend is complete
 │   │
 │   └── shared/               # Shared utilities or types (if needed)
 │

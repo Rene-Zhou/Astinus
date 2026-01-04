@@ -29,7 +29,8 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ### 技术栈
 | 层级 | 主要技术 | 状态 |
 |------|----------|------|
-| TUI 前端 | Textual | ✅ 组件完成 / 🔄 集成中 |
+| Web 前端 | React + Vite + TailwindCSS | 🔄 开发中 |
+| TUI 前端 | Textual | ⚠️ 已弃用 |
 | 后端 API | FastAPI + WebSocket | ✅ 端点定义 / 🔄 路由实现中 |
 | AI Orchestrator | LangChain + 多提供商模型 | ✅ 已完成 |
 | 数据层 | SQLite（结构化）+ ChromaDB（向量检索） | ✅ 向量完成 / ⏳ 持久化待实现 |
@@ -148,9 +149,9 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 **Phase 4 总计**: 85个新测试，400总测试，84%覆盖率
 
-### Phase 5: Textual TUI 前端 ✅ 组件完成 / 🔄 集成进行中
+### Phase 5: Textual TUI 前端 ⚠️ 已弃用
 
-> **状态说明**: TUI 组件已全部实现并通过测试，但前后端集成尚未完成。玩家输入无法传递到后端 Agent，骰子检定流程未打通。
+> **状态说明**: TUI 前端已被弃用，将迁移至 React Web 前端。详见 `docs/WEB_FRONTEND_PLAN.md`。
 
 #### Phase 5.1: TUI 基础架构 ✅ 已完成
 | 任务 | 状态 | 备注 |
@@ -330,6 +331,14 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 ---
 
+## 相关文档
+
+- `docs/WEB_FRONTEND_PLAN.md` - React Web 前端详细开发计划
+- `docs/ARCHITECTURE.md` - 系统架构文档（已更新前端描述）
+- `docs/DEPLOYMENT.md` - 部署文档
+
+---
+
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
@@ -395,7 +404,34 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 - ~~GM Agent 意图解析与 Agent 分发~~ ✅
 - ~~NPC 状态更新与记忆持久化~~ ✅
 
-### 中期目标（Phase 7 - 后续）
+### 中期目标（Phase 7 - React Web 前端）🔄 进行中
+
+> **详细计划**: 参见 `docs/WEB_FRONTEND_PLAN.md`
+
+| 任务 | 优先级 | 状态 | 说明 |
+|------|--------|------|------|
+| 7.1 项目初始化 | 🔴 Critical | ⏳ 待开始 | Vite + React + TypeScript + TailwindCSS |
+| 7.2 API 客户端 | 🔴 Critical | ⏳ 待开始 | REST API + WebSocket 客户端实现 |
+| 7.3 状态管理 | 🔴 Critical | ⏳ 待开始 | Zustand stores (game, connection, ui) |
+| 7.4 通用组件 | 🟡 High | ⏳ 待开始 | Layout, Button, Card, Modal, Loading |
+| 7.5 ChatBox 组件 | 🔴 Critical | ⏳ 待开始 | 叙事展示、流式内容、玩家输入 |
+| 7.6 StatBlock 组件 | 🟡 High | ⏳ 待开始 | 角色状态、位置、命运点 |
+| 7.7 DiceRoller 组件 | 🟡 High | ⏳ 待开始 | 骰子检定、动画、结果提交 |
+| 7.8 页面组件 | 🔴 Critical | ⏳ 待开始 | MenuPage, GamePage, CharacterPage |
+| 7.9 WebSocket 集成 | 🔴 Critical | ⏳ 待开始 | 实时消息、流式内容、重连机制 |
+| 7.10 测试 | 🟡 High | ⏳ 待开始 | Vitest + Testing Library |
+| 7.11 移除旧 TUI | 🟢 Low | ⏳ 待开始 | 删除 src/frontend/, 更新依赖 |
+
+**技术栈**:
+- React 18 + TypeScript
+- Vite (构建工具)
+- TailwindCSS (样式)
+- Zustand (状态管理)
+- React Router v6 (路由)
+
+**预计工期**: 10 天
+
+### 长期目标（Phase 8 - 后续）
 - 打磨 UX、错误处理与加载指示器
 - Story Pack 格式与迁移脚本
 - 前端文案国际化（提取到 locale 文件）
