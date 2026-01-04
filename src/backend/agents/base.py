@@ -34,8 +34,7 @@ class AgentResponse(BaseModel):
 
     content: str = Field(..., description="Main response content")
     metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Additional information about the response"
+        default_factory=dict, description="Additional information about the response"
     )
     success: bool = Field(default=True, description="Whether operation succeeded")
     error: str | None = Field(default=None, description="Error message if failed")
@@ -117,6 +116,7 @@ class BaseAgent(Runnable[dict[str, Any], AgentResponse], ABC):
                 # We're in an async context - this shouldn't be called sync
                 # But if it is, we need to handle it
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     future = pool.submit(asyncio.run, self.process(input))
                     return future.result()
@@ -243,14 +243,35 @@ class BaseAgent(Runnable[dict[str, Any], AgentResponse], ABC):
         if not response.content:
             raise ValueError("LLM returned empty response")
 
-        return str(response.content)
+        # Handle different response formats
+        # Some models (like Gemini) return content as a list of dicts
+        # e.g., [{'type': 'text', 'text': 'actual content'}]
+        content = response.content
+        if isinstance(content, list):
+            # Extract text from list format
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text_parts.append(item.get("text", ""))
+                elif isinstance(item, str):
+                    text_parts.append(item)
+            content = "".join(text_parts)
+
+        if not content:
+            raise ValueError("LLM returned empty response after content extraction")
+
+        return str(content)
 
     def _extract_json_from_response(self, response: str) -> dict[str, Any]:
         """
         Extract JSON from LLM response.
 
-        Handles responses that may have markdown code blocks or
-        extra whitespace around JSON.
+        Handles responses that may have:
+        - Markdown code blocks (```json ... ```)
+        - Extra text before/after JSON
+        - Single quotes instead of double quotes
+        - Trailing commas
+        - Other common LLM output quirks
 
         Args:
             response: Raw LLM response string
@@ -272,22 +293,162 @@ class BaseAgent(Runnable[dict[str, Any], AgentResponse], ABC):
         import json
         import re
 
-        # Remove markdown code blocks
+        original_response = response
         response = response.strip()
-        if response.startswith("```"):
-            # Extract content between ```json and ``` or between ``` and ```
-            match = re.search(r"```(?:json)?\n?(.*?)\n?```", response, re.DOTALL)
-            if match:
-                response = match.group(1).strip()
 
-        # Try to parse JSON
+        # Strategy 1: Try direct parse first (fastest path)
         try:
             result = json.loads(response)
-            if not isinstance(result, dict):
-                raise ValueError(f"Expected dict, got {type(result)}")
-            return result
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"Failed to parse JSON from response: {exc}") from exc
+            if isinstance(result, dict):
+                return result
+        except json.JSONDecodeError:
+            pass
+
+        # Strategy 2: Extract from markdown code blocks
+        # Match ```json ... ``` or ``` ... ```
+        code_block_patterns = [
+            r"```json\s*\n?(.*?)\n?\s*```",
+            r"```\s*\n?(.*?)\n?\s*```",
+        ]
+        for pattern in code_block_patterns:
+            match = re.search(pattern, response, re.DOTALL | re.IGNORECASE)
+            if match:
+                content = match.group(1).strip()
+                try:
+                    result = json.loads(content)
+                    if isinstance(result, dict):
+                        return result
+                except json.JSONDecodeError:
+                    # Try fixing common issues
+                    fixed = self._fix_json_string(content)
+                    try:
+                        result = json.loads(fixed)
+                        if isinstance(result, dict):
+                            return result
+                    except json.JSONDecodeError:
+                        pass
+
+        # Strategy 3: Find JSON object by matching braces
+        json_content = self._extract_json_object(response)
+        if json_content:
+            try:
+                result = json.loads(json_content)
+                if isinstance(result, dict):
+                    return result
+            except json.JSONDecodeError:
+                # Try fixing common issues
+                fixed = self._fix_json_string(json_content)
+                try:
+                    result = json.loads(fixed)
+                    if isinstance(result, dict):
+                        return result
+                except json.JSONDecodeError:
+                    pass
+
+        # Strategy 4: Try fixing the entire response
+        fixed = self._fix_json_string(response)
+        try:
+            result = json.loads(fixed)
+            if isinstance(result, dict):
+                return result
+        except json.JSONDecodeError:
+            pass
+
+        # All strategies failed
+        # Provide helpful error message
+        preview = (
+            original_response[:200] + "..." if len(original_response) > 200 else original_response
+        )
+        raise ValueError(f"Failed to parse JSON from response. Response preview: {preview}")
+
+    def _extract_json_object(self, text: str) -> str | None:
+        """
+        Extract the first JSON object from text by matching braces.
+
+        Args:
+            text: Text that may contain a JSON object
+
+        Returns:
+            Extracted JSON string or None if not found
+        """
+        # Find the first { and match to its closing }
+        start = text.find("{")
+        if start == -1:
+            return None
+
+        depth = 0
+        in_string = False
+        escape_next = False
+
+        for i, char in enumerate(text[start:], start):
+            if escape_next:
+                escape_next = False
+                continue
+
+            if char == "\\":
+                escape_next = True
+                continue
+
+            if char == '"' and not escape_next:
+                in_string = not in_string
+                continue
+
+            if in_string:
+                continue
+
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start : i + 1]
+
+        return None
+
+    def _fix_json_string(self, json_str: str) -> str:
+        """
+        Attempt to fix common JSON issues from LLM output.
+
+        Fixes:
+        - Single quotes -> double quotes (carefully)
+        - Trailing commas
+        - Unquoted keys (simple cases)
+
+        Args:
+            json_str: Potentially malformed JSON string
+
+        Returns:
+            Fixed JSON string (may still be invalid)
+        """
+        import re
+
+        result = json_str.strip()
+
+        # Fix 1: Replace single quotes with double quotes
+        # This is tricky because we need to handle:
+        # - {'key': 'value'} -> {"key": "value"}
+        # - But not "it's" -> "it"s"
+        # Use a simple heuristic: replace ' with " when it looks like JSON structure
+
+        # Pattern to match single-quoted strings in JSON-like structures
+        # Match: 'text' where text doesn't contain unescaped single quotes
+        def replace_single_quotes(match: re.Match) -> str:
+            content = match.group(1)
+            # Escape any double quotes inside
+            content = content.replace('"', '\\"')
+            return f'"{content}"'
+
+        # Replace 'key' patterns (single-quoted strings)
+        result = re.sub(r"'([^'\\]*(?:\\.[^'\\]*)*)'", replace_single_quotes, result)
+
+        # Fix 2: Remove trailing commas before } or ]
+        result = re.sub(r",\s*([}\]])", r"\1", result)
+
+        # Fix 3: Add quotes to unquoted keys (simple alphanumeric keys only)
+        # Match: {key: or , key: where key is unquoted
+        result = re.sub(r"([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:", r'\1"\2":', result)
+
+        return result
 
     def __repr__(self) -> str:
         """Return agent representation."""

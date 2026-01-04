@@ -248,3 +248,193 @@ class TestBaseAgent:
         assert hasattr(agent, "ainvoke")
         assert callable(agent.invoke)
         assert callable(agent.ainvoke)
+
+
+class TestRobustJsonExtraction:
+    """Test suite for robust JSON extraction from LLM responses."""
+
+    @pytest.fixture
+    def mock_llm(self):
+        """Create mock LLM for testing."""
+        llm = MagicMock()
+        llm.ainvoke = AsyncMock(return_value=AIMessage(content="Mock response"))
+        return llm
+
+    @pytest.fixture
+    def agent(self, mock_llm):
+        """Create test agent instance."""
+        return SimpleTestAgent(mock_llm)
+
+    def test_extract_json_with_single_quotes(self, agent):
+        """Test JSON extraction when LLM returns single quotes instead of double."""
+        response = "{'player_intent': 'examine', 'agents_to_call': ['rule']}"
+        result = agent._extract_json_from_response(response)
+
+        assert result["player_intent"] == "examine"
+        assert result["agents_to_call"] == ["rule"]
+
+    def test_extract_json_with_single_quotes_nested(self, agent):
+        """Test JSON extraction with nested single-quoted structure."""
+        response = """{'player_intent': 'talk', 'agents_to_call': ['npc_chen_ling'], 'context_slices': {'npc_chen_ling': {'action': 'greet'}}}"""
+        result = agent._extract_json_from_response(response)
+
+        assert result["player_intent"] == "talk"
+        assert "npc_chen_ling" in result["context_slices"]
+
+    def test_extract_json_with_trailing_comma(self, agent):
+        """Test JSON extraction with trailing commas."""
+        response = '{"key": "value", "list": [1, 2, 3,],}'
+        result = agent._extract_json_from_response(response)
+
+        assert result["key"] == "value"
+        assert result["list"] == [1, 2, 3]
+
+    def test_extract_json_with_text_before(self, agent):
+        """Test JSON extraction with explanatory text before JSON."""
+        response = """I'll analyze the player's intent and create a dispatch plan.
+
+{"player_intent": "examine", "agents_to_call": [], "reasoning": "Simple look action"}"""
+        result = agent._extract_json_from_response(response)
+
+        assert result["player_intent"] == "examine"
+        assert result["reasoning"] == "Simple look action"
+
+    def test_extract_json_with_text_after(self, agent):
+        """Test JSON extraction with text after JSON."""
+        response = """{"player_intent": "move", "agents_to_call": ["rule"]}
+
+This dispatch plan will help determine if the movement is successful."""
+        result = agent._extract_json_from_response(response)
+
+        assert result["player_intent"] == "move"
+        assert result["agents_to_call"] == ["rule"]
+
+    def test_extract_json_with_text_before_and_after(self, agent):
+        """Test JSON extraction with text surrounding JSON."""
+        response = """Here's my analysis:
+
+{"player_intent": "attack", "agents_to_call": ["rule", "npc_guard"]}
+
+I've included both the rule agent and the NPC agent."""
+        result = agent._extract_json_from_response(response)
+
+        assert result["player_intent"] == "attack"
+        assert "rule" in result["agents_to_call"]
+        assert "npc_guard" in result["agents_to_call"]
+
+    def test_extract_json_from_markdown_with_single_quotes(self, agent):
+        """Test JSON extraction from markdown block with single quotes."""
+        response = """```json
+{'player_intent': 'examine', 'agents_to_call': []}
+```"""
+        result = agent._extract_json_from_response(response)
+
+        assert result["player_intent"] == "examine"
+
+    def test_extract_json_complex_gm_response(self, agent):
+        """Test extraction of realistic GM agent response with single quotes."""
+        response = """{'player_intent': 'examine', 'agents_to_call': ['rule'], 'context_slices': {'rule': {'action': 'look around', 'difficulty': 'easy'}}, 'reasoning': 'Player wants to observe the environment'}"""
+        result = agent._extract_json_from_response(response)
+
+        assert result["player_intent"] == "examine"
+        assert result["agents_to_call"] == ["rule"]
+        assert result["context_slices"]["rule"]["action"] == "look around"
+        assert result["reasoning"] == "Player wants to observe the environment"
+
+    def test_extract_json_with_unquoted_keys(self, agent):
+        """Test JSON extraction with unquoted keys."""
+        response = "{player_intent: 'examine', agents_to_call: []}"
+        result = agent._extract_json_from_response(response)
+
+        assert result["player_intent"] == "examine"
+        assert result["agents_to_call"] == []
+
+    def test_extract_json_mixed_quotes_and_trailing_comma(self, agent):
+        """Test JSON extraction with both issues combined."""
+        response = """{'intent': 'action', 'agents': ['a', 'b',],}"""
+        result = agent._extract_json_from_response(response)
+
+        assert result["intent"] == "action"
+        assert result["agents"] == ["a", "b"]
+
+    def test_extract_json_with_escaped_quotes_in_value(self, agent):
+        """Test JSON extraction preserves escaped quotes in values."""
+        response = '{"message": "He said \\"hello\\""}'
+        result = agent._extract_json_from_response(response)
+
+        assert result["message"] == 'He said "hello"'
+
+    def test_extract_json_multiline_in_code_block(self, agent):
+        """Test extraction of multiline JSON in code block."""
+        response = """```json
+{
+    "player_intent": "talk",
+    "agents_to_call": [
+        "npc_merchant"
+    ],
+    "context_slices": {
+        "npc_merchant": {
+            "topic": "prices"
+        }
+    }
+}
+```"""
+        result = agent._extract_json_from_response(response)
+
+        assert result["player_intent"] == "talk"
+        assert result["agents_to_call"] == ["npc_merchant"]
+        assert result["context_slices"]["npc_merchant"]["topic"] == "prices"
+
+    def test_fix_json_string_method(self, agent):
+        """Test the _fix_json_string helper method directly."""
+        # Single quotes
+        fixed = agent._fix_json_string("{'key': 'value'}")
+        assert '"key"' in fixed
+        assert '"value"' in fixed
+
+        # Trailing comma
+        fixed = agent._fix_json_string('{"a": 1,}')
+        assert fixed == '{"a": 1}'
+
+        # Unquoted keys
+        fixed = agent._fix_json_string("{key: 'value'}")
+        assert '"key"' in fixed
+
+    def test_extract_json_object_method(self, agent):
+        """Test the _extract_json_object helper method directly."""
+        # JSON in middle of text
+        text = 'Some text before {"key": "value"} and after'
+        result = agent._extract_json_object(text)
+        assert result == '{"key": "value"}'
+
+        # Nested braces
+        text = 'Prefix {"outer": {"inner": 1}} suffix'
+        result = agent._extract_json_object(text)
+        assert result == '{"outer": {"inner": 1}}'
+
+        # No JSON
+        text = "No JSON here"
+        result = agent._extract_json_object(text)
+        assert result is None
+
+    def test_extract_json_chinese_content(self, agent):
+        """Test JSON extraction with Chinese content."""
+        response = """{'player_intent': '查看', 'agents_to_call': ['rule'], 'reasoning': '玩家想要观察周围环境'}"""
+        result = agent._extract_json_from_response(response)
+
+        assert result["player_intent"] == "查看"
+        assert result["reasoning"] == "玩家想要观察周围环境"
+
+    def test_extract_json_empty_dict_rejected(self, agent):
+        """Test that non-dict JSON is rejected."""
+        response = '["just", "an", "array"]'
+
+        with pytest.raises(ValueError, match="Failed to parse JSON"):
+            agent._extract_json_from_response(response)
+
+    def test_extract_json_completely_invalid(self, agent):
+        """Test that completely invalid content raises error."""
+        response = "This is just plain text with no JSON at all."
+
+        with pytest.raises(ValueError, match="Failed to parse JSON"):
+            agent._extract_json_from_response(response)
