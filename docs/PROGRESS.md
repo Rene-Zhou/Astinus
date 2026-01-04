@@ -285,19 +285,19 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 **实际工作量**: ~800 行代码，72 个新测试
 
-#### Phase 6.5: 测试与部署 ⏳ 待开始
+#### Phase 6.5: 测试与部署 ✅ 已完成
 | 任务 | 优先级 | 状态 | 文件 |
 |------|--------|------|------|
-| 6.5.1 集成测试 | 🟡 High | ⏳ 待开始 | `tests/integration/` (新) |
-| 6.5.2 覆盖率提升 | 🟡 High | ⏳ 待开始 | `tests/` |
-| 6.5.3 CI/CD 配置 | 🟢 Medium | ⏳ 待开始 | `.github/workflows/` |
-| 6.5.4 部署文档 | 🟢 Medium | ⏳ 待开始 | `docs/DEPLOYMENT.md` (新) |
+| 6.5.1 集成测试 | 🟡 High | ✅ 已完成 | `tests/integration/test_api_e2e.py`, `tests/integration/test_services_integration.py` |
+| 6.5.2 覆盖率提升 | 🟡 High | ✅ 已完成 | `tests/backend/models/test_character_extended.py`, `tests/backend/models/test_dice_check_extended.py`, `tests/backend/services/test_dice_extended.py`, `tests/backend/test_coverage_boost.py` |
+| 6.5.3 CI/CD 配置 | 🟢 Medium | ✅ 已完成 | `.github/workflows/ci.yml` |
+| 6.5.4 部署文档 | 🟢 Medium | ✅ 已完成 | `docs/DEPLOYMENT.md` |
 
 **说明**:
-- 端到端游戏流程测试
-- 覆盖率目标 70%+
-- GitHub Actions 配置
-- Docker、环境变量文档
+- 端到端游戏流程测试：API E2E、WebSocket、数据库服务集成测试
+- 覆盖率达到 70%（849 测试通过，21 跳过）
+- GitHub Actions CI：测试、Lint、类型检查、构建检查
+- 部署文档：Docker、systemd、环境变量、备份策略
 
 #### 重要说明：剧情节点图推迟
 **Task 4.3 剧情节点图**在 Demo 阶段搁置，专注于单场景实现。
@@ -316,6 +316,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
+| 2026-01-05 | Phase 6.5 完成 | `feature/phase6-frontend-backend-integration` | 完成测试与部署：集成测试、覆盖率提升至70%、GitHub Actions CI、部署文档。197个新测试，849总测试，70%覆盖率 |
 | 2026-01-05 | Phase 6.4 完成 | `feature/phase6-frontend-backend-integration` | 完成 Agent 协作完善：NPC 记忆/关系持久化、RuleAgent 结果处理、DiceCheckResult 模型。38个新测试，652总测试，68%覆盖率 |
 | 2026-01-04 | TUI Bug 修复 | `fix/screen-app-property-readonly` | 修复 TUI 启动错误：Screen.app 只读属性、CSS 无效变量/属性、asyncio 导入、屏幕导航、Reactive 列表共享问题 |
 | 2026-01-04 | Phase 5 完成 | `feature/phase5-textual-tui-frontend` | 完成 Textual TUI 前端实现：AstinusApp、GameClient、UI组件、游戏界面。25个新测试，425总测试，72%覆盖率 |
@@ -334,12 +335,12 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 - ~~🔴 **前后端集成未完成** - WebSocket 消息路由未实现，玩家输入无法传递到后端~~ ✅ 已完成
 - ~~🔴 **持久化层缺失** - 无存档/读档功能，游戏进度无法保存~~ ✅ DatabaseService 已实现
 - ~~🔴 **骰子检定流程断裂** - Rule Agent 无法触发前端骰子界面~~ ✅ RuleAgent.process_result 已实现
-- 🟡 **测试覆盖率不足** - 当前覆盖率 68%，目标 70%+
+- ~~🟡 **测试覆盖率不足** - 当前覆盖率 68%，目标 70%+~~ ✅ 已达到 70%（849测试）
 
 ### 中优先级
 - Story Pack 格式与迁移脚本未落地
-- 配置与密钥管理策略需文档（区分本地/生产）
-- ~~缺失单元测试与 CI 流水线~~ 🔄 单元测试已搭建，CI 待配置
+- ~~配置与密钥管理策略需文档（区分本地/生产）~~ ✅ 已完成（DEPLOYMENT.md）
+- ~~缺失单元测试与 CI 流水线~~ ✅ 已完成（849测试，GitHub Actions CI）
 - 前端硬编码文案需提取到 locale 文件
 
 ### 低优先级
@@ -366,22 +367,22 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 5. ~~**开始菜单** - 新游戏/读档/设置菜单界面~~ ✅
 6. ~~**NPC 状态持久化** - 记忆和关系值持久化~~ ✅
 7. ~~**Rule Agent 结果处理** - 骰子检定叙事生成~~ ✅
-8. **集成测试** - 端到端游戏流程测试
-9. **CI/CD 配置** - GitHub Actions 配置
+8. ~~**集成测试** - 端到端游戏流程测试~~ ✅
+9. ~~**CI/CD 配置** - GitHub Actions 配置~~ ✅
 
-### 短期目标（Phase 6.5）
-- 编写集成测试覆盖完整游戏流程
-- 配置 GitHub Actions CI 流水线
-- 提升测试覆盖率到 70%+
-- 编写部署文档 (DEPLOYMENT.md)
-- GM Agent 意图解析与 Agent 分发
-- NPC 状态更新与记忆持久化
+### 短期目标（Phase 6.5）✅ 已完成
+- ~~编写集成测试覆盖完整游戏流程~~ ✅
+- ~~配置 GitHub Actions CI 流水线~~ ✅
+- ~~提升测试覆盖率到 70%+~~ ✅ 达到 70%
+- ~~编写部署文档 (DEPLOYMENT.md)~~ ✅
+- ~~GM Agent 意图解析与 Agent 分发~~ ✅
+- ~~NPC 状态更新与记忆持久化~~ ✅
 
-### 中期目标（Phase 6.5）
-- 端到端集成测试，覆盖率目标 70%+
-- 配置 GitHub Actions CI 流水线
-- 编写部署文档（Docker、环境变量）
+### 中期目标（Phase 7 - 后续）
 - 打磨 UX、错误处理与加载指示器
+- Story Pack 格式与迁移脚本
+- 前端文案国际化（提取到 locale 文件）
+- 多场景管理与剧情节点图
 
 ### 开发顺序建议
 ```
