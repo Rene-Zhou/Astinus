@@ -29,11 +29,11 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ### 技术栈
 | 层级 | 主要技术 | 状态 |
 |------|----------|------|
-| TUI 前端 | Textual | ⏳ 规划中 |
-| 后端 API | FastAPI + WebSocket | ⏳ 规划中 |
-| AI Orchestrator | LangChain + 多提供商模型 | ⏳ 规划中 |
-| 数据层 | SQLite（结构化）+ ChromaDB（向量检索） | ⏳ 规划中 |
-| 构建 & 依赖 | Python ≥3.14, uv | ✅ 已确认 |
+| TUI 前端 | Textual | ✅ 已完成 |
+| 后端 API | FastAPI + WebSocket | ✅ 已完成 |
+| AI Orchestrator | LangChain + 多提供商模型 | ✅ 已完成 |
+| 数据层 | SQLite（结构化）+ ChromaDB（向量检索） | ✅ 已完成 |
+| 构建 & 依赖 | Python ≥3.13, uv | ✅ 已确认 |
 
 ---
 
@@ -148,6 +148,37 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 **Phase 4 总计**: 85个新测试，400总测试，84%覆盖率
 
+### Phase 5: Textual TUI 前端 ✅ 已完成
+
+#### Phase 5.1: TUI 基础架构 ✅ 已完成
+| 任务 | 状态 | 备注 |
+|------|------|------|
+| 5.1.1 TUI 应用入口 | ✅ 已完成 | AstinusApp 主应用类，屏幕导航，响应式状态管理，键盘快捷键 |
+| 5.1.2 HTTP/WebSocket 客户端 | ✅ 已完成 | GameClient 类，REST API + WebSocket，消息处理，连接管理 |
+| 5.1.3 基础 UI 组件 | ✅ 已完成 | ChatBox(聊天框)，StatBlock(状态块)，DiceRoller(骰子) |
+| 5.1.4 游戏主界面 | ✅ 已完成 | GameScreen 整合组件，消息流处理，骰子检查触发 |
+
+**Phase 5.1 总计**: 4个组件完成，依赖: textual (已有)
+
+#### Phase 5.2: 游戏界面 ✅ 已完成
+| 任务 | 状态 | 备注 |
+|------|------|------|
+| 5.2.1 角色面板 | ✅ 已完成 | CharacterScreen 详细角色信息，特性显示，游戏状态 |
+| 5.2.2 掷骰交互界面 | ✅ 已完成 | DiceRoller 虚拟骰子，结果提交，可视化反馈 |
+| 5.2.3 背包界面 | ✅ 已完成 | InventoryScreen 物品列表，数量显示 |
+
+**Phase 5.2 总计**: 3个界面完成
+
+#### Phase 5.3: 测试与质量 ✅ 已完成
+| 任务 | 状态 | 备注 |
+|------|------|------|
+| 5.3.1 前端测试 | ✅ 已完成 | 25个测试，100%通过，app.py 71%覆盖率，client.py 47%覆盖率 |
+| 5.3.2 集成测试 | ✅ 已完成 | 前端与后端通信测试，WebSocket 消息测试 |
+
+**Phase 5.3 总计**: 25个新测试
+
+**Phase 5 总计**: 25个新测试，425总测试，71%覆盖率
+
 #### 重要说明：剧情节点图推迟
 **Task 4.3 剧情节点图**在 Demo 阶段搁置，专注于单场景实现。
 
@@ -160,16 +191,33 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 - 在完成 Phase 5 (TUI 前端) 后再实现多场景管理
 - 届时将基于实际使用反馈设计场景转换机制
 
-### Phase 5: Frontend Textual TUI & Polish
-- 5.1 Textual UI 布局、状态同步
-- 5.2 掷骰交互界面
-- 5.3 QA、性能与文档完善
+### Phase 5: Frontend Textual TUI & Polish ✅ 已完成
+- 5.1 TUI 基础架构 ✅ 已完成
+  - 5.1.1 TUI 应用入口 (AstinusApp)
+  - 5.1.2 HTTP/WebSocket 客户端 (GameClient)
+  - 5.1.3 基础 UI 组件 (ChatBox, StatBlock, DiceRoller)
+  - 5.1.4 游戏主界面 (GameScreen)
+- 5.2 游戏界面 ✅ 已完成
+  - 5.2.1 角色面板 (CharacterScreen)
+  - 5.2.2 掷骰交互界面 (DiceRoller)
+  - 5.2.3 背包界面 (InventoryScreen)
+- 5.3 测试与质量 ✅ 已完成
+  - 5.3.1 前端测试 (25个测试，100%通过)
+  - 5.3.2 集成测试
+
+### Phase 6: 完整游戏体验与部署 (规划中)
+- 6.1 端到端游戏流程测试
+- 6.2 性能优化与调试
+- 6.3 打包与部署文档
+- 6.4 用户体验优化
 
 ---
 
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
+| 2026-01-04 | Phase 5 完成 | `feature/phase5-textual-tui-frontend` | 完成 Textual TUI 前端实现：AstinusApp、GameClient、UI组件、游戏界面。25个新测试，425总测试，71%覆盖率 |
+| 2026-01-04 | Phase 4 完成 | `feature/phase4-week1-json-schema-validation` | 完成向量检索与增强 JSON 解析：VectorStoreService、LoreAgent混合搜索、NPC记忆检索、GM历史检索。85个新测试，400总测试，84%覆盖率 |
 | 2026-01-03 | Phase 3 完成 | `feature/phase3-agent-collaboration` | 完成 Agent 协作与 API 集成：NPC Agent、GM 增强、Agent 管线、WebSocket 流式。54个新测试，324总测试，84%覆盖率 |
 | 2026-01-03 | Phase 2 Week 3 完成 | `feature/week3-core-agents` | 完成 Core Agents：RuleAgent + GMAgent + 集成测试。33个测试，92-98%覆盖率 |
 | 2026-01-03 | Phase 2 Week 2 完成 | `master` | 完成 Agent Infrastructure：BaseAgent、LLM Provider、PromptLoader。64个测试，89-96%覆盖率 |
@@ -220,7 +268,14 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 提交历史摘要
 | 日期 | 提交 | 重点 |
 |------|------|------|
-| 2026-06-24 | `main` (HEAD) | 创建项目骨架与文档规范 |
+| 2026-01-04 | `feature/phase5-textual-tui-frontend` (HEAD) | 完成 Phase 5：Textual TUI 前端实现，25个测试，425总测试 |
+| 2026-01-04 | `feature/phase4-week1-json-schema-validation` | 完成 Phase 4：向量检索与增强 JSON 解析，85个测试，400总测试 |
+| 2026-01-03 | `feature/phase3-agent-collaboration` | 完成 Phase 3：Agent 协作与 API 集成，54个测试，324总测试 |
+| 2026-01-03 | `feature/week3-core-agents` | 完成 Phase 2 Week 3：Core Agents，33个测试 |
+| 2026-01-03 | `master` | 完成 Phase 2 Week 2：Agent Infrastructure，64个测试 |
+| 2026-01-03 | `master` | 完成 Phase 2 Week 1：Foundation Layer，121个测试 |
+| 2026-01-03 | `master` | 完成 Phase 1：基础设施搭建 |
+| 2026-06-24 | `main` | 创建项目骨架与文档规范 |
 
 > 注：详细提交记录可通过 `git log --oneline` 查看。
 

@@ -176,31 +176,124 @@ DUAL_MATCH_BOOST = 1.5          # 双重匹配加成
 - 应用重启后自动加载现有数据
 - VectorStoreService.reset_instance() 用于测试隔离
 
-## 4. Communication Protocols
+## 4. Textual TUI Frontend
 
-### 4.1 REST API
+The Textual-based Terminal User Interface provides a rich, interactive gaming experience in the terminal.
+
+### 4.1 Architecture Overview
+
+**Design Pattern**: Screen-based navigation with reactive state management
+
+```
+AstinusApp
+├── Screens (Stack-based navigation)
+│   ├── GameScreen (Main game interface)
+│   ├── CharacterScreen (Character sheet)
+│   └── InventoryScreen (Player inventory)
+├── Widgets (Reusable components)
+│   ├── ChatBox (Narrative display + input)
+│   ├── StatBlock (Character stats)
+│   └── DiceRoller (Dice rolling interface)
+└── Client (Backend communication)
+    ├── HTTP Client (REST API)
+    └── WebSocket Client (Real-time updates)
+```
+
+### 4.2 Core Components
+
+**AstinusApp** (`src/frontend/app.py`):
+- Main application entry point
+- Manages screen navigation and lifecycle
+- Reactive state: `current_screen`, `player_name`, `game_state`
+- Keyboard shortcuts: G (Game), C (Character), I (Inventory), Q (Quit)
+- Game session management: `start_new_game()`, `send_player_input()`, `submit_dice_result()`
+
+**GameClient** (`src/frontend/client.py`):
+- HTTP/WebSocket communication with backend
+- REST API: `/api/v1/game/new`, `/api/v1/game/{id}/state`
+- WebSocket: `/ws/game/{session_id}`
+- Message types: `status`, `content`, `dice_check`, `phase`, `error`
+- Auto-reconnection and error handling
+
+**Screens** (`src/frontend/screens/`):
+- **GameScreen**: Main game interface with stat block + chat + dice roller
+- **CharacterScreen**: Detailed character information and traits
+- **InventoryScreen**: Player items and equipment display
+
+**Widgets** (`src/frontend/widgets/`):
+- **ChatBox**: Auto-scrolling narrative log with input history (↑/↓ navigation)
+- **StatBlock**: Character name, concept, location, game phase, turn count
+- **DiceRoller**: Virtual dice display, roll button, result submission
+
+### 4.3 UI/UX Features
+
+**Styling**:
+- CSS-based theming with CSS variables (`$background`, `$primary`, `$accent`)
+- Responsive layout using `Horizontal` and `Vertical` containers
+- Interactive feedback: hover effects, button states
+- Conditional visibility: dice roller shown only when needed
+
+**Navigation**:
+- Stack-based screen navigation with `push_screen()`
+- Footer hints: `[b]g[/b] Game | [b]c[/b] Character | [b]i[/b] Inventory | [b]q[/b] Quit`
+- Button-based navigation in each screen
+
+**State Management**:
+- Reactive properties using `reactive()` from Textual
+- Message passing via `Message` events
+- Auto-scroll in chat for new messages
+
+### 4.4 Message Flow
+
+```
+Player Input → ChatBox → AstinusApp → GameClient → WebSocket → Backend
+                                           ↓
+Backend ← WebSocket ← GameClient ← GameScreen ← Message Handler
+                      ↓
+                 UI Update (ChatBox/StatBlock/DiceRoller)
+```
+
+### 4.5 Dependencies
+
+- **Textual**: Terminal UI framework (v0.6.12.0)
+- **httpx**: Async HTTP client for REST API
+- **websockets**: WebSocket client for real-time communication
+
+## 5. Communication Protocols
+
+### 5.1 REST API
 Used for stateless or transactional operations.
-- `POST /game/load`: Load a save file or start a new game.
+- `POST /api/v1/game/new`: Start a new game session
+- `GET /api/v1/game/{id}/state`: Fetch current game state
+- `POST /api/v1/game/{id}/action`: Send player action
 - `GET /character/{id}`: Fetch character sheet details.
 - `POST /action/command`: Send a discrete player command (e.g., "Equip Sword").
 
-### 4.2 WebSockets
+### 5.2 WebSockets
 Used for the main game loop to support streaming text and real-time updates.
 - **Endpoint**: `/ws/game/{session_id}`
+- **Message Types**:
+  - `player_input`: Player's action/description
+  - `dice_result`: Dice roll result
+  - `status`: Server status update (e.g., "processing", "narrating")
+  - `content`: Narrative content from GM
+  - `dice_check`: Dice check required
+  - `phase`: Game phase change
+  - `error`: Error message
 - **Flow**:
   1. Client sends user input (text).
   2. Server processes input via GM Agent.
-  3. Server streams back tokens (Typewriter effect).
+  3. Server streams back content and status updates.
   4. Server pushes state updates (e.g., HP change) as JSON events interleaved with text.
 
-## 5. AI & Prompt Engineering
+## 6. AI & Prompt Engineering
 
-### 5.1 Model Configuration
+### 6.1 Model Configuration
 Configuration is managed via `config/settings.yaml` (not committed to git) or Environment Variables.
 - **Provider**: OpenAI, Anthropic, or Local (Ollama/vLLM).
 - **Model**: Defaults to `gemini-3-flash-preview` for GM/NPCs; smaller models(`gemini-2.5-flash-lite`) for Rule Agent.
 
-### 5.2 Prompt Management
+### 6.2 Prompt Management
 Prompts are **NOT** hardcoded in Python strings.
 - Location: `src/backend/agents/prompts/`
 - Format: `.yaml` or `.txt` files using Jinja2 templating.
@@ -212,11 +305,11 @@ Prompts are **NOT** hardcoded in Python strings.
   constraints: "Keep responses under 50 words. Speak in {{ speech_style }}."
   ```
 
-## 6. Mechanics Implementation (The "Rule Agent")
+## 7. Mechanics Implementation (The "Rule Agent")
 
 The Rule Agent acts as the deterministic engine. It does not "guess" outcomes; it calculates them.
 
-### 6.1 Dice System
+### 7.1 Dice System
 Located in `src/backend/services/dice.py`.
 - **Standard**: d20 System (D&D-like).
 - **Function Signature**:
@@ -225,7 +318,7 @@ Located in `src/backend/services/dice.py`.
       ...
   ```
 
-### 6.2 Workflow
+### 7.2 Workflow
 1. **GM Agent** detects a risky action: "I try to jump over the chasm."
 2. **GM Agent** calls **Rule Agent**: `AssessDifficulty("jump over chasm")`.
 3. **Rule Agent** returns: `Target: Agility, DC: 15`.
@@ -233,24 +326,24 @@ Located in `src/backend/services/dice.py`.
 5. **System** performs roll, updates State, and informs GM of result (Success/Failure).
 6. **GM Agent** narrates the outcome.
 
-## 7. Migration Strategy (from `cli-ttrpg`)
+## 8. Migration Strategy (from `cli-ttrpg`)
 
 1. **Story Packs**: The YAML structure in `cli-ttrpg/story_packs` is largely compatible. We will write a migration script to convert them to the `Astinus` World Pack format (adding Vector embeddings).
 2. **Dice Logic**: Port `src/weave/game/dice.py` to `src/backend/services/dice.py`.
 3. **Agents**: Refactor `src/weave/agents` to use LangChain's `Runnable` interfaces instead of raw API calls.
 
-## 8. Internationalization Strategy
+## 9. Internationalization Strategy
 
-### 8.1 Resource Organization
+### 9.1 Resource Organization
 - All user-facing strings must live in locale bundles under `locale/<lang-code>/*.json` (or equivalent), following the `en` and `cn` baseline.
 - Textual widgets load through a dedicated localization service that supports runtime language switching and pluralization.
 - Backend services expose language-neutral identifiers; FastAPI responses select message templates based on the `Accept-Language` header with fallback to project default.
 
-### 8.2 Content Assets
+### 9.2 Content Assets
 - World packs and prompt templates store multi-language payloads (`content.cn`, `content.en`) as described in `GUIDE.md`, and deployments must run validation to guarantee parity across required locales.
 - Narrative graph metadata, dice messages, and error descriptions follow the same structured format to avoid hardcoded literals in code.
 
-### 8.3 Tooling & Testing
+### 9.3 Tooling & Testing
 - Introduce localization linters in CI to detect missing keys, orphaned strings, and untranslated content.
 - Automated tests must cover at least `en` and `cn` rendering paths for the TUI and key REST endpoints.
 - Developer documentation should outline the process for adding new locales, including translation memory updates and fallback behavior.
