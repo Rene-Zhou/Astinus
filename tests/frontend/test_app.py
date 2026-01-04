@@ -14,7 +14,7 @@ class TestAstinusApp:
         """Test creating the TUI app."""
         app = AstinusApp()
         assert app is not None
-        assert app.current_screen == "game"
+        assert app.current_screen == "menu"
         assert app.player_name == ""
         assert app.game_state == ""
 
@@ -144,11 +144,12 @@ class TestAstinusApp:
 
         # Verify BINDINGS class variable is defined
         assert hasattr(AstinusApp, "BINDINGS")
-        assert len(AstinusApp.BINDINGS) == 4
+        assert len(AstinusApp.BINDINGS) == 5
 
         # Verify expected bindings exist
         binding_keys = [b[0] for b in AstinusApp.BINDINGS]
         assert "g" in binding_keys
         assert "c" in binding_keys
         assert "i" in binding_keys
+        assert "m" in binding_keys
         assert "q" in binding_keys

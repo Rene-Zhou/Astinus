@@ -4,16 +4,18 @@ Textual TUI Application for Astinus.
 Main application entry point that manages screens, state, and UI flow.
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
 from textual.widgets import Footer, Header
 
 from src.frontend.client import GameClient
+from src.frontend.screens.character_creation import CharacterCreationScreen
 from src.frontend.screens.character_screen import CharacterScreen
 from src.frontend.screens.game_screen import GameScreen
 from src.frontend.screens.inventory_screen import InventoryScreen
+from src.frontend.screens.menu_screen import MenuScreen
 
 
 class AstinusApp(App):
@@ -32,6 +34,7 @@ class AstinusApp(App):
         ("g", "switch_to_game", "Game"),
         ("c", "switch_to_character", "Character"),
         ("i", "switch_to_inventory", "Inventory"),
+        ("m", "switch_to_menu", "Menu"),
         ("q", "quit", "Quit"),
     ]
 
@@ -95,7 +98,7 @@ class AstinusApp(App):
     """
 
     # Reactive state
-    current_screen: str = reactive("game")
+    current_screen: str = reactive("menu")
     player_name: str = reactive("")
     game_state: str = reactive("")
 
@@ -104,6 +107,7 @@ class AstinusApp(App):
         super().__init__()
         self.client: Optional[GameClient] = None
         self.game_session_id: Optional[str] = None
+        self.player_character: Optional[Dict[str, Any]] = None
 
     async def on_mount(self) -> None:
         """Called when the app starts."""
@@ -111,12 +115,13 @@ class AstinusApp(App):
         self.client = GameClient()
 
         # Install screens
+        self.install_screen(MenuScreen(), name="menu")
         self.install_screen(GameScreen(), name="game")
         self.install_screen(CharacterScreen(), name="character")
         self.install_screen(InventoryScreen(), name="inventory")
 
         # Push initial screen (first screen must be pushed, not switched)
-        self.push_screen("game")
+        self.push_screen("menu")
 
     async def on_unmount(self) -> None:
         """Called when the app closes."""
@@ -143,6 +148,11 @@ class AstinusApp(App):
         """Switch to inventory screen."""
         self.current_screen = "inventory"
         self.switch_screen("inventory")
+
+    def action_switch_to_menu(self) -> None:
+        """Switch to menu screen."""
+        self.current_screen = "menu"
+        self.switch_screen("menu")
 
     async def start_new_game(self, world_pack_id: str = "demo_pack") -> bool:
         """
