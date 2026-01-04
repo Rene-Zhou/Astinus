@@ -14,7 +14,8 @@ from src.backend.agents.gm import GMAgent
 from src.backend.agents.rule import RuleAgent
 from src.backend.api import websockets
 from src.backend.api.v1 import game
-from src.backend.core.llm_provider import LLMConfig, get_llm
+from src.backend.core.config import get_settings
+from src.backend.core.llm_provider import LLMConfig, LLMProvider, get_llm
 from src.backend.models.character import PlayerCharacter, Trait
 from src.backend.models.game_state import GameState
 from src.backend.models.i18n import LocalizedString
@@ -35,14 +36,29 @@ async def lifespan(app: FastAPI):
     # Startup
     print("🚀 Starting Astinus backend...")
 
-    # Initialize LLM
+    # Load settings from config file
+    settings = get_settings()
+
+    # Initialize LLM using settings
     try:
+        # Get API key for the configured provider
+        api_key = None
+        if settings.llm.provider == "openai":
+            api_key = settings.llm.api_keys.openai or None
+        elif settings.llm.provider == "anthropic":
+            api_key = settings.llm.api_keys.anthropic or None
+        elif settings.llm.provider == "google":
+            api_key = settings.llm.api_keys.google or None
+
         llm_config = LLMConfig(
-            model="gpt-4o-mini",
-            temperature=0.7,
+            provider=LLMProvider(settings.llm.provider),
+            model=settings.llm.models.gm,
+            temperature=settings.llm.temperature,
+            max_tokens=settings.llm.max_tokens,
+            api_key=api_key,
         )
         llm = get_llm(llm_config)
-        print(f"✅ LLM initialized: {llm_config.model}")
+        print(f"✅ LLM initialized: {settings.llm.provider}/{llm_config.model}")
     except Exception as exc:
         print(f"❌ Failed to initialize LLM: {exc}")
         raise

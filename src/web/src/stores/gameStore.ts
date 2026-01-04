@@ -93,17 +93,22 @@ export const useGameStore = create<GameStoreState>()(
     ...initialState(),
 
     startNewGame: async (opts) => {
+      console.log("[gameStore] startNewGame called", opts);
       const { worldPackId, playerName } = opts ?? {};
       const existing = get().wsClient;
       if (existing) {
+        console.log("[gameStore] Disconnecting existing wsClient");
         existing.disconnect();
       }
+      console.log("[gameStore] Calling apiClient.createNewGame");
       const res = await apiClient.createNewGame({
         world_pack_id: worldPackId ?? "demo_pack",
         player_name: playerName ?? "玩家",
       });
+      console.log("[gameStore] apiClient.createNewGame response:", res);
 
       if (!res.data) {
+        console.error("[gameStore] createNewGame failed:", res.error);
         throw new Error(res.error ?? "Failed to create new game");
       }
 
@@ -130,12 +135,21 @@ export const useGameStore = create<GameStoreState>()(
         state.streamingContent = "";
       });
 
+      console.log(
+        "[gameStore] Game state updated, sessionId:",
+        data.session_id,
+      );
+
       // Initialize WebSocket connection for the session
       const connection = useConnectionStore.getState();
       connection.setStatus("connecting");
       connection.resetReconnectAttempts();
       connection.setError(null);
 
+      console.log(
+        "[gameStore] Creating WebSocket client for session:",
+        data.session_id,
+      );
       const wsClient = new GameWebSocketClient({
         sessionId: data.session_id,
         reconnect: { enabled: true },
@@ -194,11 +208,13 @@ export const useGameStore = create<GameStoreState>()(
         },
       });
 
+      console.log("[gameStore] Connecting WebSocket...");
       wsClient.connect();
 
       set((state) => {
         state.wsClient = wsClient;
       });
+      console.log("[gameStore] startNewGame completed");
     },
 
     sendPlayerInput: (content, lang = "cn") => {

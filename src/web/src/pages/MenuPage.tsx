@@ -17,8 +17,14 @@ const MenuPage: React.FC = () => {
   );
 
   const handleStart = async () => {
-    await createNewGame({ worldPackId, playerName });
-    navigate("/game");
+    console.log("[MenuPage] handleStart called", { worldPackId, playerName });
+    try {
+      await createNewGame({ worldPackId, playerName });
+      console.log("[MenuPage] createNewGame completed successfully");
+      navigate("/game");
+    } catch (err) {
+      console.error("[MenuPage] createNewGame failed:", err);
+    }
   };
 
   return (
@@ -61,7 +67,11 @@ const MenuPage: React.FC = () => {
           )}
 
           <div className="flex items-center gap-3">
-            <Button onClick={handleStart} disabled={isSubmitDisabled} loading={loading}>
+            <Button
+              onClick={handleStart}
+              disabled={isSubmitDisabled}
+              loading={loading}
+            >
               开始游戏
             </Button>
             <Button
@@ -80,9 +90,12 @@ const MenuPage: React.FC = () => {
 
       <Card title="说明" className="text-sm text-gray-700">
         <p className="mb-2">
-          按照 docs/WEB_FRONTEND_PLAN.md：创建新游戏后会自动连接 WebSocket，进入 Game 页面继续交互。
+          按照 docs/WEB_FRONTEND_PLAN.md：创建新游戏后会自动连接 WebSocket，进入
+          Game 页面继续交互。
         </p>
-        <p className="mb-1">前端契约：见 docs/API_TYPES.ts 与后端 /api/v1/game/* 端点。</p>
+        <p className="mb-1">
+          前端契约：见 docs/API_TYPES.ts 与后端 /api/v1/game/* 端点。
+        </p>
         <p className="text-gray-500">
           本页面为最简占位实现，可在后续阶段补充世界包选择、角色预设与最近会话列表。
         </p>

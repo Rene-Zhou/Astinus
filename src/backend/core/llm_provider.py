@@ -17,6 +17,7 @@ class LLMProvider(str, Enum):
 
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
+    GOOGLE = "google"
     OLLAMA = "ollama"
 
 
@@ -42,37 +43,13 @@ class LLMConfig(BaseModel):
         ... )
     """
 
-    provider: LLMProvider = Field(
-        default=LLMProvider.OPENAI,
-        description="LLM provider to use"
-    )
-    model: str = Field(
-        default="gpt-4o-mini",
-        description="Model identifier"
-    )
-    temperature: float = Field(
-        default=0.7,
-        ge=0.0,
-        le=2.0,
-        description="Sampling temperature"
-    )
-    max_tokens: int | None = Field(
-        default=2000,
-        ge=1,
-        description="Maximum tokens to generate"
-    )
-    streaming: bool = Field(
-        default=False,
-        description="Enable streaming responses"
-    )
-    api_key: str | None = Field(
-        default=None,
-        description="API key (overrides env var)"
-    )
-    base_url: str | None = Field(
-        default=None,
-        description="Custom API base URL"
-    )
+    provider: LLMProvider = Field(default=LLMProvider.OPENAI, description="LLM provider to use")
+    model: str = Field(default="gpt-4o-mini", description="Model identifier")
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="Sampling temperature")
+    max_tokens: int | None = Field(default=2000, ge=1, description="Maximum tokens to generate")
+    streaming: bool = Field(default=False, description="Enable streaming responses")
+    api_key: str | None = Field(default=None, description="API key (overrides env var)")
+    base_url: str | None = Field(default=None, description="Custom API base URL")
 
 
 def get_llm(config: LLMConfig | None = None) -> BaseChatModel:
@@ -117,8 +94,7 @@ def get_llm(config: LLMConfig | None = None) -> BaseChatModel:
             from langchain_openai import ChatOpenAI
         except ImportError as exc:
             raise ValueError(
-                "OpenAI provider requires langchain-openai. "
-                "Install with: uv add langchain-openai"
+                "OpenAI provider requires langchain-openai. Install with: uv add langchain-openai"
             ) from exc
 
         return ChatOpenAI(**kwargs)
@@ -150,13 +126,36 @@ def get_llm(config: LLMConfig | None = None) -> BaseChatModel:
 
         return ChatAnthropic(**anthropic_kwargs)  # type: ignore[no-any-return]
 
+    elif config.provider == LLMProvider.GOOGLE:
+        try:
+            from langchain_google_genai import (
+                ChatGoogleGenerativeAI,  # type: ignore[import-not-found]
+            )
+        except ImportError as exc:
+            raise ValueError(
+                "Google provider requires langchain-google-genai. "
+                "Install with: uv add langchain-google-genai"
+            ) from exc
+
+        google_kwargs: dict[str, Any] = {
+            "model": kwargs["model"],
+            "temperature": kwargs["temperature"],
+        }
+
+        if "max_tokens" in kwargs:
+            google_kwargs["max_output_tokens"] = kwargs["max_tokens"]
+
+        if "api_key" in kwargs:
+            google_kwargs["google_api_key"] = kwargs["api_key"]
+
+        return ChatGoogleGenerativeAI(**google_kwargs)  # type: ignore[no-any-return]
+
     elif config.provider == LLMProvider.OLLAMA:
         try:
             from langchain_ollama import ChatOllama  # type: ignore[import-not-found]
         except ImportError as exc:
             raise ValueError(
-                "Ollama provider requires langchain-ollama. "
-                "Install with: uv add langchain-ollama"
+                "Ollama provider requires langchain-ollama. Install with: uv add langchain-ollama"
             ) from exc
 
         ollama_kwargs = {
