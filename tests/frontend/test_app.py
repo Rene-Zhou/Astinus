@@ -100,49 +100,44 @@ class TestAstinusApp:
     def test_action_switch_to_game(self):
         """Test switching to game screen."""
         app = AstinusApp()
-        app.push_screen = MagicMock()
+        app.switch_screen = MagicMock()
 
         app.action_switch_to_game()
 
         assert app.current_screen == "game"
-        app.push_screen.assert_called_once_with("game")
+        app.switch_screen.assert_called_once_with("game")
 
     def test_action_switch_to_character(self):
         """Test switching to character screen."""
         app = AstinusApp()
-        app.push_screen = MagicMock()
+        app.switch_screen = MagicMock()
 
         app.action_switch_to_character()
 
         assert app.current_screen == "character"
-        app.push_screen.assert_called_once_with("character")
+        app.switch_screen.assert_called_once_with("character")
 
     def test_action_switch_to_inventory(self):
         """Test switching to inventory screen."""
         app = AstinusApp()
-        app.push_screen = MagicMock()
+        app.switch_screen = MagicMock()
 
         app.action_switch_to_inventory()
 
         assert app.current_screen == "inventory"
-        app.push_screen.assert_called_once_with("inventory")
+        app.switch_screen.assert_called_once_with("inventory")
 
     def test_key_bindings(self):
-        """Test key binding functions."""
+        """Test BINDINGS are defined correctly."""
         app = AstinusApp()
-        app.action_switch_to_game = MagicMock()
-        app.action_switch_to_character = MagicMock()
-        app.action_switch_to_inventory = MagicMock()
-        app.action_quit = MagicMock()
 
-        app.key_g()
-        app.action_switch_to_game.assert_called_once()
+        # Verify BINDINGS class variable is defined
+        assert hasattr(AstinusApp, 'BINDINGS')
+        assert len(AstinusApp.BINDINGS) == 4
 
-        app.key_c()
-        app.action_switch_to_character.assert_called_once()
-
-        app.key_i()
-        app.action_switch_to_inventory.assert_called_once()
-
-        app.key_q()
-        app.action_quit.assert_called_once()
+        # Verify expected bindings exist
+        binding_keys = [b[0] for b in AstinusApp.BINDINGS]
+        assert "g" in binding_keys
+        assert "c" in binding_keys
+        assert "i" in binding_keys
+        assert "q" in binding_keys

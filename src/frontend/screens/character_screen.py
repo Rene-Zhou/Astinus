@@ -92,8 +92,7 @@ class CharacterScreen(Screen):
     }
 
     .trait-desc {
-        color: $text-muted;
-        font-size: 0.9;
+        color: $text-disabled;
     }
     """
 

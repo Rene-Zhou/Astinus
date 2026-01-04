@@ -7,6 +7,7 @@ Handles:
 - Connection management
 """
 
+import asyncio
 import json
 import logging
 from typing import Any, Callable, Optional, Dict, List

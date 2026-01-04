@@ -77,7 +77,7 @@ class DiceRoller(Static):
 
     .submit-button {
         height: 3;
-        margin: 0 10;
+        margin: 0 2;
         background: $primary;
         color: $text;
     }

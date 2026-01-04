@@ -4,14 +4,11 @@ Textual TUI Application for Astinus.
 Main application entry point that manages screens, state, and UI flow.
 """
 
-import asyncio
 from typing import Optional
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
-from textual.screen import Screen
-from textual.widgets import Footer, Header, Label
+from textual.widgets import Footer, Header
 
 from src.frontend.screens.game_screen import GameScreen
 from src.frontend.screens.character_screen import CharacterScreen
@@ -29,6 +26,14 @@ class AstinusApp(App):
     - WebSocket connection to backend
     - UI theming and layout
     """
+
+    # Key bindings displayed in Footer
+    BINDINGS = [
+        ("g", "switch_to_game", "Game"),
+        ("c", "switch_to_character", "Character"),
+        ("i", "switch_to_inventory", "Inventory"),
+        ("q", "quit", "Quit"),
+    ]
 
     # CSS styles
     CSS = """
@@ -105,12 +110,12 @@ class AstinusApp(App):
         # Initialize WebSocket client
         self.client = GameClient()
 
-        # Set up screens
+        # Install screens
         self.install_screen(GameScreen(), name="game")
         self.install_screen(CharacterScreen(), name="character")
         self.install_screen(InventoryScreen(), name="inventory")
 
-        # Push the initial screen
+        # Push initial screen (first screen must be pushed, not switched)
         self.push_screen("game")
 
     async def on_unmount(self) -> None:
@@ -120,53 +125,24 @@ class AstinusApp(App):
 
     def compose(self) -> ComposeResult:
         """Compose the UI layout."""
-        # Header with app title
-        with Header():
-            yield Label("Astinus - AI TTRPG", id="header-title")
-
-        # Main content area (managed by screens)
-        with Container(id="main-container"):
-            with Vertical(id="content"):
-                yield Label("Loading...", id="loading")
-
-        # Footer with navigation hints
-        with Footer():
-            yield Label("[b]g[/b] Game | [b]c[/b] Character | [b]i[/b] Inventory | [b]q[/b] Quit")
+        # Header and Footer - Screen content is managed by each Screen
+        yield Header()
+        yield Footer()
 
     def action_switch_to_game(self) -> None:
         """Switch to game screen."""
         self.current_screen = "game"
-        self.push_screen("game")
+        self.switch_screen("game")
 
     def action_switch_to_character(self) -> None:
         """Switch to character screen."""
         self.current_screen = "character"
-        self.push_screen("character")
+        self.switch_screen("character")
 
     def action_switch_to_inventory(self) -> None:
         """Switch to inventory screen."""
         self.current_screen = "inventory"
-        self.push_screen("inventory")
-
-    def action_quit(self) -> None:
-        """Quit the application."""
-        self.exit()
-
-    def key_g(self) -> None:
-        """Key binding for game screen."""
-        self.action_switch_to_game()
-
-    def key_c(self) -> None:
-        """Key binding for character screen."""
-        self.action_switch_to_character()
-
-    def key_i(self) -> None:
-        """Key binding for inventory screen."""
-        self.action_switch_to_inventory()
-
-    def key_q(self) -> None:
-        """Key binding for quit."""
-        self.action_quit()
+        self.switch_screen("inventory")
 
     async def start_new_game(self, world_pack_id: str = "demo_pack") -> bool:
         """

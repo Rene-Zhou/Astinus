@@ -52,14 +52,15 @@ class GameScreen(Screen):
     }
 
     #bottom-panel {
-        height: 0;
+        height: 20;
         width: 100%;
         dock: bottom;
         background: $panel;
+        display: none;
     }
 
     #bottom-panel.visible {
-        height: 20;
+        display: block;
     }
 
     .nav-button {

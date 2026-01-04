@@ -80,8 +80,8 @@ class ChatBox(Static):
     }
     """
 
-    # Reactive messages list
-    messages: List[dict] = reactive([])
+    # Reactive messages list - use callable to avoid shared mutable default
+    messages: reactive[list] = reactive(list)
 
     class MessageSent(Message):
         """Message sent event."""

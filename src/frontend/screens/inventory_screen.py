@@ -66,7 +66,7 @@ class InventoryScreen(Screen):
         height: 5;
         text-align: center;
         text-style: italic;
-        color: $text-muted;
+        color: $text-disabled;
     }
 
     .item {
@@ -75,7 +75,7 @@ class InventoryScreen(Screen):
         border: solid $accent;
         padding: 0 1;
         margin: 0 0 1 0;
-        background: $panel-darken;
+        background: $surface;
     }
 
     .item-name {
@@ -85,7 +85,7 @@ class InventoryScreen(Screen):
 
     .item-quantity {
         text-align: right;
-        color: $text-muted;
+        color: $text-disabled;
     }
     """
 
