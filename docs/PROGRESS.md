@@ -255,18 +255,18 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 **实际工作量**: ~900 行代码
 
-#### Phase 6.4: Agent 协作完善 🔄 进行中
+#### Phase 6.4: Agent 协作完善 ✅ 已完成
 | 任务 | 优先级 | 状态 | 文件 |
 |------|--------|------|------|
 | 6.4.1 GM Agent 路由 | 🟡 High | ✅ 已完成 | `src/backend/agents/gm.py` |
-| 6.4.2 NPC 状态更新 | 🟡 High | ⏳ 待开始 | `src/backend/agents/npc.py` |
-| 6.4.3 Rule Agent 结果处理 | 🟡 High | ⏳ 待开始 | `src/backend/agents/rule.py` |
+| 6.4.2 NPC 状态更新 | 🟡 High | ✅ 已完成 | `src/backend/agents/npc.py` |
+| 6.4.3 Rule Agent 结果处理 | 🟡 High | ✅ 已完成 | `src/backend/agents/rule.py` |
 | 6.4.4 Director Agent | 🟢 Medium | ✅ 已完成 | `src/backend/agents/director.py` |
 
 **说明**:
 - ✅ GM Agent 意图解析和 Agent 分发已实现
-- ⏳ NPC 记忆和关系值持久化
-- ⏳ 检定结果叙事生成
+- ✅ NPC 记忆和关系值持久化
+- ✅ 检定结果叙事生成
 - ✅ 游戏节奏管理 (Director Agent)
 
 **已完成功能**:
@@ -275,8 +275,15 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 - 节奏建议 (speed_up, slow_down, build_tension, etc.)
 - 动作/对话比例平衡
 - 启发式回退分析
+- NPCAgent: 记忆持久化到向量数据库 (persist_memory)
+- NPCAgent: 关系值计算与边界检查 (calculate_new_relation_level)
+- NPCAgent: 状态更新提取 (get_state_updates_from_response)
+- RuleAgent: 骰子结果叙事生成 (process_result)
+- RuleAgent: 回退叙事生成 (_generate_fallback_narrative)
+- RuleAgent: 结果类型判定 (_determine_outcome_type)
+- DiceCheckResult 模型: 检定结果数据结构
 
-**实际工作量**: ~500 行代码，34 个新测试
+**实际工作量**: ~800 行代码，72 个新测试
 
 #### Phase 6.5: 测试与部署 ⏳ 待开始
 | 任务 | 优先级 | 状态 | 文件 |
@@ -309,6 +316,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
+| 2026-01-05 | Phase 6.4 完成 | `feature/phase6-frontend-backend-integration` | 完成 Agent 协作完善：NPC 记忆/关系持久化、RuleAgent 结果处理、DiceCheckResult 模型。38个新测试，652总测试，68%覆盖率 |
 | 2026-01-04 | TUI Bug 修复 | `fix/screen-app-property-readonly` | 修复 TUI 启动错误：Screen.app 只读属性、CSS 无效变量/属性、asyncio 导入、屏幕导航、Reactive 列表共享问题 |
 | 2026-01-04 | Phase 5 完成 | `feature/phase5-textual-tui-frontend` | 完成 Textual TUI 前端实现：AstinusApp、GameClient、UI组件、游戏界面。25个新测试，425总测试，72%覆盖率 |
 | 2026-01-04 | Phase 4 完成 | `feature/phase4-week1-json-schema-validation` | 完成向量检索与增强 JSON 解析：VectorStoreService、LoreAgent混合搜索、NPC记忆检索、GM历史检索。85个新测试，400总测试，84%覆盖率 |
@@ -323,10 +331,10 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 技术债务与待优化项
 
 ### 高优先级（阻塞可玩性）
-- 🔴 **前后端集成未完成** - WebSocket 消息路由未实现，玩家输入无法传递到后端
-- 🔴 **持久化层缺失** - 无存档/读档功能，游戏进度无法保存
-- 🔴 **骰子检定流程断裂** - Rule Agent 无法触发前端骰子界面
-- 🟡 **测试覆盖率不足** - 关键路径覆盖率较低（websockets 32%, gm.py 15%）
+- ~~🔴 **前后端集成未完成** - WebSocket 消息路由未实现，玩家输入无法传递到后端~~ ✅ 已完成
+- ~~🔴 **持久化层缺失** - 无存档/读档功能，游戏进度无法保存~~ ✅ DatabaseService 已实现
+- ~~🔴 **骰子检定流程断裂** - Rule Agent 无法触发前端骰子界面~~ ✅ RuleAgent.process_result 已实现
+- 🟡 **测试覆盖率不足** - 当前覆盖率 68%，目标 70%+
 
 ### 中优先级
 - Story Pack 格式与迁移脚本未落地
@@ -337,7 +345,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ### 低优先级
 - 文档国际化规划（中英双语）有待评估
 - 开发者体验提升（预构建 Makefile / uv 脚本）待执行
-- Director Agent 未实现（游戏节奏管理）
+- ~~Director Agent 未实现（游戏节奏管理）~~ ✅ 已完成
 
 ### 已解决
 - ~~`pyproject.toml` 缺少核心依赖~~ ✅ 已完成
@@ -350,17 +358,22 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 ## 下一步计划
 
-### 立即执行（Phase 6.3-6.4）
+### 立即执行（Phase 6.5）
 1. ~~**WebSocket 消息路由** - 完成 `player_input` → GM Agent → 响应流~~ ✅
 2. ~~**GameClient 连接管理** - 实现异步连接生命周期、断线重连~~ ✅
 3. ~~**数据库服务** - SQLite 连接管理与 SQLAlchemy 模型~~ ✅
 4. ~~**会话管理** - 游戏会话 CRUD 与存档 API~~ ✅
-5. **开始菜单** - 新游戏/读档/设置菜单界面
-6. **存档 REST API** - 集成 DatabaseService 到 game.py 端点
+5. ~~**开始菜单** - 新游戏/读档/设置菜单界面~~ ✅
+6. ~~**NPC 状态持久化** - 记忆和关系值持久化~~ ✅
+7. ~~**Rule Agent 结果处理** - 骰子检定叙事生成~~ ✅
+8. **集成测试** - 端到端游戏流程测试
+9. **CI/CD 配置** - GitHub Actions 配置
 
-### 短期目标（Phase 6.3-6.4）
-- 实现开始菜单（新游戏/读档/设置）
-- 完成骰子检定完整流程（Rule Agent ↔ DiceRoller）
+### 短期目标（Phase 6.5）
+- 编写集成测试覆盖完整游戏流程
+- 配置 GitHub Actions CI 流水线
+- 提升测试覆盖率到 70%+
+- 编写部署文档 (DEPLOYMENT.md)
 - GM Agent 意图解析与 Agent 分发
 - NPC 状态更新与记忆持久化
 

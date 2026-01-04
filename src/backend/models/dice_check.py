@@ -41,17 +41,11 @@ class DiceCheckRequest(BaseModel):
         '3d6kl2'
     """
 
-    intention: str = Field(
-        ..., description="What the player is trying to do (in Chinese)"
-    )
+    intention: str = Field(..., description="What the player is trying to do (in Chinese)")
     influencing_factors: dict[str, list[str]] = Field(
-        ...,
-        description="Factors affecting the roll: {'traits': [...], 'tags': [...]}"
+        ..., description="Factors affecting the roll: {'traits': [...], 'tags': [...]}"
     )
-    dice_formula: str = Field(
-        ...,
-        description="Dice notation (e.g., '2d6', '3d6kh2', '3d6kl2')"
-    )
+    dice_formula: str = Field(..., description="Dice notation (e.g., '2d6', '3d6kh2', '3d6kl2')")
     instructions: LocalizedString = Field(
         ..., description="Explanation of why these modifiers apply"
     )
@@ -123,6 +117,68 @@ class DiceCheckRequest(BaseModel):
         return f"DiceCheckRequest(intention='{self.intention}', dice='{self.dice_formula}')"
 
 
+class DiceCheckResult(BaseModel):
+    """
+    Result of a dice check after rolling.
+
+    This model represents the outcome of a dice roll, including:
+    - The original intention
+    - Dice formula and values
+    - Success/failure determination
+    - Critical hit/miss detection
+
+    Examples:
+        >>> result = DiceCheckResult(
+        ...     intention="逃离房间",
+        ...     dice_formula="2d6",
+        ...     dice_values=[4, 5],
+        ...     total=9,
+        ...     threshold=7,
+        ...     success=True,
+        ...     critical=False,
+        ... )
+        >>> result.success
+        True
+    """
+
+    intention: str = Field(..., description="What the player was trying to do")
+    dice_formula: str = Field(..., description="Dice notation used (e.g., '2d6', '3d6kh2')")
+    dice_values: list[int] = Field(..., description="Individual dice roll values")
+    total: int = Field(..., description="Final total after applying modifiers")
+    threshold: int = Field(default=7, description="Target number needed for success")
+    success: bool = Field(..., description="Whether the check succeeded")
+    critical: bool = Field(default=False, description="Whether this was a critical success/failure")
+    modifiers: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Modifiers applied: [{'source': 'trait_name', 'effect': 'advantage'}]",
+    )
+
+    def is_critical_success(self) -> bool:
+        """Check if this is a critical success (double 6s)."""
+        return self.success and self.critical
+
+    def is_critical_failure(self) -> bool:
+        """Check if this is a critical failure (double 1s)."""
+        return not self.success and self.critical
+
+    def get_margin(self) -> int:
+        """Get the margin of success/failure."""
+        return self.total - self.threshold
+
+    def __str__(self) -> str:
+        """Return display string."""
+        outcome = "成功" if self.success else "失败"
+        if self.critical:
+            outcome = "大成功！" if self.success else "大失败！"
+        return (
+            f"{self.intention}: {self.dice_values} = {self.total} vs {self.threshold} ({outcome})"
+        )
+
+    def __repr__(self) -> str:
+        """Developer-friendly representation."""
+        return f"DiceCheckResult(intention='{self.intention}', total={self.total}, success={self.success})"
+
+
 class DiceCheckResponse(BaseModel):
     """
     Player's response to a dice check request.
@@ -147,19 +203,13 @@ class DiceCheckResponse(BaseModel):
         ... )
     """
 
-    action: str = Field(
-        ...,
-        description="Action taken: 'roll', 'argue', or 'cancel'"
-    )
+    action: str = Field(..., description="Action taken: 'roll', 'argue', or 'cancel'")
     dice_result: dict[str, Any] | None = Field(
-        default=None,
-        description="DiceResult as dict (if action='roll')"
+        default=None, description="DiceResult as dict (if action='roll')"
     )
     argument: str | None = Field(
-        default=None,
-        description="Player's argument for advantage (if action='argue')"
+        default=None, description="Player's argument for advantage (if action='argue')"
     )
     trait_claimed: str | None = Field(
-        default=None,
-        description="Which trait player claims helps (if action='argue')"
+        default=None, description="Which trait player claims helps (if action='argue')"
     )

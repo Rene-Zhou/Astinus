@@ -1,11 +1,12 @@
 """
-Rule Agent - Judge whether player actions need dice checks.
+Rule Agent - Judge whether player actions need dice checks and process results.
 
 Ported from weave's Judge agent, adapted for:
 - LangChain Runnable interface
 - 2d6 dice system (vs weave's d20)
 - Context slicing from GM
 - Multi-language prompt support
+- Dice result narrative generation
 """
 
 from typing import Any
@@ -223,6 +224,258 @@ class RuleAgent(BaseAgent):
             SystemMessage(content=system_message),
             HumanMessage(content=user_message),
         ]
+
+    async def process_result(
+        self,
+        result_data: dict[str, Any],
+        context: dict[str, Any] | None = None,
+    ) -> AgentResponse:
+        """
+        Process dice check result and generate narrative.
+
+        Args:
+            result_data: Dice check result containing:
+                - intention: What player tried to do
+                - dice_formula: Dice notation used
+                - dice_values: Individual roll values
+                - total: Final total
+                - threshold: Target number
+                - success: Whether check succeeded
+                - critical: Whether this was a critical
+                - modifiers: Applied modifiers (optional)
+            context: Optional scene context for narrative
+
+        Returns:
+            AgentResponse with narrative and state updates
+        """
+        intention = result_data.get("intention", "行动")
+        success = result_data.get("success", False)
+        critical = result_data.get("critical", False)
+
+        # Build prompt for narrative generation
+        messages = self._build_result_prompt(result_data, context=context, lang="cn")
+
+        try:
+            llm_response = await self._call_llm(messages)
+            narrative_result = self._extract_json_from_response(llm_response)
+        except Exception:
+            # Use fallback narrative if LLM fails
+            fallback_narrative = self._generate_fallback_narrative(result_data, lang="cn")
+            narrative_result = {
+                "narrative": fallback_narrative,
+                "outcome_type": self._determine_outcome_type(success, critical),
+                "consequences": [],
+                "suggested_tags": [],
+            }
+
+        # Build response metadata
+        outcome_type = narrative_result.get(
+            "outcome_type", self._determine_outcome_type(success, critical)
+        )
+
+        response_metadata = {
+            "agent": self.agent_name,
+            "narrative": narrative_result.get("narrative", ""),
+            "outcome_type": outcome_type,
+            "consequences": narrative_result.get("consequences", []),
+            "suggested_tags": narrative_result.get("suggested_tags", []),
+            "dice_total": result_data.get("total"),
+            "threshold": result_data.get("threshold"),
+        }
+
+        # Add optional fields if present
+        if narrative_result.get("bonus_effect"):
+            response_metadata["bonus_effect"] = narrative_result["bonus_effect"]
+        if narrative_result.get("fate_point_applicable"):
+            response_metadata["fate_point_applicable"] = narrative_result["fate_point_applicable"]
+            response_metadata["fate_point_reason"] = narrative_result.get("fate_point_reason", "")
+        if narrative_result.get("npc_reaction_hint"):
+            response_metadata["npc_reaction_hint"] = narrative_result["npc_reaction_hint"]
+
+        return AgentResponse(
+            content=narrative_result.get("narrative", ""),
+            metadata=response_metadata,
+            success=True,
+        )
+
+    def _build_result_prompt(
+        self,
+        result_data: dict[str, Any],
+        context: dict[str, Any] | None = None,
+        lang: str = "cn",
+    ) -> list[SystemMessage]:
+        """
+        Build prompt for narrative generation from dice result.
+
+        Args:
+            result_data: Dice check result
+            context: Optional scene context
+            lang: Language code
+
+        Returns:
+            List of messages for LLM
+        """
+        intention = result_data.get("intention", "行动")
+        dice_values = result_data.get("dice_values", [])
+        total = result_data.get("total", 0)
+        threshold = result_data.get("threshold", 7)
+        success = result_data.get("success", False)
+        critical = result_data.get("critical", False)
+        modifiers = result_data.get("modifiers", [])
+
+        outcome_type = self._determine_outcome_type(success, critical)
+
+        if lang == "cn":
+            # Chinese prompt
+            system_lines = [
+                "你是一个TTRPG叙事生成器。根据骰子检定结果生成简短的叙事描述。",
+                "",
+                "## 要求",
+                "- 叙事应该简洁有力，2-3句话",
+                "- 根据成功/失败调整叙事基调",
+                "- 大成功/大失败应该有戏剧性的描述",
+                "- 失败可能带来后果",
+                "",
+                "## 响应格式",
+                "以JSON格式返回：",
+                "{",
+                '  "narrative": "叙事描述",',
+                '  "outcome_type": "success/failure/critical_success/critical_failure",',
+                '  "consequences": ["后果1", "后果2"],',
+                '  "suggested_tags": ["建议添加的状态标签"]',
+                "}",
+            ]
+
+            user_lines = [
+                f"## 检定信息",
+                f"- 意图：{intention}",
+                f"- 骰子结果：{dice_values} = {total}",
+                f"- 目标值：{threshold}",
+                f"- 结果：{outcome_type}",
+            ]
+
+            if modifiers:
+                mod_strs = [f"{m.get('source', '未知')}: {m.get('effect', '')}" for m in modifiers]
+                user_lines.append(f"- 修正：{', '.join(mod_strs)}")
+
+            if context:
+                user_lines.append("")
+                user_lines.append("## 场景背景")
+                if context.get("location"):
+                    user_lines.append(f"- 地点：{context['location']}")
+                if context.get("situation"):
+                    user_lines.append(f"- 情境：{context['situation']}")
+                if context.get("nearby_npcs"):
+                    user_lines.append(f"- 附近NPC：{', '.join(context['nearby_npcs'])}")
+
+            user_lines.append("")
+            user_lines.append("请生成叙事。")
+
+        else:
+            # English prompt
+            system_lines = [
+                "You are a TTRPG narrative generator. Generate brief narrative based on dice check results.",
+                "",
+                "## Requirements",
+                "- Narrative should be concise, 2-3 sentences",
+                "- Adjust tone based on success/failure",
+                "- Critical success/failure should be dramatic",
+                "- Failures may have consequences",
+                "",
+                "## Response Format",
+                "Return JSON:",
+                "{",
+                '  "narrative": "narrative description",',
+                '  "outcome_type": "success/failure/critical_success/critical_failure",',
+                '  "consequences": ["consequence1", "consequence2"],',
+                '  "suggested_tags": ["suggested status tags"]',
+                "}",
+            ]
+
+            user_lines = [
+                f"## Check Information",
+                f"- Intention: {intention}",
+                f"- Dice Result: {dice_values} = {total}",
+                f"- Target: {threshold}",
+                f"- Outcome: {outcome_type}",
+            ]
+
+            if modifiers:
+                mod_strs = [
+                    f"{m.get('source', 'unknown')}: {m.get('effect', '')}" for m in modifiers
+                ]
+                user_lines.append(f"- Modifiers: {', '.join(mod_strs)}")
+
+            if context:
+                user_lines.append("")
+                user_lines.append("## Scene Context")
+                if context.get("location"):
+                    user_lines.append(f"- Location: {context['location']}")
+                if context.get("situation"):
+                    user_lines.append(f"- Situation: {context['situation']}")
+                if context.get("nearby_npcs"):
+                    user_lines.append(f"- Nearby NPCs: {', '.join(context['nearby_npcs'])}")
+
+            user_lines.append("")
+            user_lines.append("Generate the narrative.")
+
+        return [
+            SystemMessage(content="\n".join(system_lines)),
+            HumanMessage(content="\n".join(user_lines)),
+        ]
+
+    def _generate_fallback_narrative(
+        self,
+        result_data: dict[str, Any],
+        lang: str = "cn",
+    ) -> str:
+        """
+        Generate fallback narrative when LLM fails.
+
+        Args:
+            result_data: Dice check result
+            lang: Language code
+
+        Returns:
+            Simple narrative string
+        """
+        intention = result_data.get("intention", "行动")
+        success = result_data.get("success", False)
+        critical = result_data.get("critical", False)
+
+        if lang == "cn":
+            if critical and success:
+                return f"你的{intention}大获成功！完美地完成了目标。"
+            elif critical and not success:
+                return f"你尝试{intention}，但遭遇了严重的失败..."
+            elif success:
+                return f"你成功地完成了{intention}。"
+            else:
+                return f"你尝试{intention}，但失败了。"
+        else:
+            if critical and success:
+                return f"Your {intention} was a critical success! Perfectly accomplished."
+            elif critical and not success:
+                return f"You attempted {intention}, but suffered a critical failure..."
+            elif success:
+                return f"You successfully completed {intention}."
+            else:
+                return f"You attempted {intention}, but failed."
+
+    def _determine_outcome_type(self, success: bool, critical: bool) -> str:
+        """
+        Determine the outcome type string.
+
+        Args:
+            success: Whether the check succeeded
+            critical: Whether this was a critical
+
+        Returns:
+            Outcome type string
+        """
+        if critical:
+            return "critical_success" if success else "critical_failure"
+        return "success" if success else "failure"
 
     def __repr__(self) -> str:
         """Return agent representation."""

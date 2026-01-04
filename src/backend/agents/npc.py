@@ -6,8 +6,10 @@ Responsible for:
 - Considering NPCBody state (tags, relations, memory)
 - Returning structured dialogue with emotion and action
 - Supporting bilingual (cn/en) prompts
+- Persisting memory and relationship changes
 """
 
+from datetime import datetime
 from typing import Any
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
@@ -157,6 +159,11 @@ class NPCAgent(BaseAgent):
         if relation_change != 0:
             response_metadata["relation_change"] = relation_change
 
+        # Extract new memory if present
+        new_memory = result.get("new_memory")
+        if new_memory:
+            response_metadata["new_memory"] = new_memory
+
         return AgentResponse(
             content=response_text,
             metadata=response_metadata,
@@ -239,9 +246,7 @@ class NPCAgent(BaseAgent):
             HumanMessage(content=user_parts),
         ]
 
-    def _build_system_prompt(
-        self, npc: NPCData, player_input: str, lang: str
-    ) -> str:
+    def _build_system_prompt(self, npc: NPCData, player_input: str, lang: str) -> str:
         """
         Build system prompt from NPC soul with relevant memories.
 
@@ -312,12 +317,12 @@ class NPCAgent(BaseAgent):
             lines.append("")
             lines.append("## 响应格式")
             lines.append("以 JSON 格式回复：")
-            lines.append('{')
+            lines.append("{")
             lines.append('  "response": "你的对话内容",')
             lines.append('  "emotion": "情绪状态（如 happy, sad, angry, scared, neutral）",')
             lines.append('  "action": "伴随动作描述（可为空）",')
             lines.append('  "relation_change": 0  // 关系变化 -10 到 +10，通常为 0')
-            lines.append('}')
+            lines.append("}")
 
         else:  # English
             lines = [
@@ -372,18 +377,16 @@ class NPCAgent(BaseAgent):
             lines.append("")
             lines.append("## Response Format")
             lines.append("Reply in JSON format:")
-            lines.append('{')
+            lines.append("{")
             lines.append('  "response": "your dialogue",')
             lines.append('  "emotion": "emotional state (happy, sad, angry, scared, neutral)",')
             lines.append('  "action": "accompanying action description (can be empty)",')
             lines.append('  "relation_change": 0  // relation change -10 to +10, usually 0')
-            lines.append('}')
+            lines.append("}")
 
         return "\n".join(lines)
 
-    def _build_user_prompt(
-        self, npc: NPCData, player_input: str, context: dict, lang: str
-    ) -> str:
+    def _build_user_prompt(self, npc: NPCData, player_input: str, context: dict, lang: str) -> str:
         """Build user prompt with context and player input."""
         if lang == "cn":
             lines = []
@@ -411,6 +414,94 @@ class NPCAgent(BaseAgent):
             lines.append(f"Respond as {npc.soul.name}.")
 
         return "\n".join(lines)
+
+    def persist_memory(
+        self,
+        npc_id: str,
+        event: str,
+        keywords: list[str],
+    ) -> None:
+        """
+        Persist a new memory to the vector store.
+
+        Args:
+            npc_id: NPC identifier
+            event: Description of the event to remember
+            keywords: Keywords for the memory
+        """
+        if not self.vector_store:
+            return
+
+        collection_name = f"npc_memories_{npc_id}"
+        timestamp = datetime.utcnow().isoformat()
+        memory_id = f"mem_{npc_id}_{timestamp.replace(':', '_').replace('.', '_')}"
+
+        try:
+            self.vector_store.add_documents(
+                collection_name=collection_name,
+                documents=[event],
+                metadatas=[
+                    {
+                        "npc_id": npc_id,
+                        "keywords": ",".join(keywords),
+                        "timestamp": timestamp,
+                    }
+                ],
+                ids=[memory_id],
+            )
+        except Exception:
+            # Fail silently - memory persistence is not critical
+            pass
+
+    def calculate_new_relation_level(
+        self,
+        current_level: int,
+        change: int,
+    ) -> int:
+        """
+        Calculate new relation level with bounds checking.
+
+        Args:
+            current_level: Current relationship level (-100 to 100)
+            change: Amount to change (-10 to +10 typically)
+
+        Returns:
+            New relation level clamped to -100 to 100
+        """
+        new_level = current_level + change
+        return max(-100, min(100, new_level))
+
+    def get_state_updates_from_response(
+        self,
+        response: AgentResponse,
+    ) -> dict[str, Any]:
+        """
+        Extract state updates from an NPC response.
+
+        Args:
+            response: AgentResponse from process()
+
+        Returns:
+            Dict containing state updates:
+                - npc_id: NPC identifier
+                - relation_change: Change in relationship
+                - new_memory: Memory to persist (if any)
+                - has_memory_update: Whether memory was updated
+        """
+        metadata = response.metadata or {}
+
+        updates = {
+            "npc_id": metadata.get("npc_id", ""),
+            "relation_change": metadata.get("relation_change", 0),
+            "has_memory_update": False,
+        }
+
+        new_memory = metadata.get("new_memory")
+        if new_memory:
+            updates["new_memory"] = new_memory
+            updates["has_memory_update"] = True
+
+        return updates
 
     def __repr__(self) -> str:
         """Return agent representation."""
