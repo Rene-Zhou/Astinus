@@ -197,21 +197,23 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 > **目标**: 打通前后端集成，实现完整可玩的游戏体验
 
-#### Phase 6.1: 前后端集成 (Critical Path) ⏳ 待开始
+#### Phase 6.1: 前后端集成 (Critical Path) ✅ 已完成
 | 任务 | 优先级 | 状态 | 文件 |
 |------|--------|------|------|
-| 6.1.1 WebSocket 消息处理 | 🔴 Critical | ⏳ 待开始 | `src/backend/api/websockets.py` |
-| 6.1.2 GameClient 连接管理 | 🔴 Critical | ⏳ 待开始 | `src/frontend/client.py` |
-| 6.1.3 游戏状态同步 | 🔴 Critical | ⏳ 待开始 | `src/frontend/screens/*.py` |
-| 6.1.4 骰子检定流程 | 🔴 Critical | ⏳ 待开始 | `widgets/dice_roller.py`, `agents/rule.py` |
+| 6.1.1 WebSocket 消息处理 | 🔴 Critical | ✅ 完成 | `src/backend/api/websockets.py` |
+| 6.1.2 GameClient 连接管理 | 🔴 Critical | ✅ 完成 | `src/frontend/client.py` |
+| 6.1.3 游戏状态同步 | 🔴 Critical | ✅ 完成 | `src/frontend/screens/*.py` |
+| 6.1.4 骰子检定流程 | 🔴 Critical | ✅ 完成 | `widgets/dice_roller.py`, `agents/rule.py` |
 
 **说明**:
-- WebSocket 消息路由: `player_input` → GM Agent → 响应流
-- GameClient 异步连接生命周期管理，断线重连
-- 实现前端与后端状态实时同步
-- 完成 Rule Agent → 前端骰子 → 结果处理
+- ✅ WebSocket 消息路由: `player_input` → GM Agent → 响应流
+- ✅ DICE_CHECK/DICE_RESULT 消息类型支持
+- ✅ GameClient 异步连接生命周期管理，断线重连
+- ✅ ConnectionState 状态枚举与自动重连机制
+- ✅ DiceRoller 组件增强: 2d6 系统/优势劣势支持
+- ✅ GameScreen 骰子检定流程集成
 
-**预计工作量**: 800-1000 行代码
+**完成工作量**: ~1200 行代码，73 个新测试
 
 #### Phase 6.2: 持久化层 ⏳ 待开始
 | 任务 | 优先级 | 状态 | 文件 |
@@ -334,9 +336,9 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 ## 下一步计划
 
-### 立即执行（Phase 6.1-6.2 Critical Path）
-1. **WebSocket 消息路由** - 完成 `player_input` → GM Agent → 响应流
-2. **GameClient 连接管理** - 实现异步连接生命周期、断线重连
+### 立即执行（Phase 6.2 Critical Path）
+1. ~~**WebSocket 消息路由** - 完成 `player_input` → GM Agent → 响应流~~ ✅
+2. ~~**GameClient 连接管理** - 实现异步连接生命周期、断线重连~~ ✅
 3. **数据库服务** - SQLite 连接管理与 SQLAlchemy 模型
 4. **会话管理** - 游戏会话 CRUD 与存档 API
 
@@ -376,6 +378,7 @@ Week 4: UI 与测试 (6.3 + 6.5)
 ## 提交历史摘要
 | 日期 | 提交 | 重点 |
 |------|------|------|
+| 2026-01-05 | `feature/phase6-frontend-backend-integration` | Phase 6.1 完成：WebSocket 消息路由、GameClient 连接管理、骰子检定流程，73 个新测试，498 总测试 |
 | 2026-01-04 | `fix/screen-app-property-readonly` | TUI Bug 修复：CSS、屏幕导航、asyncio 导入等 |
 | 2026-01-04 | `feature/phase5-textual-tui-frontend` | 完成 Phase 5：Textual TUI 前端实现，25个测试，425总测试 |
 | 2026-01-04 | `feature/phase4-week1-json-schema-validation` | 完成 Phase 4：向量检索与增强 JSON 解析，85个测试，400总测试 |
