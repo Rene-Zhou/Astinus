@@ -53,7 +53,6 @@ class DiceRoller(Static):
         height: 8;
         text-align: center;
         text-style: bold;
-        font-size: 4;
         color: $accent;
         border: solid $accent;
         margin: 1 0;
@@ -71,8 +70,8 @@ class DiceRoller(Static):
         height: 3;
         text-align: center;
         text-style: bold;
-        color: $info;
-        border: solid $info;
+        color: $accent;
+        border: solid $accent;
         margin-top: 1;
     }
 

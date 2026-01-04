@@ -81,7 +81,6 @@ class GameScreen(Screen):
     def __init__(self) -> None:
         """Initialize the game screen."""
         super().__init__()
-        self.app = None  # Will be set by parent
 
     def compose(self) -> ComposeResult:
         """Compose the game screen layout."""
@@ -104,9 +103,6 @@ class GameScreen(Screen):
 
     def on_mount(self) -> None:
         """Called when screen mounts."""
-        # Get reference to parent app
-        self.app = self.parent.app if hasattr(self.parent, "app") else None
-
         # Register message handlers
         if self.app and self.app.client:
             self.app.client.add_message_handler(self.handle_message)

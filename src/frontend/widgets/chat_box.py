@@ -62,7 +62,7 @@ class ChatBox(Static):
     }
 
     .message.dice {
-        color: $info;
+        color: $accent;
         text-align: center;
     }
 

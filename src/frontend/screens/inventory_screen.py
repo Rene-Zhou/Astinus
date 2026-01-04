@@ -92,7 +92,6 @@ class InventoryScreen(Screen):
     def __init__(self) -> None:
         """Initialize the inventory screen."""
         super().__init__()
-        self.app = None
         self.inventory_items: List[Dict[str, Any]] = []
 
     def compose(self) -> ComposeResult:
@@ -112,7 +111,6 @@ class InventoryScreen(Screen):
 
     def on_mount(self) -> None:
         """Called when screen mounts."""
-        self.app = self.parent.app if hasattr(self.parent, "app") else None
         self.load_inventory()
 
     def load_inventory(self) -> None:

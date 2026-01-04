@@ -100,7 +100,6 @@ class CharacterScreen(Screen):
     def __init__(self) -> None:
         """Initialize the character screen."""
         super().__init__()
-        self.app = None
         self.character_data: Optional[Dict[str, Any]] = None
 
     def compose(self) -> ComposeResult:
@@ -145,7 +144,6 @@ class CharacterScreen(Screen):
 
     def on_mount(self) -> None:
         """Called when screen mounts."""
-        self.app = self.parent.app if hasattr(self.parent, "app") else None
         self.load_character_data()
 
     def load_character_data(self) -> None:
