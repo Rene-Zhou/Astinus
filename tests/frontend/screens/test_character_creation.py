@@ -1,4 +1,4 @@
-"""Tests for CharacterCreationScreen."""
+"""Tests for CharacterCreationScreen - Trait-based system per GUIDE.md."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -30,97 +30,126 @@ class TestCharacterCreationScreen:
         assert hasattr(screen, "TITLE") or hasattr(screen, "title")
 
 
-class TestCharacterCreationAttributes:
-    """Test suite for character attribute selection."""
+class TestCharacterCreationTraits:
+    """Test suite for character trait system per GUIDE.md."""
 
-    def test_default_attributes(self):
-        """Test that default attributes are initialized."""
+    def test_no_numerical_attributes(self):
+        """Test that screen does NOT have PbtA-style numerical attributes."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        # Should have attributes property or method
-        assert hasattr(screen, "attributes") or hasattr(screen, "get_attributes")
+        # Should NOT have old attribute system
+        assert (
+            not hasattr(screen, "_attributes")
+            or screen._attributes is None
+            or len(getattr(screen, "_attributes", {})) == 0
+        )
+        # Should have traits instead
+        assert hasattr(screen, "_traits")
 
-    def test_attribute_values_in_valid_range(self):
-        """Test that attribute values are within valid range."""
+    def test_trait_list_exists(self):
+        """Test that trait list exists."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        if hasattr(screen, "attributes"):
-            for attr_name, value in screen.attributes.items():
-                # Attributes should be between -2 and +3 in PbtA style
-                assert -2 <= value <= 3, f"Attribute {attr_name} out of range: {value}"
+        assert hasattr(screen, "_traits")
+        assert isinstance(screen._traits, list)
 
-    def test_attribute_list_complete(self):
-        """Test that all required attributes exist."""
+    def test_initial_trait_count(self):
+        """Test that initial trait count is correct."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        expected_attributes = {"strength", "dexterity", "intelligence", "charisma", "perception"}
-        if hasattr(screen, "attributes"):
-            assert set(screen.attributes.keys()) == expected_attributes
+        # Should start with no traits (empty list before mounting)
+        assert hasattr(screen, "_traits")
 
-    def test_modify_attribute(self):
-        """Test modifying an attribute value."""
+    def test_max_traits_limit(self):
+        """Test that max traits limit is enforced (max 4 per GUIDE.md)."""
+        from src.frontend.screens.character_creation import MAX_TRAITS
+
+        # GUIDE.md specifies 1-4 traits
+        assert MAX_TRAITS == 4
+
+    def test_get_traits_method(self):
+        """Test getting traits list."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        if hasattr(screen, "set_attribute"):
-            screen.set_attribute("strength", 2)
-            assert screen.attributes["strength"] == 2
-
-    def test_attribute_modification_validates_range(self):
-        """Test that attribute modification validates range."""
-        from src.frontend.screens.character_creation import CharacterCreationScreen
-
-        screen = CharacterCreationScreen()
-        if hasattr(screen, "set_attribute"):
-            # Should not allow values outside range
-            with pytest.raises((ValueError, AssertionError)):
-                screen.set_attribute("strength", 10)
+        if hasattr(screen, "get_traits"):
+            traits = screen.get_traits()
+            assert isinstance(traits, list)
 
 
-class TestCharacterCreationPoints:
-    """Test suite for character creation point allocation."""
+class TestTraitEditor:
+    """Test suite for TraitEditor widget."""
 
-    def test_initial_points(self):
-        """Test that initial points are set correctly."""
-        from src.frontend.screens.character_creation import CharacterCreationScreen
+    def test_trait_editor_creation(self):
+        """Test creating a trait editor."""
+        from src.frontend.screens.character_creation import TraitEditor
 
-        screen = CharacterCreationScreen()
-        if hasattr(screen, "remaining_points"):
-            assert screen.remaining_points >= 0
+        editor = TraitEditor(0)
+        assert editor is not None
+        assert editor.trait_index == 0
 
-    def test_points_decrease_on_attribute_increase(self):
-        """Test that points decrease when attribute increases."""
-        from src.frontend.screens.character_creation import CharacterCreationScreen
+    def test_trait_editor_fields(self):
+        """Test that trait editor has all required fields per GUIDE.md."""
+        from src.frontend.screens.character_creation import TraitEditor
 
-        screen = CharacterCreationScreen()
-        if hasattr(screen, "remaining_points") and hasattr(screen, "increase_attribute"):
-            initial_points = screen.remaining_points
-            screen.increase_attribute("strength")
-            assert screen.remaining_points < initial_points
+        editor = TraitEditor(0)
+        # Per GUIDE.md Section 3.1, traits have:
+        # - name
+        # - description
+        # - positive_aspect
+        # - negative_aspect
+        assert hasattr(editor, "_name")
+        assert hasattr(editor, "_description")
+        assert hasattr(editor, "_positive")
+        assert hasattr(editor, "_negative")
 
-    def test_cannot_exceed_point_limit(self):
-        """Test that cannot spend more points than available."""
-        from src.frontend.screens.character_creation import CharacterCreationScreen
+    def test_trait_editor_get_data(self):
+        """Test getting trait data from editor."""
+        from src.frontend.screens.character_creation import TraitEditor
 
-        screen = CharacterCreationScreen()
-        if hasattr(screen, "increase_attribute"):
-            initial_points = screen.remaining_points
-            # Spend points up to a reasonable limit (max iterations)
-            max_iterations = initial_points + 10
-            iterations = 0
-            prev_points = initial_points
-            while iterations < max_iterations:
-                screen.increase_attribute("strength")
-                iterations += 1
-                # If points stopped decreasing, we hit a limit
-                if screen.remaining_points == prev_points:
-                    break
-                prev_points = screen.remaining_points
-            # Should not be negative
-            assert screen.remaining_points >= 0
+        editor = TraitEditor(0)
+        # Empty editor should return None
+        data = editor.get_trait_data()
+        assert data is None  # Empty name means invalid
+
+    def test_trait_editor_set_data(self):
+        """Test setting trait data on editor."""
+        from src.frontend.screens.character_creation import TraitEditor
+
+        editor = TraitEditor(0)
+        test_data = {
+            "name": {"cn": "优柔寡断", "en": "Indecisive"},
+            "description": {"cn": "描述", "en": "Description"},
+            "positive_aspect": {"cn": "正面", "en": "Positive"},
+            "negative_aspect": {"cn": "负面", "en": "Negative"},
+        }
+        editor.set_trait_data(test_data)
+        assert editor._name == "优柔寡断"
+
+    def test_trait_editor_is_empty(self):
+        """Test checking if trait editor is empty."""
+        from src.frontend.screens.character_creation import TraitEditor
+
+        editor = TraitEditor(0)
+        assert editor.is_empty() is True
+
+    def test_trait_editor_is_complete(self):
+        """Test checking if trait editor is complete."""
+        from src.frontend.screens.character_creation import TraitEditor
+
+        editor = TraitEditor(0)
+        # Empty editor is not complete
+        assert editor.is_complete() is False
+
+        # Set all fields
+        editor._name = "Test Trait"
+        editor._description = "Test Description"
+        editor._positive = "Positive Aspect"
+        editor._negative = "Negative Aspect"
+        assert editor.is_complete() is True
 
 
 class TestCharacterCreationName:
@@ -131,7 +160,7 @@ class TestCharacterCreationName:
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        assert hasattr(screen, "character_name") or hasattr(screen, "name")
+        assert hasattr(screen, "character_name")
 
     def test_name_can_be_set(self):
         """Test that character name can be set."""
@@ -152,45 +181,80 @@ class TestCharacterCreationName:
             assert not screen.validate_name("   ")
 
     def test_name_validation_max_length(self):
-        """Test that excessively long name is rejected."""
-        from src.frontend.screens.character_creation import CharacterCreationScreen
+        """Test that excessively long name is handled."""
+        from src.frontend.screens.character_creation import (
+            MAX_NAME_LENGTH,
+            CharacterCreationScreen,
+        )
 
         screen = CharacterCreationScreen()
         if hasattr(screen, "validate_name"):
-            long_name = "A" * 100
-            # Should either reject or truncate
+            long_name = "A" * (MAX_NAME_LENGTH + 10)
             result = screen.validate_name(long_name)
-            assert isinstance(result, bool)
+            assert result is False
 
 
 class TestCharacterCreationConcept:
-    """Test suite for character concept selection."""
+    """Test suite for character concept input per GUIDE.md."""
 
-    def test_concept_selection_exists(self):
-        """Test that concept selection exists."""
+    def test_concept_is_free_form(self):
+        """Test that concept is free-form text, not predefined selection."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        assert hasattr(screen, "character_concept") or hasattr(screen, "concept")
+        # Concept should be a string, not from a predefined list
+        assert hasattr(screen, "character_concept")
+        # Should NOT have available_concepts list (old system)
+        # The new system uses free-form input
 
-    def test_available_concepts(self):
-        """Test that available concepts are provided."""
+    def test_concept_can_be_set(self):
+        """Test that concept can be set to any string."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        if hasattr(screen, "available_concepts"):
-            assert isinstance(screen.available_concepts, (list, tuple))
-            assert len(screen.available_concepts) > 0
+        if hasattr(screen, "set_concept"):
+            # Per GUIDE.md: concept like "失业的建筑师" or "只会炼金术的法师"
+            screen.set_concept("失业的建筑师")
+            assert screen.character_concept == "失业的建筑师"
 
-    def test_concept_can_be_selected(self):
-        """Test that a concept can be selected."""
+    def test_concept_validation(self):
+        """Test concept validation."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        if hasattr(screen, "set_concept") and hasattr(screen, "available_concepts"):
-            if len(screen.available_concepts) > 0:
-                screen.set_concept(screen.available_concepts[0])
-                assert screen.character_concept is not None
+        if hasattr(screen, "validate_concept"):
+            assert screen.validate_concept("失业的建筑师") is True
+            assert screen.validate_concept("") is False
+            assert screen.validate_concept("   ") is False
+
+
+class TestBuildOnFlyMode:
+    """Test suite for 边玩边建卡 (build-on-fly) mode per GUIDE.md."""
+
+    def test_build_on_fly_mode_exists(self):
+        """Test that build-on-fly mode toggle exists."""
+        from src.frontend.screens.character_creation import CharacterCreationScreen
+
+        screen = CharacterCreationScreen()
+        assert hasattr(screen, "build_on_fly_mode")
+
+    def test_build_on_fly_mode_default(self):
+        """Test that build-on-fly mode is off by default."""
+        from src.frontend.screens.character_creation import CharacterCreationScreen
+
+        screen = CharacterCreationScreen()
+        assert screen.build_on_fly_mode is False
+
+    def test_build_on_fly_allows_no_traits(self):
+        """Test that build-on-fly mode allows starting with no traits."""
+        from src.frontend.screens.character_creation import CharacterCreationScreen
+
+        screen = CharacterCreationScreen()
+        screen.build_on_fly_mode = True
+        screen.set_name("Test Hero")
+        screen.set_concept("失业的建筑师")
+        # In build-on-fly mode, character should be valid without traits
+        # (validation depends on mode)
 
 
 class TestCharacterCreationValidation:
@@ -201,69 +265,90 @@ class TestCharacterCreationValidation:
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        assert hasattr(screen, "validate") or hasattr(screen, "is_valid")
+        assert hasattr(screen, "is_valid")
 
     def test_incomplete_character_fails_validation(self):
         """Test that incomplete character fails validation."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        if hasattr(screen, "is_valid"):
-            # Fresh screen should not be valid (no name, etc.)
-            assert not screen.is_valid()
-
-    def test_complete_character_passes_validation(self):
-        """Test that complete character passes validation."""
-        from src.frontend.screens.character_creation import CharacterCreationScreen
-
-        screen = CharacterCreationScreen()
-        # Set up a complete character
-        if hasattr(screen, "set_name"):
-            screen.set_name("Test Hero")
-        if hasattr(screen, "set_concept") and hasattr(screen, "available_concepts"):
-            if len(screen.available_concepts) > 0:
-                screen.set_concept(screen.available_concepts[0])
-        if hasattr(screen, "is_valid"):
-            # After setting required fields, should be valid
-            # (if all points are spent and name is set)
-            pass  # This depends on implementation
+        # Fresh screen should not be valid (no name, concept)
+        assert screen.is_valid() is False
 
     def test_get_validation_errors(self):
         """Test getting validation error messages."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        if hasattr(screen, "get_validation_errors"):
-            errors = screen.get_validation_errors()
-            assert isinstance(errors, (list, dict))
+        errors = screen.get_validation_errors()
+        assert isinstance(errors, list)
+        # Should have errors for missing name and concept
+        assert len(errors) > 0
 
 
 class TestCharacterCreationOutput:
-    """Test suite for character creation output."""
+    """Test suite for character creation output per GUIDE.md."""
 
     def test_get_character_data(self):
         """Test getting character data dictionary."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        if hasattr(screen, "get_character_data"):
-            data = screen.get_character_data()
-            assert isinstance(data, dict)
+        data = screen.get_character_data()
+        assert isinstance(data, dict)
 
-    def test_character_data_contains_required_fields(self):
-        """Test that character data contains required fields."""
+    def test_character_data_has_trait_based_fields(self):
+        """Test that character data contains trait-based fields per GUIDE.md."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
         screen = CharacterCreationScreen()
-        # Set up character
-        if hasattr(screen, "set_name"):
-            screen.set_name("Test Hero")
+        screen.set_name("Test Hero")
+        screen.set_concept("失业的建筑师")
 
-        if hasattr(screen, "get_character_data"):
-            data = screen.get_character_data()
-            required_fields = ["name", "attributes"]
-            for field in required_fields:
-                assert field in data, f"Missing required field: {field}"
+        data = screen.get_character_data()
+        # Required fields per GUIDE.md
+        assert "name" in data
+        assert "concept" in data
+        assert "traits" in data
+        assert "fate_points" in data
+        assert "tags" in data
+
+        # Should NOT have old attribute system
+        assert "attributes" not in data
+
+    def test_character_data_concept_is_localized(self):
+        """Test that concept is in LocalizedString format."""
+        from src.frontend.screens.character_creation import CharacterCreationScreen
+
+        screen = CharacterCreationScreen()
+        screen.set_name("Test Hero")
+        screen.set_concept("失业的建筑师")
+
+        data = screen.get_character_data()
+        concept = data.get("concept")
+        # Should be a dict with cn/en keys
+        assert isinstance(concept, dict)
+        assert "cn" in concept or "en" in concept
+
+    def test_character_data_fate_points_initial(self):
+        """Test that initial fate points are set correctly."""
+        from src.frontend.screens.character_creation import (
+            INITIAL_FATE_POINTS,
+            CharacterCreationScreen,
+        )
+
+        screen = CharacterCreationScreen()
+        data = screen.get_character_data()
+        assert data.get("fate_points") == INITIAL_FATE_POINTS
+        assert INITIAL_FATE_POINTS == 3  # Per GUIDE.md
+
+    def test_character_data_tags_empty_initially(self):
+        """Test that tags start empty."""
+        from src.frontend.screens.character_creation import CharacterCreationScreen
+
+        screen = CharacterCreationScreen()
+        data = screen.get_character_data()
+        assert data.get("tags") == []
 
 
 class TestCharacterCreationNavigation:
@@ -283,16 +368,6 @@ class TestCharacterCreationNavigation:
         screen = CharacterCreationScreen()
         assert hasattr(screen, "action_confirm") or hasattr(screen, "confirm_character")
 
-    def test_back_returns_to_menu(self):
-        """Test that back action returns to menu."""
-        from src.frontend.screens.character_creation import CharacterCreationScreen
-
-        screen = CharacterCreationScreen()
-        # Note: Screen.app is a read-only property in Textual
-        # We just verify the method exists and is callable
-        if hasattr(screen, "action_back"):
-            assert callable(screen.action_back)
-
 
 class TestCharacterCreationBindings:
     """Test suite for character creation key bindings."""
@@ -301,8 +376,7 @@ class TestCharacterCreationBindings:
         """Test that character creation screen has key bindings."""
         from src.frontend.screens.character_creation import CharacterCreationScreen
 
-        # Should have BINDINGS defined
-        assert hasattr(CharacterCreationScreen, "BINDINGS") or True  # Optional
+        assert hasattr(CharacterCreationScreen, "BINDINGS")
 
     def test_escape_binding_for_back(self):
         """Test that escape key is bound for going back."""
@@ -310,5 +384,47 @@ class TestCharacterCreationBindings:
 
         if hasattr(CharacterCreationScreen, "BINDINGS"):
             binding_keys = [b[0] for b in CharacterCreationScreen.BINDINGS]
-            # Escape should be bound for back action
-            assert "escape" in binding_keys or len(binding_keys) >= 0
+            assert "escape" in binding_keys
+
+
+class TestNoLegacySystem:
+    """Test suite to ensure old PbtA-style system is removed."""
+
+    def test_no_default_attributes_constant(self):
+        """Test that DEFAULT_ATTRIBUTES constant does not exist."""
+        from src.frontend.screens import character_creation
+
+        assert not hasattr(character_creation, "DEFAULT_ATTRIBUTES")
+
+    def test_no_available_concepts_constant(self):
+        """Test that AVAILABLE_CONCEPTS constant does not exist."""
+        from src.frontend.screens import character_creation
+
+        assert not hasattr(character_creation, "AVAILABLE_CONCEPTS")
+
+    def test_no_initial_points_constant(self):
+        """Test that INITIAL_POINTS constant does not exist."""
+        from src.frontend.screens import character_creation
+
+        assert not hasattr(character_creation, "INITIAL_POINTS")
+
+    def test_no_increase_attribute_method(self):
+        """Test that increase_attribute method does not exist."""
+        from src.frontend.screens.character_creation import CharacterCreationScreen
+
+        screen = CharacterCreationScreen()
+        assert not hasattr(screen, "increase_attribute")
+
+    def test_no_decrease_attribute_method(self):
+        """Test that decrease_attribute method does not exist."""
+        from src.frontend.screens.character_creation import CharacterCreationScreen
+
+        screen = CharacterCreationScreen()
+        assert not hasattr(screen, "decrease_attribute")
+
+    def test_no_set_attribute_method(self):
+        """Test that set_attribute method does not exist."""
+        from src.frontend.screens.character_creation import CharacterCreationScreen
+
+        screen = CharacterCreationScreen()
+        assert not hasattr(screen, "set_attribute")

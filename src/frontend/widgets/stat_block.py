@@ -1,13 +1,15 @@
 """
 StatBlock widget for displaying character statistics.
 
-Enhanced features:
+Based on GUIDE.md Section 3 - Pure trait-based system:
 - Character name and concept
-- Attributes with PbtA-style modifiers
-- HP/MP status bars
-- Active effects list
+- Traits (with positive/negative aspects)
+- Tags (status effects like "右腿受伤", "疲惫")
+- Fate points (narrative currency)
 - Current location and NPC info
 - Game phase and turn tracking
+
+NO numerical attributes, NO HP/MP - status tracked via Tags.
 """
 
 from typing import Any, Dict, List, Optional
@@ -16,18 +18,18 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.css.query import NoMatches
 from textual.reactive import reactive
-from textual.widgets import Label, ProgressBar, Static
+from textual.widgets import Label, Static
 
 
 class StatBlock(Static):
     """
     A widget for displaying character statistics.
 
-    Shows:
+    Based on GUIDE.md trait-based design:
     - Character name and concept
-    - Attributes (Strength, Dexterity, etc.)
-    - HP/MP bars
-    - Active effects
+    - Traits with dual aspects
+    - Tags (status effects)
+    - Fate points
     - Current location
     - Nearby NPCs
     - Game phase and turn
@@ -65,77 +67,70 @@ class StatBlock(Static):
         margin-bottom: 1;
     }
 
-    .attribute-row {
+    .fate-points {
+        width: 100%;
         height: 2;
-        width: 100%;
-    }
-
-    .attribute-name {
-        width: 40%;
-        text-style: bold;
-        color: $text;
-    }
-
-    .attribute-value {
-        width: 20%;
         text-align: center;
-        color: $accent;
         text-style: bold;
+        color: $warning;
     }
 
-    .attribute-value.positive {
-        color: $success;
+    .fate-point-star {
+        color: $warning;
     }
 
-    .attribute-value.negative {
-        color: $error;
-    }
-
-    .hp-bar {
-        width: 100%;
-        height: 1;
-        margin: 0;
-    }
-
-    .hp-bar > .bar--bar {
-        color: $error;
-    }
-
-    .mp-bar {
-        width: 100%;
-        height: 1;
-        margin: 0;
-    }
-
-    .mp-bar > .bar--bar {
-        color: $primary;
-    }
-
-    .bar-label {
-        width: 100%;
-        height: 1;
-        text-align: left;
+    .fate-point-star.empty {
         color: $text-muted;
     }
 
-    .effects-list {
+    .traits-list {
+        width: 100%;
+        min-height: 2;
+        max-height: 8;
+        padding: 0 1;
+    }
+
+    .trait-item {
+        height: auto;
+        min-height: 2;
+        width: 100%;
+        margin-bottom: 1;
+        padding: 0 1;
+        border: solid $accent;
+    }
+
+    .trait-name {
+        text-style: bold;
+        color: $accent;
+    }
+
+    .trait-positive {
+        color: $success;
+    }
+
+    .trait-negative {
+        color: $error;
+    }
+
+    .tags-list {
         width: 100%;
         min-height: 2;
         max-height: 4;
         padding: 0 1;
     }
 
-    .effect-item {
+    .tag-item {
         height: 1;
         color: $warning;
+        padding: 0 1;
     }
 
-    .effect-item.buff {
-        color: $success;
-    }
-
-    .effect-item.debuff {
+    .tag-item.negative {
         color: $error;
+    }
+
+    .tag-item.positive {
+        color: $success;
     }
 
     .npc-list {
@@ -161,6 +156,11 @@ class StatBlock(Static):
     .npc-item.neutral {
         color: $warning;
     }
+
+    .no-items {
+        color: $text-muted;
+        height: 1;
+    }
     """
 
     # Reactive character data
@@ -170,89 +170,73 @@ class StatBlock(Static):
     def __init__(self, *args, **kwargs) -> None:
         """Initialize the StatBlock."""
         super().__init__(*args, **kwargs)
-        self._hp_current = 10
-        self._hp_max = 10
-        self._mp_current = 5
-        self._mp_max = 5
-        self._effects: List[Dict[str, Any]] = []
+        self._fate_points = 3
+        self._max_fate_points = 5
+        self._traits: List[Dict[str, Any]] = []
+        self._tags: List[str] = []
         self._nearby_npcs: List[Dict[str, Any]] = []
 
     def compose(self) -> ComposeResult:
         """Compose the stat block layout."""
         with Vertical():
             # Character Info Section
-            yield Label("⚔️ Character", classes="section-title")
+            yield Label("⚔️ 角色 / Character", classes="section-title")
 
             with Horizontal(classes="stat-row"):
-                yield Label("Name:", classes="stat-label")
+                yield Label("名称:", classes="stat-label")
                 yield Label("Unknown", id="char-name", classes="stat-value")
 
             with Horizontal(classes="stat-row"):
-                yield Label("Concept:", classes="stat-label")
+                yield Label("概念:", classes="stat-label")
                 yield Label("Unknown", id="char-concept", classes="stat-value")
 
-            # Attributes Section
-            yield Label("📊 Attributes", classes="section-title")
+            # Fate Points Section
+            yield Label("⭐ 命运点 / Fate Points", classes="section-title")
+            yield Label(
+                self._render_fate_points_stars(), id="fate-points-display", classes="fate-points"
+            )
 
-            with Horizontal(classes="attribute-row"):
-                yield Label("Strength", classes="attribute-name")
-                yield Label("+0", id="attr-strength", classes="attribute-value")
-                yield Label("Dexterity", classes="attribute-name")
-                yield Label("+0", id="attr-dexterity", classes="attribute-value")
+            # Traits Section
+            yield Label("📜 特质 / Traits", classes="section-title")
+            with Vertical(id="traits-container", classes="traits-list"):
+                yield Label("无特质 / No traits", id="no-traits", classes="no-items")
 
-            with Horizontal(classes="attribute-row"):
-                yield Label("Intelligence", classes="attribute-name")
-                yield Label("+0", id="attr-intelligence", classes="attribute-value")
-                yield Label("Charisma", classes="attribute-name")
-                yield Label("+0", id="attr-charisma", classes="attribute-value")
-
-            with Horizontal(classes="attribute-row"):
-                yield Label("Perception", classes="attribute-name")
-                yield Label("+0", id="attr-perception", classes="attribute-value")
-                yield Label("", classes="attribute-name")
-                yield Label("", classes="attribute-value")
-
-            # Status Bars Section
-            yield Label("❤️ Status", classes="section-title")
-
-            yield Label("HP: 10/10", id="hp-label", classes="bar-label")
-            yield ProgressBar(total=100, show_eta=False, id="hp-bar", classes="hp-bar")
-
-            yield Label("MP: 5/5", id="mp-label", classes="bar-label")
-            yield ProgressBar(total=100, show_eta=False, id="mp-bar", classes="mp-bar")
-
-            # Effects Section
-            yield Label("✨ Active Effects", classes="section-title")
-            with Vertical(id="effects-container", classes="effects-list"):
-                yield Label("None", id="no-effects", classes="effect-item")
+            # Tags Section (Status Effects)
+            yield Label("🏷️ 状态标签 / Status Tags", classes="section-title")
+            with Vertical(id="tags-container", classes="tags-list"):
+                yield Label("无状态 / No status effects", id="no-tags", classes="no-items")
 
             # Location & NPCs Section
-            yield Label("📍 Location", classes="section-title")
+            yield Label("📍 位置 / Location", classes="section-title")
 
             with Horizontal(classes="stat-row"):
-                yield Label("Location:", classes="stat-label")
+                yield Label("当前:", classes="stat-label")
                 yield Label("Unknown", id="char-location", classes="stat-value")
 
-            yield Label("👥 Nearby", classes="section-title")
+            yield Label("👥 附近 / Nearby", classes="section-title")
             with Vertical(id="npcs-container", classes="npc-list"):
-                yield Label("No one nearby", id="no-npcs", classes="npc-item")
+                yield Label("无人附近 / No one nearby", id="no-npcs", classes="no-items")
 
             # Game State Section
-            yield Label("🎮 Game", classes="section-title")
+            yield Label("🎮 游戏 / Game", classes="section-title")
 
             with Horizontal(classes="stat-row"):
-                yield Label("Phase:", classes="stat-label")
+                yield Label("阶段:", classes="stat-label")
                 yield Label("Waiting", id="game-phase", classes="stat-value")
 
             with Horizontal(classes="stat-row"):
-                yield Label("Turn:", classes="stat-label")
+                yield Label("回合:", classes="stat-label")
                 yield Label("0", id="turn-count", classes="stat-value")
 
     def on_mount(self) -> None:
         """Called when widget mounts."""
-        # Initialize progress bars
-        self._update_hp_bar()
-        self._update_mp_bar()
+        pass
+
+    def _render_fate_points_stars(self) -> str:
+        """Render fate points as stars."""
+        filled = "★" * self._fate_points
+        empty = "☆" * (self._max_fate_points - self._fate_points)
+        return f"{filled}{empty} ({self._fate_points}/{self._max_fate_points})"
 
     def update_character(self, character_data: Dict[str, Any]) -> None:
         """
@@ -262,15 +246,18 @@ class StatBlock(Static):
             character_data: Character data dictionary with structure:
                 {
                     "name": str,
-                    "concept": str or dict,
-                    "attributes": {
-                        "strength": int,
-                        "dexterity": int,
+                    "concept": str or dict (LocalizedString),
+                    "traits": [
+                        {
+                            "name": str or dict,
+                            "description": str or dict,
+                            "positive_aspect": str or dict,
+                            "negative_aspect": str or dict
+                        },
                         ...
-                    },
-                    "hp": {"current": int, "max": int},
-                    "mp": {"current": int, "max": int},
-                    "effects": [{"name": str, "type": str}, ...]
+                    ],
+                    "fate_points": int,
+                    "tags": [str, ...]
                 }
         """
         self.character_data = character_data
@@ -292,40 +279,43 @@ class StatBlock(Static):
         self.game_state_data = game_state
         self._render_game_state()
 
-    def update_hp(self, current: int, max_hp: int) -> None:
+    def update_fate_points(self, current: int, maximum: int = 5) -> None:
         """
-        Update HP values.
+        Update fate points display.
 
         Args:
-            current: Current HP
-            max_hp: Maximum HP
+            current: Current fate points (0-5)
+            maximum: Maximum fate points (default 5)
         """
-        self._hp_current = max(0, min(current, max_hp))
-        self._hp_max = max_hp
-        self._update_hp_bar()
+        self._fate_points = max(0, min(current, maximum))
+        self._max_fate_points = maximum
+        self._update_fate_points_display()
 
-    def update_mp(self, current: int, max_mp: int) -> None:
+    def update_traits(self, traits: List[Dict[str, Any]]) -> None:
         """
-        Update MP values.
-
-        Args:
-            current: Current MP
-            max_mp: Maximum MP
-        """
-        self._mp_current = max(0, min(current, max_mp))
-        self._mp_max = max_mp
-        self._update_mp_bar()
-
-    def update_effects(self, effects: List[Dict[str, Any]]) -> None:
-        """
-        Update active effects list.
+        Update traits list.
 
         Args:
-            effects: List of effect dictionaries with structure:
-                {"name": str, "type": "buff"|"debuff"|"neutral", "duration": int}
+            traits: List of trait dictionaries with structure:
+                {
+                    "name": str or dict,
+                    "description": str or dict,
+                    "positive_aspect": str or dict,
+                    "negative_aspect": str or dict
+                }
         """
-        self._effects = effects
-        self._render_effects()
+        self._traits = traits
+        self._render_traits()
+
+    def update_tags(self, tags: List[str]) -> None:
+        """
+        Update status tags list.
+
+        Args:
+            tags: List of tag strings (e.g., ["右腿受伤", "疲惫"])
+        """
+        self._tags = tags
+        self._render_tags()
 
     def update_nearby_npcs(self, npcs: List[Dict[str, Any]]) -> None:
         """
@@ -338,11 +328,20 @@ class StatBlock(Static):
         self._nearby_npcs = npcs
         self._render_npcs()
 
-    def _format_attribute_value(self, value: int) -> str:
-        """Format attribute value with sign."""
-        if value > 0:
-            return f"+{value}"
-        return str(value)
+    def _get_localized_text(self, value: Any, lang: str = "cn") -> str:
+        """
+        Get localized text from value.
+
+        Args:
+            value: String or dict with language keys
+            lang: Preferred language code
+
+        Returns:
+            Localized text string
+        """
+        if isinstance(value, dict):
+            return value.get(lang, value.get("en", value.get("cn", str(value))))
+        return str(value) if value else ""
 
     def _render_character_data(self) -> None:
         """Render character data to the display."""
@@ -354,46 +353,24 @@ class StatBlock(Static):
             name = self.character_data.get("name", "Unknown")
             self.query_one("#char-name", Label).update(name)
 
-            # Update concept
+            # Update concept (supports LocalizedString)
             concept = self.character_data.get("concept", {})
-            if isinstance(concept, dict):
-                # Multi-language concept
-                concept_text = concept.get("en", concept.get("cn", "Unknown"))
-            else:
-                concept_text = str(concept) if concept else "Unknown"
+            concept_text = self._get_localized_text(concept)
+            if not concept_text:
+                concept_text = "Unknown"
             self.query_one("#char-concept", Label).update(concept_text)
 
-            # Update attributes
-            attributes = self.character_data.get("attributes", {})
-            for attr_name in ["strength", "dexterity", "intelligence", "charisma", "perception"]:
-                value = attributes.get(attr_name, 0)
-                formatted = self._format_attribute_value(value)
-                try:
-                    attr_label = self.query_one(f"#attr-{attr_name}", Label)
-                    attr_label.update(formatted)
-                    # Update class for coloring
-                    attr_label.remove_class("positive")
-                    attr_label.remove_class("negative")
-                    if value > 0:
-                        attr_label.add_class("positive")
-                    elif value < 0:
-                        attr_label.add_class("negative")
-                except NoMatches:
-                    pass
+            # Update fate points
+            fate_points = self.character_data.get("fate_points", 3)
+            self.update_fate_points(fate_points)
 
-            # Update HP/MP if provided
-            hp_data = self.character_data.get("hp", {})
-            if hp_data:
-                self.update_hp(hp_data.get("current", 10), hp_data.get("max", 10))
+            # Update traits
+            traits = self.character_data.get("traits", [])
+            self.update_traits(traits)
 
-            mp_data = self.character_data.get("mp", {})
-            if mp_data:
-                self.update_mp(mp_data.get("current", 5), mp_data.get("max", 5))
-
-            # Update effects if provided
-            effects = self.character_data.get("effects", [])
-            if effects:
-                self.update_effects(effects)
+            # Update tags
+            tags = self.character_data.get("tags", [])
+            self.update_tags(tags)
 
         except NoMatches:
             # Widgets not ready yet
@@ -426,70 +403,82 @@ class StatBlock(Static):
             # Widgets not ready yet
             pass
 
-    def _update_hp_bar(self) -> None:
-        """Update HP progress bar."""
+    def _update_fate_points_display(self) -> None:
+        """Update fate points display."""
         try:
-            hp_label = self.query_one("#hp-label", Label)
-            hp_bar = self.query_one("#hp-bar", ProgressBar)
-
-            hp_label.update(f"HP: {self._hp_current}/{self._hp_max}")
-
-            # Calculate percentage
-            if self._hp_max > 0:
-                percentage = (self._hp_current / self._hp_max) * 100
-            else:
-                percentage = 0
-
-            hp_bar.update(progress=percentage)
+            display = self.query_one("#fate-points-display", Label)
+            display.update(self._render_fate_points_stars())
         except NoMatches:
             pass
 
-    def _update_mp_bar(self) -> None:
-        """Update MP progress bar."""
+    def _render_traits(self) -> None:
+        """Render traits list."""
         try:
-            mp_label = self.query_one("#mp-label", Label)
-            mp_bar = self.query_one("#mp-bar", ProgressBar)
+            container = self.query_one("#traits-container", Vertical)
+            no_traits_label = self.query_one("#no-traits", Label)
 
-            mp_label.update(f"MP: {self._mp_current}/{self._mp_max}")
-
-            # Calculate percentage
-            if self._mp_max > 0:
-                percentage = (self._mp_current / self._mp_max) * 100
-            else:
-                percentage = 0
-
-            mp_bar.update(progress=percentage)
-        except NoMatches:
-            pass
-
-    def _render_effects(self) -> None:
-        """Render active effects list."""
-        try:
-            container = self.query_one("#effects-container", Vertical)
-            no_effects_label = self.query_one("#no-effects", Label)
-
-            # Clear existing effect items (except the no-effects label)
+            # Clear existing trait items (except the no-traits label)
             for child in list(container.children):
-                if child.id != "no-effects":
+                if child.id != "no-traits":
                     child.remove()
 
-            if not self._effects:
-                no_effects_label.styles.display = "block"
+            if not self._traits:
+                no_traits_label.styles.display = "block"
             else:
-                no_effects_label.styles.display = "none"
-                for effect in self._effects[:4]:  # Show max 4 effects
-                    effect_name = effect.get("name", "Unknown")
-                    effect_type = effect.get("type", "neutral")
-                    duration = effect.get("duration", 0)
+                no_traits_label.styles.display = "none"
+                for i, trait in enumerate(self._traits[:4]):  # Show max 4 traits
+                    trait_name = self._get_localized_text(trait.get("name", ""))
+                    positive = self._get_localized_text(trait.get("positive_aspect", ""))
+                    negative = self._get_localized_text(trait.get("negative_aspect", ""))
 
-                    # Format effect text
-                    if duration > 0:
-                        text = f"• {effect_name} ({duration} turns)"
-                    else:
-                        text = f"• {effect_name}"
+                    if not trait_name:
+                        continue
 
-                    # Create label with appropriate class
-                    label = Label(text, classes=f"effect-item {effect_type}")
+                    # Create trait display with all aspects
+                    with Vertical(classes="trait-item"):
+                        name_label = Label(f"[bold]{trait_name}[/bold]", classes="trait-name")
+                        container.mount(name_label)
+
+                        if positive:
+                            pos_label = Label(f"  ✓ {positive}", classes="trait-positive")
+                            container.mount(pos_label)
+
+                        if negative:
+                            neg_label = Label(f"  ✗ {negative}", classes="trait-negative")
+                            container.mount(neg_label)
+
+        except NoMatches:
+            pass
+
+    def _render_tags(self) -> None:
+        """Render status tags list."""
+        try:
+            container = self.query_one("#tags-container", Vertical)
+            no_tags_label = self.query_one("#no-tags", Label)
+
+            # Clear existing tag items (except the no-tags label)
+            for child in list(container.children):
+                if child.id != "no-tags":
+                    child.remove()
+
+            if not self._tags:
+                no_tags_label.styles.display = "block"
+            else:
+                no_tags_label.styles.display = "none"
+                for tag in self._tags[:6]:  # Show max 6 tags
+                    # Determine tag type based on content (simple heuristic)
+                    tag_class = "tag-item"
+                    if any(
+                        word in tag
+                        for word in ["受伤", "中毒", "疲惫", "眩晕", "injured", "poisoned"]
+                    ):
+                        tag_class += " negative"
+                    elif any(
+                        word in tag for word in ["增强", "祝福", "激励", "blessed", "inspired"]
+                    ):
+                        tag_class += " positive"
+
+                    label = Label(f"• {tag}", classes=tag_class)
                     container.mount(label)
 
         except NoMatches:
@@ -530,3 +519,41 @@ class StatBlock(Static):
 
         except NoMatches:
             pass
+
+    # Legacy compatibility methods (deprecated - for migration only)
+    def update_hp(self, current: int, max_hp: int) -> None:
+        """
+        DEPRECATED: HP is not used in trait-based system.
+        Status is tracked via tags instead.
+
+        This method is kept for backward compatibility during migration.
+        """
+        # Convert HP loss to a tag
+        if current < max_hp:
+            percent = current / max_hp if max_hp > 0 else 0
+            if percent < 0.25:
+                if "重伤" not in self._tags:
+                    self._tags.append("重伤")
+            elif percent < 0.5:
+                if "受伤" not in self._tags:
+                    self._tags.append("受伤")
+            self._render_tags()
+
+    def update_mp(self, current: int, max_mp: int) -> None:
+        """
+        DEPRECATED: MP is not used in trait-based system.
+        This method is kept for backward compatibility during migration.
+        """
+        pass
+
+    def update_effects(self, effects: List[Dict[str, Any]]) -> None:
+        """
+        DEPRECATED: Use update_tags instead.
+        Convert effects to tags for backward compatibility.
+        """
+        # Convert effects to tags
+        for effect in effects:
+            effect_name = effect.get("name", "")
+            if effect_name and effect_name not in self._tags:
+                self._tags.append(effect_name)
+        self._render_tags()
