@@ -5,17 +5,28 @@ Handles:
 - REST API calls for game state
 - WebSocket streaming for real-time updates
 - Connection management
+- Automatic reconnection
 """
 
 import asyncio
 import json
 import logging
-from typing import Any, Callable, Optional, Dict, List
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urljoin
 
 import httpx
 import websockets
 from websockets.exceptions import ConnectionClosed
+
+
+class ConnectionState(Enum):
+    """Connection state for the GameClient."""
+
+    DISCONNECTED = "disconnected"
+    CONNECTING = "connecting"
+    CONNECTED = "connected"
+    RECONNECTING = "reconnecting"
 
 
 class GameClient:
@@ -48,22 +59,125 @@ class GameClient:
         self._ws_connection: Optional[websockets.WebSocketServerProtocol] = None
         self._message_handlers: List[Callable[[Dict[str, Any]], None]] = []
 
+        # Connection state management
+        self._connection_state: ConnectionState = ConnectionState.DISCONNECTED
+        self._auto_reconnect: bool = True
+        self._reconnect_attempts: int = 0
+        self._max_reconnect_attempts: int = 5
+        self._reconnect_delay: float = 1.0  # seconds
+        self._listen_task: Optional[asyncio.Task] = None
+
+        # Callback for connection state changes
+        self.on_connection_state_change: Optional[Callable[[ConnectionState], None]] = None
+
+    @property
+    def connection_state(self) -> ConnectionState:
+        """Get current connection state."""
+        return self._connection_state
+
+    @property
+    def is_connected(self) -> bool:
+        """Check if HTTP client is connected."""
+        return self._http_client is not None
+
+    @property
+    def is_websocket_connected(self) -> bool:
+        """Check if WebSocket is connected."""
+        if self._ws_connection is None:
+            return False
+        # Check if connection has 'open' attribute (websockets library)
+        return getattr(self._ws_connection, "open", False)
+
+    def _set_connection_state(self, state: ConnectionState) -> None:
+        """Set connection state and notify callback."""
+        self._connection_state = state
+        if self.on_connection_state_change:
+            try:
+                self.on_connection_state_change(state)
+            except Exception as e:
+                logging.error(f"Connection state callback error: {e}")
+
     async def connect(self) -> None:
         """Establish HTTP connection to backend."""
         if not self._http_client:
+            self._set_connection_state(ConnectionState.CONNECTING)
             self._http_client = httpx.AsyncClient(timeout=30.0)
+            self._set_connection_state(ConnectionState.CONNECTED)
             logging.info(f"Connected to {self.base_url}")
 
     async def disconnect(self) -> None:
         """Close all connections."""
+        # Cancel listen task if running
+        if self._listen_task and not self._listen_task.done():
+            self._listen_task.cancel()
+            try:
+                await self._listen_task
+            except asyncio.CancelledError:
+                pass
+            self._listen_task = None
+
         if self._ws_connection:
             await self._ws_connection.close()
+            self._ws_connection = None
 
         if self._http_client:
             await self._http_client.aclose()
             self._http_client = None
 
+        self._set_connection_state(ConnectionState.DISCONNECTED)
         logging.info("Disconnected from backend")
+
+    async def reconnect_websocket(self) -> bool:
+        """
+        Attempt to reconnect WebSocket connection.
+
+        Returns:
+            True if reconnection successful, False otherwise
+        """
+        if not self.session_id:
+            logging.warning("Cannot reconnect: no session ID")
+            return False
+
+        self._set_connection_state(ConnectionState.RECONNECTING)
+
+        try:
+            ws_url = f"{self.ws_url}/ws/game/{self.session_id}"
+            self._ws_connection = await websockets.connect(ws_url)
+
+            # Restart listening task
+            self._listen_task = asyncio.create_task(self._listen_websocket())
+
+            # Reset reconnect attempts on success
+            self._reconnect_attempts = 0
+            self._set_connection_state(ConnectionState.CONNECTED)
+
+            logging.info(f"WebSocket reconnected: {ws_url}")
+            return True
+
+        except Exception as e:
+            logging.error(f"WebSocket reconnection failed: {e}")
+            self._reconnect_attempts += 1
+            self._set_connection_state(ConnectionState.DISCONNECTED)
+            return False
+
+    async def _on_connection_lost(self) -> None:
+        """Handle connection loss - attempt reconnection if enabled."""
+        if not self._auto_reconnect:
+            return
+
+        if self._reconnect_attempts >= self._max_reconnect_attempts:
+            logging.error(f"Max reconnection attempts ({self._max_reconnect_attempts}) reached")
+            self._set_connection_state(ConnectionState.DISCONNECTED)
+            return
+
+        # Exponential backoff
+        delay = self._reconnect_delay * (2**self._reconnect_attempts)
+        logging.info(
+            f"Reconnecting in {delay}s (attempt {self._reconnect_attempts + 1}/{self._max_reconnect_attempts})"
+        )
+
+        await asyncio.sleep(delay)
+        await self.reconnect_websocket()
 
     async def start_new_game(self, world_pack_id: str = "demo_pack") -> bool:
         """
@@ -116,7 +230,7 @@ class GameClient:
             self._ws_connection = await websockets.connect(ws_url)
 
             # Start listening for messages
-            asyncio.create_task(self._listen_websocket())
+            self._listen_task = asyncio.create_task(self._listen_websocket())
 
             logging.info(f"WebSocket connected: {ws_url}")
 
@@ -137,8 +251,13 @@ class GameClient:
 
         except ConnectionClosed:
             logging.info("WebSocket connection closed")
+            await self._on_connection_lost()
+        except asyncio.CancelledError:
+            logging.info("WebSocket listener cancelled")
+            raise
         except Exception as e:
             logging.error(f"WebSocket error: {e}")
+            await self._on_connection_lost()
 
     async def _handle_message(self, message: Dict[str, Any]) -> None:
         """
@@ -151,26 +270,44 @@ class GameClient:
 
         if message_type == "status":
             # Status update (e.g., "processing", "narrating")
-            self.log_message(f"[dim]{message.get('content', '')}[/dim]")
+            data = message.get("data", {})
+            status_message = data.get("message", "")
+            if status_message:
+                self.log_message(f"[dim]{status_message}[/dim]")
 
         elif message_type == "content":
-            # Narrative content
-            content = message.get("content", "")
-            self.log_message(content)
+            # Narrative content (streaming chunks)
+            data = message.get("data", {})
+            chunk = data.get("chunk", "")
+            if chunk:
+                self.log_message(chunk)
+
+        elif message_type == "complete":
+            # Complete response from server
+            data = message.get("data", {})
+            content = data.get("content", "")
+            if content:
+                self.log_message(content)
+            # Update game state if provided
+            if "metadata" in data:
+                self._update_from_metadata(data["metadata"])
 
         elif message_type == "dice_check":
             # Dice check required
-            check_data = message.get("data", {})
-            self._handle_dice_check(check_data)
+            data = message.get("data", {})
+            check_request = data.get("check_request", {})
+            self._handle_dice_check(check_request)
 
         elif message_type == "phase":
             # Game phase change
-            phase = message.get("phase")
+            data = message.get("data", {})
+            phase = data.get("phase", "")
             self.log_message(f"[dim]Phase: {phase}[/dim]")
 
         elif message_type == "error":
             # Error message
-            error_msg = message.get("error", "Unknown error")
+            data = message.get("data", {})
+            error_msg = data.get("error", "Unknown error")
             self.log_message(f"[red]Error: {error_msg}[/red]")
 
         # Notify registered handlers
@@ -179,6 +316,17 @@ class GameClient:
                 handler(message)
             except Exception as e:
                 logging.error(f"Handler error: {e}")
+
+    def _update_from_metadata(self, metadata: Dict[str, Any]) -> None:
+        """
+        Update client state from response metadata.
+
+        Args:
+            metadata: Response metadata from server
+        """
+        # Update game state from metadata if available
+        if "game_state" in metadata:
+            self.game_state = metadata["game_state"]
 
     def _handle_dice_check(self, check_data: Dict[str, Any]) -> None:
         """
@@ -229,12 +377,21 @@ class GameClient:
             logging.error(f"Failed to send input: {e}")
             return False
 
-    async def submit_dice_result(self, result: int) -> bool:
+    async def submit_dice_result(
+        self,
+        result: int,
+        all_rolls: Optional[List[int]] = None,
+        kept_rolls: Optional[List[int]] = None,
+        outcome: str = "unknown",
+    ) -> bool:
         """
         Submit dice roll result to backend.
 
         Args:
-            result: The dice roll result
+            result: The dice roll total
+            all_rolls: All dice rolled (e.g., [3, 5, 6] for 3d6)
+            kept_rolls: Dice kept after advantage/disadvantage
+            outcome: Roll outcome ("critical", "success", "partial", "failure")
 
         Returns:
             True if successful, False otherwise
@@ -246,6 +403,9 @@ class GameClient:
             message = {
                 "type": "dice_result",
                 "result": result,
+                "all_rolls": all_rolls or [result],
+                "kept_rolls": kept_rolls or [result],
+                "outcome": outcome,
             }
 
             await self._ws_connection.send(json.dumps(message))
@@ -266,9 +426,7 @@ class GameClient:
             return None
 
         try:
-            response = await self._http_client.get(
-                f"/api/v1/game/{self.session_id}/state"
-            )
+            response = await self._http_client.get(f"/api/v1/game/{self.session_id}/state")
 
             if response.status_code == 200:
                 return response.json()

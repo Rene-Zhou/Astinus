@@ -1,7 +1,8 @@
 """Tests for AstinusApp."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from src.frontend.app import AstinusApp
 
@@ -82,10 +83,20 @@ class TestAstinusApp:
         app.client.submit_dice_result = AsyncMock(return_value=True)
         app.game_session_id = "test-session"
 
-        success = await app.submit_dice_result(15)
+        success = await app.submit_dice_result(
+            result=10,
+            all_rolls=[4, 6],
+            kept_rolls=[4, 6],
+            outcome="success",
+        )
 
         assert success is True
-        app.client.submit_dice_result.assert_called_once_with(15)
+        app.client.submit_dice_result.assert_called_once_with(
+            result=10,
+            all_rolls=[4, 6],
+            kept_rolls=[4, 6],
+            outcome="success",
+        )
 
     @pytest.mark.asyncio
     async def test_submit_dice_result_no_session(self):
@@ -132,7 +143,7 @@ class TestAstinusApp:
         app = AstinusApp()
 
         # Verify BINDINGS class variable is defined
-        assert hasattr(AstinusApp, 'BINDINGS')
+        assert hasattr(AstinusApp, "BINDINGS")
         assert len(AstinusApp.BINDINGS) == 4
 
         # Verify expected bindings exist

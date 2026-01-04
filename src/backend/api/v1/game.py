@@ -4,11 +4,100 @@ Game API v1 routes.
 Provides endpoints for game actions, state management, and dice operations.
 """
 
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v1", tags=["game"])
+
+
+class NewGameRequest(BaseModel):
+    """Request model for starting a new game."""
+
+    world_pack_id: str = Field(default="demo_pack", description="World pack to load")
+    player_name: str = Field(default="玩家", description="Player's name")
+    player_concept: str = Field(default="冒险者", description="Player's character concept")
+
+
+class NewGameResponse(BaseModel):
+    """Response model for new game creation."""
+
+    session_id: str
+    player: dict[str, Any]
+    game_state: dict[str, Any]
+    message: str
+
+
+@router.post("/game/new", response_model=NewGameResponse)
+async def start_new_game(request: NewGameRequest):
+    """
+    Start a new game session.
+
+    Creates a new game session with the specified world pack and player info.
+
+    Args:
+        request: NewGameRequest containing world_pack_id and player info
+
+    Returns:
+        NewGameResponse with session_id, player data, and initial game state
+    """
+    from src.backend.main import gm_agent
+
+    if gm_agent is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Game engine not initialized",
+        )
+
+    try:
+        # Generate a new session ID
+        session_id = str(uuid.uuid4())
+
+        # Update game state with new session
+        gm_agent.game_state.session_id = session_id
+        gm_agent.game_state.world_pack_id = request.world_pack_id
+
+        # Update player info if provided
+        if request.player_name:
+            gm_agent.game_state.player.name = request.player_name
+
+        # Reset game state for new session
+        gm_agent.game_state.messages = []
+        gm_agent.game_state.turn_count = 0
+        gm_agent.game_state.last_check_result = None
+        gm_agent.game_state.temp_context = {}
+
+        # Build player data response
+        player_data = {
+            "name": gm_agent.game_state.player.name,
+            "concept": gm_agent.game_state.player.concept.model_dump(),
+            "traits": [t.model_dump() for t in gm_agent.game_state.player.traits],
+            "tags": gm_agent.game_state.player.tags,
+            "fate_points": gm_agent.game_state.player.fate_points,
+        }
+
+        # Build game state response
+        game_state_data = {
+            "current_location": gm_agent.game_state.current_location,
+            "current_phase": gm_agent.game_state.current_phase.value,
+            "turn_count": gm_agent.game_state.turn_count,
+            "active_npc_ids": gm_agent.game_state.active_npc_ids,
+        }
+
+        return NewGameResponse(
+            session_id=session_id,
+            player=player_data,
+            game_state=game_state_data,
+            message="Game session created successfully",
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create game session: {str(exc)}",
+        ) from exc
 
 
 @router.post("/game/action")
@@ -46,10 +135,12 @@ async def process_player_action(
             )
 
         # Process through GM Agent
-        result = await gm_agent.process({
-            "player_input": player_input,
-            "lang": lang,
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": player_input,
+                "lang": lang,
+            }
+        )
 
         # Return response
         return {

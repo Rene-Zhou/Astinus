@@ -4,16 +4,16 @@ Textual TUI Application for Astinus.
 Main application entry point that manages screens, state, and UI flow.
 """
 
-from typing import Optional
+from typing import List, Optional
 
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
 from textual.widgets import Footer, Header
 
-from src.frontend.screens.game_screen import GameScreen
-from src.frontend.screens.character_screen import CharacterScreen
-from src.frontend.screens.inventory_screen import InventoryScreen
 from src.frontend.client import GameClient
+from src.frontend.screens.character_screen import CharacterScreen
+from src.frontend.screens.game_screen import GameScreen
+from src.frontend.screens.inventory_screen import InventoryScreen
 
 
 class AstinusApp(App):
@@ -196,12 +196,21 @@ class AstinusApp(App):
             self.log(f"Failed to send input: {e}")
             return False
 
-    async def submit_dice_result(self, result: int) -> bool:
+    async def submit_dice_result(
+        self,
+        result: int,
+        all_rolls: Optional[List[int]] = None,
+        kept_rolls: Optional[List[int]] = None,
+        outcome: str = "unknown",
+    ) -> bool:
         """
         Submit dice roll result to backend.
 
         Args:
-            result: The dice roll result
+            result: The dice roll total
+            all_rolls: All dice rolled
+            kept_rolls: Dice kept after advantage/disadvantage
+            outcome: Roll outcome string
 
         Returns:
             True if successful, False otherwise
@@ -210,7 +219,12 @@ class AstinusApp(App):
             return False
 
         try:
-            await self.client.submit_dice_result(result)
+            await self.client.submit_dice_result(
+                result=result,
+                all_rolls=all_rolls,
+                kept_rolls=kept_rolls,
+                outcome=outcome,
+            )
             return True
         except Exception as e:
             self.log(f"Failed to submit dice result: {e}")

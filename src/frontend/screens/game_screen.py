@@ -5,18 +5,24 @@ Displays:
 - Character stats
 - Chat/narrative log
 - Dice roller (when needed)
+
+Handles:
+- Player input → WebSocket → GM Agent
+- Dice check requests from backend
+- Dice result submission
 """
 
-from typing import Dict, Any, Optional
 import asyncio
+from typing import Any, Dict, Optional
+
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Label, Button, Static
+from textual.widgets import Button, Label, Static
 
 from src.frontend.widgets.chat_box import ChatBox
-from src.frontend.widgets.stat_block import StatBlock
 from src.frontend.widgets.dice_roller import DiceRoller
+from src.frontend.widgets.stat_block import StatBlock
 
 
 class GameScreen(Screen):
@@ -119,34 +125,49 @@ class GameScreen(Screen):
         Handle incoming WebSocket messages.
 
         Args:
-            message: Message data
+            message: Message data with format:
+                {"type": "...", "data": {...}}
         """
         message_type = message.get("type")
+        data = message.get("data", {})
 
         if message_type == "status":
-            # Status update
-            content = message.get("content", "")
-            self.add_system_message(content)
+            # Status update (processing, narrating, etc.)
+            status_message = data.get("message", "")
+            if status_message:
+                self.add_system_message(f"[dim]{status_message}[/dim]")
 
         elif message_type == "content":
-            # Narrative content
-            content = message.get("content", "")
-            self.add_gm_message(content)
+            # Streaming content chunk
+            chunk = data.get("chunk", "")
+            if chunk:
+                # For streaming, append to existing message
+                self._append_streaming_content(chunk)
+
+        elif message_type == "complete":
+            # Complete response from server
+            content = data.get("content", "")
+            success = data.get("success", True)
+            if content:
+                if success:
+                    self.add_gm_message(content)
+                else:
+                    self.add_system_message(f"[red]{content}[/red]")
 
         elif message_type == "dice_check":
-            # Dice check required
-            check_data = message.get("data", {})
-            self.show_dice_check(check_data)
+            # Dice check request from Rule Agent
+            check_request = data.get("check_request", {})
+            self.show_dice_check(check_request)
 
         elif message_type == "phase":
             # Game phase change
-            phase = message.get("phase")
+            phase = data.get("phase", "")
             self.update_phase(phase)
 
         elif message_type == "error":
             # Error message
-            error_msg = message.get("error", "Unknown error")
-            self.add_system_message(f"Error: {error_msg}")
+            error_msg = data.get("error", "Unknown error")
+            self.add_system_message(f"[red]Error: {error_msg}[/red]")
 
     def add_gm_message(self, text: str) -> None:
         """
@@ -167,6 +188,27 @@ class GameScreen(Screen):
         """
         chat_box = self.query_one("#chat-box", ChatBox)
         chat_box.add_system_message(text)
+
+    def _append_streaming_content(self, chunk: str) -> None:
+        """
+        Append streaming content chunk.
+
+        For typewriter effect, appends to the current streaming message.
+
+        Args:
+            chunk: Content chunk to append
+        """
+        # For now, just add as message - could enhance for true streaming
+        chat_box = self.query_one("#chat-box", ChatBox)
+        # Use a streaming-specific method if available, otherwise log
+        try:
+            if hasattr(chat_box, "append_streaming"):
+                chat_box.append_streaming(chunk)
+            else:
+                # Fallback: accumulate in temp and show on complete
+                pass
+        except Exception as e:
+            self.log(f"Streaming error: {e}")
 
     def add_player_message(self, text: str) -> None:
         """
@@ -266,13 +308,34 @@ class GameScreen(Screen):
         Handle dice result submission.
 
         Args:
-            event: Submit result event
+            event: Submit result event containing:
+                - result: Total roll value
+                - all_rolls: All dice rolled
+                - kept_rolls: Dice kept after advantage/disadvantage
+                - outcome: Roll outcome string
         """
         result = event.result
+        all_rolls = event.all_rolls
+        kept_rolls = event.kept_rolls
+        outcome = event.outcome
+
+        # Add message showing the roll
+        roll_msg = f"🎲 Rolled: {all_rolls}"
+        if all_rolls != kept_rolls:
+            roll_msg += f" → kept {kept_rolls}"
+        roll_msg += f" = {result} ({outcome})"
+        self.add_player_message(roll_msg)
 
         # Hide dice roller
         self.hide_dice_check()
 
         # Submit result to backend
         if self.app:
-            asyncio.create_task(self.app.submit_dice_result(result))
+            asyncio.create_task(
+                self.app.submit_dice_result(
+                    result=result,
+                    all_rolls=all_rolls,
+                    kept_rolls=kept_rolls,
+                    outcome=outcome,
+                )
+            )

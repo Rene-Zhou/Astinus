@@ -26,6 +26,8 @@ class MessageType(str, Enum):
     COMPLETE = "complete"  # Final complete response
     ERROR = "error"  # Error message
     PHASE = "phase"  # Game phase change
+    DICE_CHECK = "dice_check"  # Dice check request from Rule Agent
+    DICE_RESULT = "dice_result"  # Dice result from player
 
 
 class StreamMessage(BaseModel):
@@ -58,9 +60,7 @@ class ConnectionManager:
             websocket = self.active_connections[session_id]
             await websocket.send_json(message.model_dump())
 
-    async def send_status(
-        self, session_id: str, phase: str, message: str | None = None
-    ):
+    async def send_status(self, session_id: str, phase: str, message: str | None = None):
         """Send a status update."""
         await self.send_message(
             session_id,
@@ -130,6 +130,30 @@ class ConnectionManager:
             ),
         )
 
+    async def send_dice_check(
+        self,
+        session_id: str,
+        check_request: dict[str, Any],
+    ):
+        """
+        Send a dice check request to the client.
+
+        Args:
+            session_id: Session to send to
+            check_request: DiceCheckRequest data including:
+                - intention: What player is trying to do
+                - influencing_factors: Traits/tags affecting roll
+                - dice_formula: Dice notation (e.g., "2d6", "3d6kl2")
+                - instructions: Explanation of modifiers
+        """
+        await self.send_message(
+            session_id,
+            StreamMessage(
+                type=MessageType.DICE_CHECK,
+                data={"check_request": check_request},
+            ),
+        )
+
 
 # Global connection manager
 manager = ConnectionManager()
@@ -174,9 +198,11 @@ async def websocket_game_endpoint(
     Provides streaming responses from the GM Agent.
 
     Message Protocol:
-    - Client sends: {"player_input": "...", "lang": "cn", "stream": true}
+    - Client sends player input: {"type": "player_input", "content": "...", "lang": "cn"}
+    - Client sends dice result: {"type": "dice_result", "result": 8, "all_rolls": [...], ...}
     - Server sends status updates: {"type": "status", "data": {"phase": "processing"}}
     - Server streams content: {"type": "content", "data": {"chunk": "...", "is_partial": true}}
+    - Server sends dice check: {"type": "dice_check", "data": {"check_request": {...}}}
     - Server sends complete: {"type": "complete", "data": {"content": "...", "metadata": {}}}
 
     Args:
@@ -201,62 +227,15 @@ async def websocket_game_endpoint(
                 await manager.send_error(session_id, "Invalid JSON")
                 continue
 
-            # Extract parameters
-            player_input = data.get("player_input", "")
-            lang = data.get("lang", "cn")
-            stream = data.get("stream", True)  # Default to streaming
+            # Route based on message type
+            message_type = data.get("type", "player_input")
 
-            if not player_input:
-                await manager.send_error(session_id, "player_input is required")
-                continue
-
-            # Send processing status
-            await manager.send_status(
-                session_id,
-                phase="processing",
-                message="Analyzing your action..." if lang == "en" else "正在分析你的行动...",
-            )
-
-            # Process through GM Agent
-            try:
-                result = await gm_agent.process({
-                    "player_input": player_input,
-                    "lang": lang,
-                })
-            except Exception as exc:
-                await manager.send_error(session_id, f"Processing failed: {exc}")
-                continue
-
-            # Send phase update
-            phase = gm_agent.game_state.current_phase.value
-            await manager.send_phase_change(session_id, phase)
-
-            if result.success:
-                # Stream content if requested and content is substantial
-                if stream and len(result.content) > 50:
-                    await manager.send_status(
-                        session_id,
-                        phase="narrating",
-                        message="Generating narrative..." if lang == "en" else "正在生成叙事...",
-                    )
-                    await stream_content(session_id, result.content)
-
-                # Send complete response
-                await manager.send_complete(
-                    session_id,
-                    content=result.content,
-                    metadata=result.metadata,
-                    success=True,
-                )
+            if message_type == "player_input":
+                await _handle_player_input(session_id, data, gm_agent)
+            elif message_type == "dice_result":
+                await _handle_dice_result(session_id, data, gm_agent)
             else:
-                await manager.send_complete(
-                    session_id,
-                    content=result.content or "",
-                    metadata=result.metadata,
-                    success=False,
-                )
-                if result.error:
-                    await manager.send_error(session_id, result.error)
+                await manager.send_error(session_id, f"Unknown message type: {message_type}")
 
     except WebSocketDisconnect:
         manager.disconnect(session_id)
@@ -264,6 +243,157 @@ async def websocket_game_endpoint(
         await manager.send_error(session_id, str(exc))
         manager.disconnect(session_id)
         await websocket.close(code=1011, reason=str(exc))
+
+
+async def _handle_player_input(
+    session_id: str,
+    data: dict[str, Any],
+    gm_agent,
+) -> None:
+    """
+    Handle player input message.
+
+    Args:
+        session_id: Game session ID
+        data: Message data containing content and lang
+        gm_agent: GM Agent instance
+    """
+    # Extract parameters (support both old and new format)
+    player_input = data.get("content") or data.get("player_input", "")
+    lang = data.get("lang", "cn")
+    stream = data.get("stream", True)
+
+    if not player_input:
+        await manager.send_error(session_id, "player_input/content is required")
+        return
+
+    # Send processing status
+    await manager.send_status(
+        session_id,
+        phase="processing",
+        message="Analyzing your action..." if lang == "en" else "正在分析你的行动...",
+    )
+
+    # Process through GM Agent
+    try:
+        result = await gm_agent.process(
+            {
+                "player_input": player_input,
+                "lang": lang,
+            }
+        )
+    except Exception as exc:
+        await manager.send_error(session_id, f"Processing failed: {exc}")
+        return
+
+    # Send phase update
+    phase = gm_agent.game_state.current_phase.value
+    await manager.send_phase_change(session_id, phase)
+
+    # Check if dice check is needed
+    if result.metadata.get("needs_check") and result.metadata.get("dice_check"):
+        # Send dice check request to client
+        await manager.send_dice_check(
+            session_id,
+            check_request=result.metadata["dice_check"],
+        )
+        return
+
+    if result.success:
+        # Stream content if requested and content is substantial
+        if stream and len(result.content) > 50:
+            await manager.send_status(
+                session_id,
+                phase="narrating",
+                message="Generating narrative..." if lang == "en" else "正在生成叙事...",
+            )
+            await stream_content(session_id, result.content)
+
+        # Send complete response
+        await manager.send_complete(
+            session_id,
+            content=result.content,
+            metadata=result.metadata,
+            success=True,
+        )
+    else:
+        await manager.send_complete(
+            session_id,
+            content=result.content or "",
+            metadata=result.metadata,
+            success=False,
+        )
+        if result.error:
+            await manager.send_error(session_id, result.error)
+
+
+async def _handle_dice_result(
+    session_id: str,
+    data: dict[str, Any],
+    gm_agent,
+) -> None:
+    """
+    Handle dice result message from client.
+
+    Args:
+        session_id: Game session ID
+        data: Message data containing dice result
+        gm_agent: GM Agent instance
+    """
+    # Extract dice result
+    result = data.get("result")
+    all_rolls = data.get("all_rolls", [])
+    kept_rolls = data.get("kept_rolls", [])
+    outcome = data.get("outcome", "unknown")
+
+    if result is None:
+        await manager.send_error(session_id, "dice result is required")
+        return
+
+    # Store dice result in game state
+    dice_result = {
+        "total": result,
+        "all_rolls": all_rolls,
+        "kept_rolls": kept_rolls,
+        "outcome": outcome,
+    }
+    gm_agent.game_state.last_check_result = dice_result
+
+    # Send status update
+    await manager.send_status(
+        session_id,
+        phase="narrating",
+        message="Generating narrative based on roll...",
+    )
+
+    # TODO: Process the result through Rule Agent to generate narrative
+    # For now, generate a simple response based on outcome
+
+    from src.backend.models.game_state import GamePhase
+
+    gm_agent.game_state.set_phase(GamePhase.NARRATING)
+    await manager.send_phase_change(session_id, "narrating")
+
+    # Generate narrative based on outcome
+    if outcome == "critical":
+        narrative = f"投出了 {result}！大成功！命运眷顾着你。"
+    elif outcome == "success":
+        narrative = f"投出了 {result}，成功了。"
+    elif outcome == "partial":
+        narrative = f"投出了 {result}，部分成功，但代价是..."
+    else:
+        narrative = f"投出了 {result}，失败了。事情变得更加复杂。"
+
+    # Send complete response
+    await manager.send_complete(
+        session_id,
+        content=narrative,
+        metadata={
+            "dice_result": dice_result,
+            "phase": "narrating",
+        },
+        success=True,
+    )
 
 
 @router.websocket("/ws/game/{session_id}/stream")
