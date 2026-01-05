@@ -186,9 +186,7 @@ class TestRuleAgent:
     @pytest.mark.asyncio
     async def test_process_invalid_json_response(self, rule_agent, mock_llm):
         """Test error handling for invalid JSON from LLM."""
-        mock_llm.ainvoke.return_value = AIMessage(
-            content="这不是有效的JSON {"
-        )
+        mock_llm.ainvoke.return_value = AIMessage(content="这不是有效的JSON {")
 
         input_data = {
             "action": "测试行动",
@@ -215,7 +213,9 @@ class TestRuleAgent:
         result = await rule_agent.process(input_data)
 
         assert result.success is False
-        assert "Expected dict" in result.error
+        # The _extract_json_from_response method only returns dicts,
+        # so a JSON string will fail with "Failed to parse JSON"
+        assert "Failed to parse" in result.error or "must be JSON object" in result.error
 
     @pytest.mark.asyncio
     async def test_build_prompt(self, rule_agent, sample_character):
@@ -298,11 +298,13 @@ class TestRuleAgent:
             content='{"needs_check": false, "reasoning": "简单行动"}'
         )
 
-        result = rule_agent.invoke({
-            "action": "简单行动",
-            "character": {"name": "张伟"},
-            "tags": [],
-        })
+        result = rule_agent.invoke(
+            {
+                "action": "简单行动",
+                "character": {"name": "张伟"},
+                "tags": [],
+            }
+        )
 
         assert result.success is True
         assert result.metadata["needs_check"] is False

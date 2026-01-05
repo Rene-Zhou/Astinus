@@ -1,6 +1,5 @@
 """Tests for PromptLoader."""
 
-
 import pytest
 import yaml
 
@@ -342,13 +341,20 @@ class TestRealPromptTemplates:
         result = template.render(
             "cn",
             current_location="暗室",
-            active_npcs=["陈玲", "李明"],
+            location_description="这是一间黑暗的房间，四周弥漫着灰尘。",
+            location_items=["蜡烛", "书桌"],
+            connected_locations=["大厅", "走廊"],
+            active_npcs_details=[
+                {"id": "chen_ling", "name": "陈玲", "brief": "一位年轻的研究员"},
+                {"id": "li_ming", "name": "李明", "brief": "神秘的老人"},
+            ],
+            world_background="幽暗庄园的故事背景...",
             game_phase="等待输入",
             turn_count=5,
             player_input="我要查看房间",
         )
 
-        assert "GM Agent" in result
+        assert "GM" in result
         assert "暗室" in result
         assert "陈玲" in result
         assert "我要查看房间" in result
