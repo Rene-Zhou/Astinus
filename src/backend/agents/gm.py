@@ -140,6 +140,17 @@ class GMAgent(BaseAgent):
                 lang,
             )
 
+        # Extract dice check info from Rule Agent if present
+        needs_check = False
+        dice_check = None
+        for agent_result in agent_results:
+            if agent_result.get("agent") == "rule" and "result" in agent_result:
+                rule_result = agent_result["result"]
+                if rule_result.metadata.get("needs_check"):
+                    needs_check = True
+                    dice_check = rule_result.metadata.get("dice_check")
+                    break
+
         # Update game state
         self.game_state.add_message(
             role="user",
@@ -153,21 +164,30 @@ class GMAgent(BaseAgent):
             metadata={"phase": "gm_response", "agents_called": agents_to_call},
         )
 
+        # Build response metadata
+        response_metadata = {
+            "agent": self.agent_name,
+            "player_intent": agent_dispatch_plan["player_intent"],
+            "can_respond_directly": agent_dispatch_plan.get("can_respond_directly", False),
+            "agents_called": agents_to_call,
+            "agent_results": [
+                {
+                    "agent": r["agent"],
+                    "success": r["result"].success if "result" in r else False,
+                }
+                for r in agent_results
+            ],
+        }
+
+        # Add dice check info if present
+        if needs_check:
+            response_metadata["needs_check"] = True
+            if dice_check:
+                response_metadata["dice_check"] = dice_check
+
         return AgentResponse(
             content=narrative,
-            metadata={
-                "agent": self.agent_name,
-                "player_intent": agent_dispatch_plan["player_intent"],
-                "can_respond_directly": agent_dispatch_plan.get("can_respond_directly", False),
-                "agents_called": agents_to_call,
-                "agent_results": [
-                    {
-                        "agent": r["agent"],
-                        "success": r["result"].success if "result" in r else False,
-                    }
-                    for r in agent_results
-                ],
-            },
+            metadata=response_metadata,
             success=True,
         )
 

@@ -98,17 +98,54 @@ export interface Message {
 // ============================================================================
 
 /**
+ * Influencing factors affecting a dice roll
+ */
+export interface InfluencingFactors {
+  traits: string[];
+  tags: string[];
+}
+
+/**
  * Dice check request from Rule Agent
  */
 export interface DiceCheckRequest {
   /** What the player is trying to do */
   intention: string;
   /** Traits/tags affecting the roll */
-  influencing_factors: string[];
+  influencing_factors: InfluencingFactors;
   /** Dice notation (e.g., "2d6", "3d6kl2") */
   dice_formula: string;
-  /** Explanation of modifiers */
-  instructions: string;
+  /** Explanation of modifiers - can be string or LocalizedString */
+  instructions: string | LocalizedString;
+}
+
+/**
+ * Helper to flatten influencing factors into a string array for display
+ */
+export function flattenInfluencingFactors(
+  factors: InfluencingFactors,
+): string[] {
+  const result: string[] = [];
+  if (factors.traits && factors.traits.length > 0) {
+    result.push(...factors.traits);
+  }
+  if (factors.tags && factors.tags.length > 0) {
+    result.push(...factors.tags);
+  }
+  return result;
+}
+
+/**
+ * Helper to get instructions as string
+ */
+export function getInstructionsText(
+  instructions: string | LocalizedString,
+  lang: Language = "cn",
+): string {
+  if (typeof instructions === "string") {
+    return instructions;
+  }
+  return getLocalizedValue(instructions, lang);
 }
 
 /**

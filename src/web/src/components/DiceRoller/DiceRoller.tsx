@@ -1,5 +1,13 @@
 import React, { useCallback, useMemo, useState } from "react";
-import type { DiceCheckRequest, DiceOutcome, DiceResult } from "../../api/types";
+import type {
+  DiceCheckRequest,
+  DiceOutcome,
+  DiceResult,
+} from "../../api/types";
+import {
+  flattenInfluencingFactors,
+  getInstructionsText,
+} from "../../api/types";
 import Button from "../common/Button";
 import { Card } from "../common/Card";
 
@@ -29,12 +37,7 @@ const parseDiceFormula = (formula?: string): ParsedFormula => {
   const keepCount = match[4] ? Number(match[4]) : undefined;
   const keepType = match[3] ? "lowest" : "highest";
 
-  if (
-    Number.isNaN(count) ||
-    Number.isNaN(sides) ||
-    count <= 0 ||
-    sides <= 1
-  ) {
+  if (Number.isNaN(count) || Number.isNaN(sides) || count <= 0 || sides <= 1) {
     return { count: 1, sides: 6 };
   }
 
@@ -70,9 +73,9 @@ const rollDiceInternal = (formula?: string): DiceResult => {
   let kept = [...rolls];
   if (parsed.keep) {
     const { type, count } = parsed.keep;
-    kept = [...rolls].sort((a, b) =>
-      type === "lowest" ? a - b : b - a,
-    ).slice(0, count);
+    kept = [...rolls]
+      .sort((a, b) => (type === "lowest" ? a - b : b - a))
+      .slice(0, count);
   }
 
   const total = kept.reduce((sum, n) => sum + n, 0);
@@ -141,27 +144,32 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
           <p className="text-xs uppercase tracking-wide text-gray-500">
             影响因素
           </p>
-          {checkRequest.influencing_factors.length === 0 ? (
-            <p className="text-sm text-gray-500">无</p>
-          ) : (
-            <div className="mt-1 flex flex-wrap gap-2">
-              {checkRequest.influencing_factors.map((factor) => (
-                <span
-                  key={factor}
-                  className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-700"
-                >
-                  {factor}
-                </span>
-              ))}
-            </div>
-          )}
+          {(() => {
+            const factors = flattenInfluencingFactors(
+              checkRequest.influencing_factors,
+            );
+            if (factors.length === 0) {
+              return <p className="text-sm text-gray-500">无</p>;
+            }
+            return (
+              <div className="mt-1 flex flex-wrap gap-2">
+                {factors.map((factor) => (
+                  <span
+                    key={factor}
+                    className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-700"
+                  >
+                    {factor}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            说明
-          </p>
+          <p className="text-xs uppercase tracking-wide text-gray-500">说明</p>
           <p className="text-sm text-gray-700">
-            {checkRequest.instructions || "请掷骰并提交结果。"}
+            {getInstructionsText(checkRequest.instructions) ||
+              "请掷骰并提交结果。"}
           </p>
         </div>
       </div>

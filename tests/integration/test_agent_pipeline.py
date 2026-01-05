@@ -144,6 +144,12 @@ class TestAgentPipeline:
         assert "rule" in result.metadata["agents_called"]
         # Game phase should be DICE_CHECK after rule agent
         assert sample_game_state.current_phase == GamePhase.DICE_CHECK
+        # Verify needs_check and dice_check are propagated to GM response metadata
+        assert result.metadata.get("needs_check") is True
+        assert result.metadata.get("dice_check") is not None
+        dice_check = result.metadata["dice_check"]
+        assert dice_check["intention"] == "翻找书架"
+        assert dice_check["dice_formula"] == "3d6kl2"
 
     @pytest.mark.asyncio
     async def test_gm_to_npc_pipeline(
