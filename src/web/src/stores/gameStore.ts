@@ -9,6 +9,8 @@ import {
   type NewGameResponse,
   type WorldInfo,
   type StartingScene,
+  type PresetCharacter,
+  type WorldPackDetailResponse,
   getLocalizedValue,
   type Language,
 } from "../api/types";
@@ -28,7 +30,12 @@ export interface GameStoreState {
   worldInfo: WorldInfo | null;
   startingScene: StartingScene | null;
 
+  // Character selection (before game starts)
+  selectedWorldPackId: string;
+  presetCharacters: PresetCharacter[];
+
   // Player & game state
+  playerName: string; // PL (user) name - distinct from PC name
   player: BackendGameState["player"] | null;
   currentLocation: string;
   currentPhase: GamePhase;
@@ -48,9 +55,13 @@ export interface GameStoreState {
   isStreaming: boolean;
 
   // Actions
+  loadWorldPackDetail: (packId: string) => Promise<WorldPackDetailResponse | null>;
+  setSelectedWorldPackId: (packId: string) => void;
+  setPlayerName: (name: string) => void;
   startNewGame: (opts?: {
     worldPackId?: string;
     playerName?: string;
+    presetCharacterId?: string;
   }) => Promise<void>;
   sendPlayerInput: (content: string, lang?: "cn" | "en") => void;
   submitDiceResult: (result: DiceResult) => void;
@@ -153,6 +164,9 @@ function generateIntroductionMessage(
  */
 const initialState = (): Omit<
   GameStoreState,
+  | "loadWorldPackDetail"
+  | "setSelectedWorldPackId"
+  | "setPlayerName"
   | "startNewGame"
   | "sendPlayerInput"
   | "submitDiceResult"
@@ -169,6 +183,9 @@ const initialState = (): Omit<
   worldPackId: "demo_pack",
   worldInfo: null,
   startingScene: null,
+  selectedWorldPackId: "demo_pack",
+  presetCharacters: [],
+  playerName: "玩家",
   player: null,
   currentLocation: "",
   currentPhase: "waiting_input",
@@ -186,9 +203,34 @@ export const useGameStore = create<GameStoreState>()(
   immer((set, get) => ({
     ...initialState(),
 
+    loadWorldPackDetail: async (packId: string) => {
+      console.log("[gameStore] loadWorldPackDetail called", packId);
+      const res = await apiClient.getWorldPackDetail(packId);
+      if (!res.data) {
+        console.error("[gameStore] getWorldPackDetail failed:", res.error);
+        return null;
+      }
+      set((state) => {
+        state.selectedWorldPackId = packId;
+        state.worldInfo = res.data!.info;
+        state.presetCharacters = res.data!.preset_characters;
+      });
+      return res.data;
+    },
+
+    setSelectedWorldPackId: (packId: string) =>
+      set((state) => {
+        state.selectedWorldPackId = packId;
+      }),
+
+    setPlayerName: (name: string) =>
+      set((state) => {
+        state.playerName = name;
+      }),
+
     startNewGame: async (opts) => {
       console.log("[gameStore] startNewGame called", opts);
-      const { worldPackId, playerName } = opts ?? {};
+      const { worldPackId, playerName, presetCharacterId } = opts ?? {};
       const existing = get().wsClient;
       if (existing) {
         console.log("[gameStore] Disconnecting existing wsClient");
@@ -198,6 +240,7 @@ export const useGameStore = create<GameStoreState>()(
       const res = await apiClient.createNewGame({
         world_pack_id: worldPackId ?? "demo_pack",
         player_name: playerName ?? "玩家",
+        preset_character_id: presetCharacterId,
       });
       console.log("[gameStore] apiClient.createNewGame response:", res);
 

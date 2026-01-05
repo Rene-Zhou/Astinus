@@ -49,6 +49,16 @@ export interface PlayerCharacter {
   fate_points: number;
 }
 
+/**
+ * Preset character for player selection
+ */
+export interface PresetCharacter {
+  id: string;
+  name: string; // Fixed PC name
+  concept: LocalizedString;
+  traits: Trait[];
+}
+
 // ============================================================================
 // Game State Types
 // ============================================================================
@@ -69,6 +79,7 @@ export type GamePhase =
 export interface GameState {
   session_id: string;
   world_pack_id: string;
+  player_name: string; // PL (user) name - distinct from PC name
   player: PlayerCharacter;
   current_location: string;
   active_npc_ids: string[];
@@ -175,8 +186,8 @@ export type DiceOutcome = "critical" | "success" | "partial" | "failure";
 
 export interface NewGameRequest {
   world_pack_id?: string; // Default: "demo_pack"
-  player_name?: string; // Default: "玩家"
-  player_concept?: string; // Default: "冒险者"
+  player_name?: string; // Default: "玩家" - PL (user) name
+  preset_character_id?: string; // Selected preset character ID
 }
 
 /**
@@ -298,6 +309,33 @@ export interface GetMessagesResponse {
 export interface ResetResponse {
   success: boolean;
   message: string;
+}
+
+// --- GET /api/v1/game/world-pack/{pack_id} ---
+
+/**
+ * World pack detail response including preset characters
+ */
+export interface WorldPackDetailResponse {
+  id: string;
+  info: WorldInfo;
+  summary: {
+    locations: number;
+    npcs: number;
+    lore_entries: number;
+    preset_characters: number;
+  };
+  locations: Array<{
+    id: string;
+    name: LocalizedString;
+    tags: string[];
+  }>;
+  npcs: Array<{
+    id: string;
+    name: string;
+    location: string;
+  }>;
+  preset_characters: PresetCharacter[];
 }
 
 // --- GET /health ---

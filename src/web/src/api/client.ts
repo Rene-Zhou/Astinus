@@ -10,6 +10,7 @@ import type {
   NewGameResponse,
   ResetResponse,
   RootResponse,
+  WorldPackDetailResponse,
 } from "./types";
 
 /**
@@ -165,6 +166,17 @@ export const apiClient = {
     return request<ResetResponse>({
       path: "/api/v1/game/reset",
       method: "POST",
+      signal,
+    });
+  },
+
+  /**
+   * Get world pack details including preset characters
+   */
+  async getWorldPackDetail(packId: string, signal?: AbortSignal) {
+    return request<WorldPackDetailResponse>({
+      path: `/api/v1/game/world-pack/${encodeURIComponent(packId)}`,
+      method: "GET",
       signal,
     });
   },
