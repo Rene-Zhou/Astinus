@@ -270,13 +270,8 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
 
           {/* Action buttons */}
           <div className="mt-auto flex flex-col gap-2 pt-2">
-            <div className="flex gap-2">
-              <Button
-                onClick={handleRoll}
-                loading={rolling}
-                size="md"
-                className="flex-1"
-              >
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={handleRoll} loading={rolling} size="md">
                 🎲 掷骰
               </Button>
               <Button
@@ -284,19 +279,15 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                 onClick={handleSubmit}
                 disabled={!result}
                 size="md"
-                className="flex-1"
               >
                 ✓ 提交
               </Button>
             </div>
-            <Button
-              variant="ghost"
-              onClick={handleCancel}
-              size="sm"
-              className="w-full"
-            >
-              取消检定
-            </Button>
+            <div>
+              <Button variant="ghost" onClick={handleCancel} size="sm">
+                取消检定
+              </Button>
+            </div>
           </div>
         </div>
       )}

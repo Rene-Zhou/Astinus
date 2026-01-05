@@ -3,11 +3,14 @@ import React from "react";
 type ButtonVariant = "primary" | "secondary" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";
 
-export interface ButtonProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className"> {
+export interface ButtonProps extends Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "className"
+> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
+  className?: string;
 }
 
 /**
@@ -22,6 +25,7 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   children,
   type = "button",
+  className = "",
   ...rest
 }) => {
   const base =
@@ -45,7 +49,9 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       type={type}
-      className={[base, variantClass[variant], sizeClass[size]].join(" ")}
+      className={[base, variantClass[variant], sizeClass[size], className]
+        .filter(Boolean)
+        .join(" ")}
       disabled={isDisabled}
       aria-disabled={isDisabled}
       {...rest}
