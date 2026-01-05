@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import ChatBox from "../components/ChatBox/ChatBox";
 import StatBlock from "../components/StatBlock/StatBlock";
@@ -27,37 +27,16 @@ const GamePage: React.FC = () => {
   } = useGameStore();
 
   const { language } = useUIStore();
-  const { refreshState, fetchMessages } = useGameActions();
+  const { refreshState } = useGameActions();
 
-  // Track if this is a fresh session start to avoid overwriting intro message
-  const isNewSessionRef = useRef(false);
-  const prevSessionIdRef = useRef<string | null>(null);
-
+  // Sync game state when sessionId changes
+  // Note: We only call refreshState, not fetchMessages, to avoid overwriting
+  // intro messages that were set by startNewGame in the store.
+  // hydrateGameState in the store now preserves existing local messages.
   useEffect(() => {
-    if (!sessionId) {
-      prevSessionIdRef.current = null;
-      return;
-    }
-
-    // Detect if sessionId just changed (new game started)
-    const isNewSession = prevSessionIdRef.current !== sessionId;
-    prevSessionIdRef.current = sessionId;
-
-    if (isNewSession) {
-      // Mark as new session - don't fetch messages since startNewGame already set intro
-      isNewSessionRef.current = true;
-      // Only refresh state to sync with backend
-      void refreshState();
-    } else {
-      // Reconnecting or page refresh - fetch messages only if we don't have any
-      void refreshState();
-      // Only fetch messages if our local messages array is empty
-      // This preserves intro messages set by startNewGame
-      if (messages.length === 0) {
-        void fetchMessages();
-      }
-    }
-  }, [sessionId, refreshState, fetchMessages, messages.length]);
+    if (!sessionId) return;
+    void refreshState();
+  }, [sessionId, refreshState]);
 
   const fatePoints = player?.fate_points ?? 0;
   const tags = player?.tags ?? [];
