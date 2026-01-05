@@ -11,6 +11,7 @@ Based on GUIDE.md Section 4 (世界包结构), world packs contain:
 from pydantic import BaseModel, Field
 
 from .i18n import LocalizedString
+from .trait import Trait
 
 
 class WorldPackSetting(BaseModel):
@@ -171,6 +172,25 @@ class NPCData(BaseModel):
         return "\n".join(lines)
 
 
+class PresetCharacter(BaseModel):
+    """
+    A preset character for players to choose from.
+
+    Preset characters provide ready-to-play options that fit the world setting,
+    with pre-defined traits that make sense for the story context.
+    """
+
+    id: str = Field(..., description="Unique identifier for the preset (snake_case)")
+    name: str = Field(..., description="Fixed character name (PC name)")
+    concept: LocalizedString = Field(..., description="One-sentence character concept")
+    traits: list[Trait] = Field(
+        default_factory=list,
+        description="Character traits (typically 3 for demo)",
+        min_length=1,
+        max_length=4,
+    )
+
+
 class LocationData(BaseModel):
     """
     A location/scene in the world.
@@ -219,6 +239,10 @@ class WorldPack(BaseModel):
     locations: dict[str, LocationData] = Field(
         default_factory=dict, description="Locations keyed by id"
     )
+    preset_characters: list[PresetCharacter] = Field(
+        default_factory=list,
+        description="Preset characters for players to choose from",
+    )
 
     def get_entry(self, uid: int) -> LoreEntry | None:
         """Get a lore entry by uid."""
@@ -235,6 +259,13 @@ class WorldPack(BaseModel):
     def get_constant_entries(self) -> list[LoreEntry]:
         """Get all constant (always-active) lore entries."""
         return [e for e in self.entries.values() if e.constant]
+
+    def get_preset_character(self, preset_id: str) -> PresetCharacter | None:
+        """Get a preset character by id."""
+        for preset in self.preset_characters:
+            if preset.id == preset_id:
+                return preset
+        return None
 
     def search_entries_by_keyword(
         self, keyword: str, include_secondary: bool = True

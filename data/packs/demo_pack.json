@@ -308,5 +308,117 @@
       "items": ["cold_stove", "mysterious_pot", "back_door"],
       "tags": ["exploration"]
     }
-  }
+  },
+  "preset_characters": [
+    {
+      "id": "scholar",
+      "name": "李明远",
+      "concept": {
+        "cn": "寻找失踪兄长的历史系学生",
+        "en": "History student searching for missing brother"
+      },
+      "traits": [
+        {
+          "name": { "cn": "博学多识", "en": "Erudite" },
+          "description": {
+            "cn": "你在大学里专攻历史与考古，对古老的文献和传说有着深厚的了解。",
+            "en": "You studied history and archaeology at university, with deep knowledge of ancient texts and legends."
+          },
+          "positive_aspect": {
+            "cn": "能够快速回忆起相关知识，对研究和解谜有加成",
+            "en": "Quick to recall relevant knowledge, bonus to research and puzzle-solving"
+          },
+          "negative_aspect": {
+            "cn": "容易陷入过度思考，在需要快速行动时犹豫不决",
+            "en": "Prone to overthinking, hesitant when quick action is needed"
+          }
+        },
+        {
+          "name": { "cn": "谨慎细致", "en": "Meticulous" },
+          "description": {
+            "cn": "你的观察力极强，总能注意到别人忽略的细节。",
+            "en": "Your observation skills are exceptional, always noticing details others miss."
+          },
+          "positive_aspect": {
+            "cn": "更容易发现隐藏的线索和机关",
+            "en": "More likely to discover hidden clues and mechanisms"
+          },
+          "negative_aspect": {
+            "cn": "面对危险时容易犹豫，可能错失行动时机",
+            "en": "Hesitant when facing danger, may miss the moment to act"
+          }
+        },
+        {
+          "name": { "cn": "理性冷静", "en": "Rational" },
+          "description": {
+            "cn": "你是一个彻底的唯物主义者，相信一切都有科学解释。",
+            "en": "You are a thorough materialist, believing everything has a scientific explanation."
+          },
+          "positive_aspect": {
+            "cn": "在恐惧和压力下能保持冷静思考",
+            "en": "Able to maintain clear thinking under fear and pressure"
+          },
+          "negative_aspect": {
+            "cn": "可能忽视或否认无法解释的超自然线索",
+            "en": "May ignore or deny unexplainable supernatural clues"
+          }
+        }
+      ]
+    },
+    {
+      "id": "wanderer",
+      "name": "陈阿生",
+      "concept": {
+        "cn": "四处游历的江湖艺人",
+        "en": "Traveling street performer"
+      },
+      "traits": [
+        {
+          "name": { "cn": "八面玲珑", "en": "Charming" },
+          "description": {
+            "cn": "多年江湖生涯让你学会了察言观色和圆滑处世。",
+            "en": "Years of street life taught you to read people and navigate social situations."
+          },
+          "positive_aspect": {
+            "cn": "更容易获得他人信任，擅长说服和交涉",
+            "en": "Easier to gain others' trust, skilled at persuasion and negotiation"
+          },
+          "negative_aspect": {
+            "cn": "有时过于相信自己的判断，容易被伪装欺骗",
+            "en": "Sometimes too confident in your judgment, may be deceived by disguises"
+          }
+        },
+        {
+          "name": { "cn": "身手敏捷", "en": "Agile" },
+          "description": {
+            "cn": "作为艺人，你的身体协调性和反应速度都很出色。",
+            "en": "As a performer, your physical coordination and reaction speed are excellent."
+          },
+          "positive_aspect": {
+            "cn": "在需要身体动作的情况下有优势，如逃跑、攀爬",
+            "en": "Advantaged in physical situations like escaping or climbing"
+          },
+          "negative_aspect": {
+            "cn": "有时过于自信而做出鲁莽的动作",
+            "en": "Sometimes overconfident, making reckless moves"
+          }
+        },
+        {
+          "name": { "cn": "街头智慧", "en": "Streetwise" },
+          "description": {
+            "cn": "底层生活让你学会了生存的本能。",
+            "en": "Life on the streets taught you survival instincts."
+          },
+          "positive_aspect": {
+            "cn": "能够感知危险和谎言，对陷阱有直觉",
+            "en": "Can sense danger and lies, intuition for traps"
+          },
+          "negative_aspect": {
+            "cn": "对权威和官方机构有本能的不信任",
+            "en": "Instinctive distrust of authority and official institutions"
+          }
+        }
+      ]
+    }
+  ]
 }

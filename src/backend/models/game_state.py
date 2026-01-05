@@ -57,6 +57,10 @@ class GameState(BaseModel):
 
     # Session metadata
     session_id: str = Field(..., description="Unique session identifier")
+    player_name: str = Field(
+        default="玩家",
+        description="Player (user) name - distinct from character name",
+    )
     created_at: datetime = Field(default_factory=datetime.now, description="Session creation time")
     updated_at: datetime = Field(default_factory=datetime.now, description="Last update time")
 
