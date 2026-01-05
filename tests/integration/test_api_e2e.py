@@ -607,6 +607,100 @@ class TestDiceCheckIntegration:
         display_en = check.to_display("en")
         assert display_en["explanation"] == "Standard search check"
 
+    @pytest.mark.asyncio
+    async def test_dice_result_processing_with_rule_agent(self):
+        """Test that dice result is processed through Rule Agent for narrative."""
+        from src.backend.api.websockets import _generate_fallback_narrative, _handle_dice_result
+
+        # Create mock GM agent with Rule Agent
+        mock_rule_agent = AsyncMock()
+        mock_rule_agent.process_result = AsyncMock(
+            return_value=AgentResponse(
+                content="你迅速地翻越障碍物，成功逃出了房间。门在身后砰然关上。",
+                metadata={
+                    "agent": "rule_agent",
+                    "narrative": "你迅速地翻越障碍物，成功逃出了房间。",
+                    "outcome_type": "success",
+                    "consequences": [],
+                    "suggested_tags": [],
+                },
+                success=True,
+            )
+        )
+
+        # Create mock game state (no need for real PlayerCharacter)
+        mock_game_state = MagicMock()
+        mock_game_state.current_location = "test_room"
+        mock_game_state.active_npc_ids = []
+        mock_game_state.temp_context = {
+            "pending_dice_check": {
+                "intention": "逃离房间",
+                "influencing_factors": {"traits": [], "tags": []},
+                "dice_formula": "2d6",
+            }
+        }
+        mock_game_state.set_phase = MagicMock()
+        mock_game_state.add_message = MagicMock()
+
+        # Create mock GM agent
+        mock_gm_agent = MagicMock()
+        mock_gm_agent.game_state = mock_game_state
+        mock_gm_agent.sub_agents = {"rule": mock_rule_agent}
+
+        # Create mock connection manager
+        with patch("src.backend.api.websockets.manager") as mock_manager:
+            mock_manager.send_status = AsyncMock()
+            mock_manager.send_phase_change = AsyncMock()
+            mock_manager.send_complete = AsyncMock()
+
+            # Process dice result
+            dice_data = {
+                "type": "dice_result",
+                "result": 8,
+                "all_rolls": [3, 5],
+                "kept_rolls": [3, 5],
+                "outcome": "success",
+            }
+
+            await _handle_dice_result("test-session", dice_data, mock_gm_agent)
+
+            # Verify Rule Agent was called
+            mock_rule_agent.process_result.assert_called_once()
+            call_args = mock_rule_agent.process_result.call_args
+
+            # Verify result_data was passed correctly
+            result_data = call_args.kwargs.get("result_data") or call_args[1].get("result_data")
+            assert result_data["intention"] == "逃离房间"
+            assert result_data["total"] == 8
+            assert result_data["success"] is True
+
+            # Verify complete message was sent with narrative
+            mock_manager.send_complete.assert_called_once()
+            complete_call = mock_manager.send_complete.call_args
+            assert "你迅速地翻越障碍物" in complete_call.kwargs.get(
+                "content", complete_call[1].get("content", "")
+            )
+
+    def test_fallback_narrative_generation(self):
+        """Test fallback narrative when Rule Agent is unavailable."""
+        from src.backend.api.websockets import _generate_fallback_narrative
+
+        # Test all outcome types
+        critical = _generate_fallback_narrative(12, "critical")
+        assert "大成功" in critical
+        assert "12" in critical
+
+        success = _generate_fallback_narrative(9, "success")
+        assert "成功" in success
+        assert "9" in success
+
+        partial = _generate_fallback_narrative(7, "partial")
+        assert "部分成功" in partial or "代价" in partial
+
+        failure = _generate_fallback_narrative(5, "failure")
+        assert "失败" in failure
+        assert "5" in failure
+
 
 class TestE2EScenarios:
     """End-to-end scenario tests without requiring real API."""

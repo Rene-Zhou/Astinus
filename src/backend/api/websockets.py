@@ -292,10 +292,20 @@ async def _handle_player_input(
 
     # Check if dice check is needed
     if result.metadata.get("needs_check") and result.metadata.get("dice_check"):
+        # Store the dice check context for later use when processing result
+        dice_check = result.metadata["dice_check"]
+        gm_agent.game_state.temp_context["pending_dice_check"] = dice_check
+
+        # Update phase to DICE_CHECK
+        from src.backend.models.game_state import GamePhase
+
+        gm_agent.game_state.set_phase(GamePhase.DICE_CHECK)
+        await manager.send_phase_change(session_id, "dice_check")
+
         # Send dice check request to client
         await manager.send_dice_check(
             session_id,
-            check_request=result.metadata["dice_check"],
+            check_request=dice_check,
         )
         return
 
@@ -340,8 +350,8 @@ async def _handle_dice_result(
         data: Message data containing dice result
         gm_agent: GM Agent instance
     """
-    # Extract dice result
-    result = data.get("result")
+    # Extract dice result - support both 'result' and 'total' field names
+    result = data.get("result") or data.get("total")
     all_rolls = data.get("all_rolls", [])
     kept_rolls = data.get("kept_rolls", [])
     outcome = data.get("outcome", "unknown")
@@ -366,34 +376,130 @@ async def _handle_dice_result(
         message="Generating narrative based on roll...",
     )
 
-    # TODO: Process the result through Rule Agent to generate narrative
-    # For now, generate a simple response based on outcome
-
     from src.backend.models.game_state import GamePhase
 
     gm_agent.game_state.set_phase(GamePhase.NARRATING)
     await manager.send_phase_change(session_id, "narrating")
 
-    # Generate narrative based on outcome
-    if outcome == "critical":
-        narrative = f"投出了 {result}！大成功！命运眷顾着你。"
-    elif outcome == "success":
-        narrative = f"投出了 {result}，成功了。"
-    elif outcome == "partial":
-        narrative = f"投出了 {result}，部分成功，但代价是..."
+    # Get the pending dice check context from temp_context
+    pending_check = gm_agent.game_state.temp_context.get("pending_dice_check", {})
+    intention = pending_check.get("intention", "行动")
+    influencing_factors = pending_check.get("influencing_factors", {})
+    dice_formula = pending_check.get("dice_formula", "2d6")
+
+    # Determine success based on outcome
+    success = outcome in ("success", "critical")
+    critical = outcome == "critical"
+
+    # Build result data for Rule Agent
+    result_data = {
+        "intention": intention,
+        "dice_formula": dice_formula,
+        "dice_values": all_rolls,
+        "total": result,
+        "threshold": 7,  # Standard PbtA threshold
+        "success": success,
+        "critical": critical,
+        "modifiers": [],
+    }
+
+    # Add modifiers from influencing factors
+    if influencing_factors.get("traits"):
+        for trait in influencing_factors["traits"]:
+            result_data["modifiers"].append(
+                {
+                    "source": trait,
+                    "effect": "优势" if "kh" in dice_formula else "正面特质",
+                }
+            )
+    if influencing_factors.get("tags"):
+        for tag in influencing_factors["tags"]:
+            result_data["modifiers"].append(
+                {
+                    "source": tag,
+                    "effect": "劣势" if "kl" in dice_formula else "负面状态",
+                }
+            )
+
+    # Build scene context
+    scene_context = {
+        "location": gm_agent.game_state.current_location,
+        "nearby_npcs": gm_agent.game_state.active_npc_ids,
+    }
+
+    # Try to get Rule Agent and process the result
+    narrative = ""
+    response_metadata = {
+        "dice_result": dice_result,
+        "phase": "narrating",
+    }
+
+    rule_agent = gm_agent.sub_agents.get("rule")
+    if rule_agent:
+        try:
+            # Call Rule Agent's process_result method
+            rule_response = await rule_agent.process_result(
+                result_data=result_data,
+                context=scene_context,
+            )
+
+            if rule_response.success and rule_response.content:
+                narrative = rule_response.content
+                # Merge Rule Agent metadata
+                response_metadata.update(rule_response.metadata)
+            else:
+                # Fallback if Rule Agent fails
+                narrative = _generate_fallback_narrative(result, outcome)
+        except Exception as exc:
+            # Log error and use fallback
+            print(f"Rule Agent process_result failed: {exc}")
+            narrative = _generate_fallback_narrative(result, outcome)
     else:
-        narrative = f"投出了 {result}，失败了。事情变得更加复杂。"
+        # No Rule Agent available, use fallback
+        narrative = _generate_fallback_narrative(result, outcome)
+
+    # Clear the pending dice check from temp_context
+    gm_agent.game_state.temp_context.pop("pending_dice_check", None)
+
+    # Add the narrative to game state messages
+    gm_agent.game_state.add_message(
+        role="assistant",
+        content=narrative,
+        metadata={"phase": "dice_result_narrative", "dice_result": dice_result},
+    )
+
+    # Stream content if substantial
+    if len(narrative) > 50:
+        await stream_content(session_id, narrative)
 
     # Send complete response
     await manager.send_complete(
         session_id,
         content=narrative,
-        metadata={
-            "dice_result": dice_result,
-            "phase": "narrating",
-        },
+        metadata=response_metadata,
         success=True,
     )
+
+
+def _generate_fallback_narrative(result: int, outcome: str) -> str:
+    """
+    Generate a simple fallback narrative when Rule Agent is unavailable.
+
+    Args:
+        result: Dice roll total
+        outcome: Outcome type (critical, success, partial, failure)
+
+    Returns:
+        Simple narrative string
+    """
+    if outcome == "critical":
+        return f"投出了 {result}！大成功！命运眷顾着你，结果超乎预期。"
+    elif outcome == "success":
+        return f"投出了 {result}，成功了。你的行动达成了预期效果。"
+    elif outcome == "partial":
+        return f"投出了 {result}，部分成功。你勉强达成了目标，但代价是..."
+    else:
+        return f"投出了 {result}，失败了。事情变得更加复杂，你需要另寻他法。"
 
 
 @router.websocket("/ws/game/{session_id}/stream")
