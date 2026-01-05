@@ -19,8 +19,10 @@ class NewGameRequest(BaseModel):
     """Request model for starting a new game."""
 
     world_pack_id: str = Field(default="demo_pack", description="World pack to load")
-    player_name: str = Field(default="玩家", description="Player's name")
-    player_concept: str = Field(default="冒险者", description="Player's character concept")
+    player_name: str = Field(default="玩家", description="Player (user) name - distinct from character name")
+    preset_character_id: str | None = Field(
+        default=None, description="ID of preset character to use (from world pack)"
+    )
 
 
 class NewGameResponse(BaseModel):
@@ -127,9 +129,23 @@ async def start_new_game(request: NewGameRequest):
         gm_agent.game_state.current_location = starting_location_id
         gm_agent.game_state.active_npc_ids = active_npc_ids
 
-        # Update player info if provided
-        if request.player_name:
-            gm_agent.game_state.player.name = request.player_name
+        # Set player (user) name - distinct from character name
+        gm_agent.game_state.player_name = request.player_name
+
+        # Handle preset character selection
+        if request.preset_character_id:
+            preset = world_pack.get_preset_character(request.preset_character_id)
+            if preset is None:
+                available_presets = [p.id for p in world_pack.preset_characters]
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Preset character not found: {request.preset_character_id}. "
+                    f"Available: {available_presets}",
+                )
+            # Use preset character data
+            gm_agent.game_state.player.name = preset.name
+            gm_agent.game_state.player.concept = preset.concept
+            gm_agent.game_state.player.traits = preset.traits.copy()
 
         # Reset game state for new session
         gm_agent.game_state.messages = []
@@ -316,8 +332,9 @@ async def get_game_state():
         response = {
             "session_id": state.session_id,
             "world_pack_id": state.world_pack_id,
+            "player_name": state.player_name,  # PL name (user)
             "player": {
-                "name": state.player.name,
+                "name": state.player.name,  # PC name (character)
                 "concept": state.player.concept.model_dump(),
                 "traits": [t.model_dump() for t in state.player.traits],
                 "tags": state.player.tags,
@@ -544,18 +561,34 @@ async def get_world_pack_info(pack_id: str):
     try:
         world_pack = world_pack_loader.load(pack_id)
 
+        # Build info dict with optional setting and player_hook
+        info_dict = {
+            "name": world_pack.info.name.model_dump(),
+            "description": world_pack.info.description.model_dump(),
+            "version": world_pack.info.version,
+            "author": world_pack.info.author,
+        }
+
+        # Add setting if available
+        if world_pack.info.setting:
+            info_dict["setting"] = {
+                "era": world_pack.info.setting.era.model_dump(),
+                "genre": world_pack.info.setting.genre.model_dump(),
+                "tone": world_pack.info.setting.tone.model_dump(),
+            }
+
+        # Add player_hook if available
+        if world_pack.info.player_hook:
+            info_dict["player_hook"] = world_pack.info.player_hook.model_dump()
+
         return {
             "id": pack_id,
-            "info": {
-                "name": world_pack.info.name.model_dump(),
-                "description": world_pack.info.description.model_dump(),
-                "version": world_pack.info.version,
-                "author": world_pack.info.author,
-            },
+            "info": info_dict,
             "summary": {
                 "locations": len(world_pack.locations),
                 "npcs": len(world_pack.npcs),
                 "lore_entries": len(world_pack.entries),
+                "preset_characters": len(world_pack.preset_characters),
             },
             "locations": [
                 {
@@ -572,6 +605,15 @@ async def get_world_pack_info(pack_id: str):
                     "location": npc.body.location,
                 }
                 for npc_id, npc in world_pack.npcs.items()
+            ],
+            "preset_characters": [
+                {
+                    "id": preset.id,
+                    "name": preset.name,
+                    "concept": preset.concept.model_dump(),
+                    "traits": [t.model_dump() for t in preset.traits],
+                }
+                for preset in world_pack.preset_characters
             ],
         }
 
