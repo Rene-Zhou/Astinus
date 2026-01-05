@@ -342,6 +342,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
+| 2026-01-05 | GM Agent 场景上下文修复 | `fix/gm-agent-scene-context` | 修复 GM Agent 无法获取场景信息的问题：初始化 LoreAgent、WorldPackLoader、VectorStore；GM prompt 增加场景描述、物品、NPC、连接位置；支持直接回复简单行为；前端生成开场介绍 |
 | 2026-01-05 | Phase 6.5 完成 | `feature/phase6-frontend-backend-integration` | 完成测试与部署：集成测试、覆盖率提升至70%、GitHub Actions CI、部署文档。197个新测试，849总测试，70%覆盖率 |
 | 2026-01-05 | Phase 6.4 完成 | `feature/phase6-frontend-backend-integration` | 完成 Agent 协作完善：NPC 记忆/关系持久化、RuleAgent 结果处理、DiceCheckResult 模型。38个新测试，652总测试，68%覆盖率 |
 | 2026-01-04 | TUI Bug 修复 | `fix/screen-app-property-readonly` | 修复 TUI 启动错误：Screen.app 只读属性、CSS 无效变量/属性、asyncio 导入、屏幕导航、Reactive 列表共享问题 |
@@ -380,6 +381,9 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 - ~~尚未创建 `src` 目录与模块化结构~~ ✅ 已完成
 - ~~Prompt 管理方案~~ ✅ 已完成（PromptLoader + YAML/Jinja2）
 - ~~TUI CSS 和导航问题~~ ✅ 已修复（fix/screen-app-property-readonly）
+- ~~GM Agent 缺少场景上下文~~ ✅ 已修复（fix/gm-agent-scene-context）
+- ~~Lore Agent 未接入系统~~ ✅ 已修复（fix/gm-agent-scene-context）
+- ~~前端缺少开场介绍~~ ✅ 已修复（fix/gm-agent-scene-context）
 
 ---
 
