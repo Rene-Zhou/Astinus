@@ -7,8 +7,8 @@ export interface HeaderProps {
 
 const navLinks = [
   { to: "/", label: "菜单" },
-  { to: "/game", label: "游戏" },
   { to: "/character", label: "角色" },
+  { to: "/game", label: "游戏" },
 ];
 
 export const Header: React.FC<HeaderProps> = ({ rightSlot }) => {
