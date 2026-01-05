@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from src.backend.agents.gm import GMAgent
 from src.backend.agents.lore import LoreAgent
+from src.backend.agents.npc import NPCAgent
 from src.backend.agents.rule import RuleAgent
 from src.backend.api import websockets
 from src.backend.api.v1 import game
@@ -174,13 +175,26 @@ async def lifespan(app: FastAPI):
             vector_store=vector_store,
         )
 
+        # Build sub_agents dictionary with rule and lore
+        sub_agents: dict = {
+            "rule": rule_agent,
+            "lore": lore_agent,
+        }
+
+        # Register NPC Agents for active NPCs in the scene
+        for npc_id in active_npc_ids:
+            npc_data = world_pack.get_npc(npc_id)
+            if npc_data:
+                npc_agent = NPCAgent(llm=llm, vector_store=vector_store)
+                # Register with format npc_{npc_id} (e.g., npc_old_guard)
+                agent_key = f"npc_{npc_id}"
+                sub_agents[agent_key] = npc_agent
+                print(f"   Registered NPC agent: {agent_key} ({npc_data.soul.name})")
+
         # Create GM Agent (central orchestrator)
         gm_agent = GMAgent(
             llm=llm,
-            sub_agents={
-                "rule": rule_agent,
-                "lore": lore_agent,
-            },
+            sub_agents=sub_agents,
             game_state=game_state,
             world_pack_loader=world_pack_loader,
             vector_store=vector_store,

@@ -30,7 +30,7 @@ cn:
     === 场景中的角色 ===
     {% if active_npcs_details %}
     {% for npc in active_npcs_details %}
-    - {{ npc.name }}：{{ npc.brief }}
+    - [id: {{ npc.id }}] {{ npc.name }}：{{ npc.brief }}
     {% endfor %}
     {% else %}
     （当前场景无其他角色）
@@ -54,14 +54,20 @@ cn:
 
     2. 如果需要调用子 Agent，请设置 "can_respond_directly": false，并填写 "agents_to_call"。
 
+    **NPC 调用规则**（重要）：
+    - 当玩家想要与场景中的 NPC 对话或互动时，必须调用对应的 NPC Agent
+    - NPC Agent 的名称格式为 `npc_{id}`，例如场景中 [id: old_guard] 的 NPC 对应 agent 名为 `npc_old_guard`
+    - 如果玩家使用模糊指代（如"那个老人"、"守卫"、"那个人"等），请根据场景中的角色列表推断最匹配的 NPC，并调用对应的 `npc_{id}` Agent
+    - 你不能直接扮演 NPC，必须通过调用 NPC Agent 来获取 NPC 的回应
+
     返回 JSON 格式：
     {
       "player_intent": "意图类型（observe/move/talk/act/examine 等）",
       "can_respond_directly": true/false,
       "direct_response": "（如果 can_respond_directly 为 true）你的叙事描述",
-      "agents_to_call": ["rule", "npc_xxx", "lore"],
+      "agents_to_call": ["rule", "npc_old_guard", "lore"],
       "context_slices": {
-        "agent_name": { ... }
+        "npc_old_guard": { "player_input": "玩家说的话", "interaction_type": "talk" }
       },
       "reasoning": "为什么这样决定"
     }
@@ -95,7 +101,7 @@ en:
     === Characters in Scene ===
     {% if active_npcs_details %}
     {% for npc in active_npcs_details %}
-    - {{ npc.name }}: {{ npc.brief }}
+    - [id: {{ npc.id }}] {{ npc.name }}: {{ npc.brief }}
     {% endfor %}
     {% else %}
     (No other characters in current scene)
@@ -119,14 +125,20 @@ en:
 
     2. If you need to call sub-agents, set "can_respond_directly": false and fill in "agents_to_call".
 
+    **NPC Invocation Rules** (Important):
+    - When the player wants to talk or interact with an NPC in the scene, you MUST call the corresponding NPC Agent
+    - NPC Agent names follow the format `npc_{id}`, e.g., an NPC with [id: old_guard] corresponds to agent `npc_old_guard`
+    - If the player uses vague references (e.g., "the old man", "the guard", "that person"), infer the most matching NPC from the characters list and call the corresponding `npc_{id}` Agent
+    - You CANNOT roleplay as NPCs directly - you must call NPC Agents to get their responses
+
     Return JSON format:
     {
       "player_intent": "intent type (observe/move/talk/act/examine, etc.)",
       "can_respond_directly": true/false,
       "direct_response": "(if can_respond_directly is true) your narrative description",
-      "agents_to_call": ["rule", "npc_xxx", "lore"],
+      "agents_to_call": ["rule", "npc_old_guard", "lore"],
       "context_slices": {
-        "agent_name": { ... }
+        "npc_old_guard": { "player_input": "what the player said", "interaction_type": "talk" }
       },
       "reasoning": "why this decision"
     }

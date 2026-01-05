@@ -432,6 +432,54 @@ class TestGMAgent:
         # NPC response should be in narrative
         assert "你好" in result.content or "陈玲" in result.content or "尝试" in result.content
 
+    @pytest.mark.asyncio
+    async def test_npc_agent_registration_with_prefix(self, mock_llm, sample_game_state):
+        """Test that NPC agents are registered with npc_ prefix format."""
+        # Create mock NPC agent for old_guard
+        mock_npc_agent = AsyncMock()
+        mock_npc_agent.ainvoke = AsyncMock(
+            return_value=AgentResponse(
+                content="老人缓缓抬起头，用沙哑的声音说道：'你想知道什么？'",
+                metadata={"npc_id": "old_guard", "npc_name": "老王", "emotion": "cautious"},
+                success=True,
+            )
+        )
+
+        # Register NPC agent with npc_ prefix format
+        gm_agent = GMAgent(
+            llm=mock_llm,
+            sub_agents={"npc_old_guard": mock_npc_agent},
+            game_state=sample_game_state,
+        )
+
+        # Verify npc_old_guard is in sub_agents
+        assert "npc_old_guard" in gm_agent.sub_agents
+
+        # Mock LLM to dispatch to NPC agent when player uses vague reference
+        mock_llm.ainvoke.return_value = AIMessage(
+            content="""{
+                "player_intent": "talk",
+                "can_respond_directly": false,
+                "agents_to_call": ["npc_old_guard"],
+                "context_slices": {
+                    "npc_old_guard": {"player_input": "你好", "interaction_type": "talk"}
+                },
+                "reasoning": "玩家想和场景中的老人（老王）对话"
+            }"""
+        )
+
+        result = await gm_agent.process(
+            {
+                "player_input": "我想和那个老人说话",
+                "lang": "cn",
+            }
+        )
+
+        assert result.success is True
+        assert "npc_old_guard" in result.metadata["agents_called"]
+        # Verify NPC agent was actually called
+        mock_npc_agent.ainvoke.assert_called_once()
+
 
 class TestGMAgentConversationHistoryRetrieval:
     """Test suite for GM conversation history retrieval functionality."""

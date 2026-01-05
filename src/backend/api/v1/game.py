@@ -10,6 +10,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
+from src.backend.agents.npc import NPCAgent
+
 router = APIRouter(prefix="/api/v1", tags=["game"])
 
 
@@ -103,6 +105,21 @@ async def start_new_game(request: NewGameRequest):
 
         # Get NPCs at starting location
         active_npc_ids = starting_location.present_npc_ids or []
+
+        # Register NPC Agents for NPCs in the starting location
+        # First, remove any existing NPC agents from sub_agents
+        npc_keys_to_remove = [k for k in gm_agent.sub_agents.keys() if k.startswith("npc_")]
+        for key in npc_keys_to_remove:
+            del gm_agent.sub_agents[key]
+
+        # Then register new NPC agents for active NPCs
+        for npc_id in active_npc_ids:
+            npc_data = world_pack.get_npc(npc_id)
+            if npc_data:
+                # Import LLM from gm_agent
+                npc_agent = NPCAgent(llm=gm_agent.llm, vector_store=gm_agent.vector_store)
+                agent_key = f"npc_{npc_id}"
+                gm_agent.sub_agents[agent_key] = npc_agent
 
         # Update game state with new session
         gm_agent.game_state.session_id = session_id
