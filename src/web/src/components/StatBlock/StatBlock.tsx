@@ -24,20 +24,20 @@ const phaseLabel: Record<GamePhase, { cn: string; en: string }> = {
   narrating: { cn: "叙述中", en: "Narrating" },
 };
 
-interface TraitTooltipProps {
+interface TraitDetailProps {
   trait: Trait;
   language: "cn" | "en";
   onClose: () => void;
 }
 
-const TraitTooltip: React.FC<TraitTooltipProps> = ({ trait, language, onClose }) => {
+const TraitDetail: React.FC<TraitDetailProps> = ({ trait, language, onClose }) => {
   const name = getLocalizedValue(trait.name, language);
   const description = getLocalizedValue(trait.description, language);
   const positive = getLocalizedValue(trait.positive_aspect, language);
   const negative = getLocalizedValue(trait.negative_aspect, language);
 
   return (
-    <div className="absolute z-50 left-0 mt-1 w-64 max-w-xs rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+    <div className="absolute z-10 left-[10%] right-[10%] mt-2 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
       <div className="flex items-center justify-between gap-2">
         <h4 className="text-sm font-semibold text-gray-900">{name}</h4>
         <button
@@ -66,26 +66,61 @@ const TraitTooltip: React.FC<TraitTooltipProps> = ({ trait, language, onClose })
 interface TraitPillProps {
   trait: Trait;
   language: "cn" | "en";
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
-const TraitPill: React.FC<TraitPillProps> = ({ trait, language }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
+const TraitPill: React.FC<TraitPillProps> = ({ trait, language, isOpen, onToggle }) => {
   const name = getLocalizedValue(trait.name, language);
 
   return (
+    <button
+      className={[
+        "rounded-full px-2 py-0.5 text-xs font-medium transition-colors cursor-pointer",
+        isOpen
+          ? "bg-indigo-200 text-indigo-800"
+          : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100",
+      ].join(" ")}
+      onClick={onToggle}
+      title={language === "cn" ? "点击查看详情" : "Click to see details"}
+    >
+      {name}
+    </button>
+  );
+};
+
+interface TraitsListProps {
+  traits: Trait[];
+  language: "cn" | "en";
+}
+
+const TraitsList: React.FC<TraitsListProps> = ({ traits, language }) => {
+  const [openTraitIndex, setOpenTraitIndex] = useState<number | null>(null);
+
+  const handleToggle = (index: number) => {
+    setOpenTraitIndex(openTraitIndex === index ? null : index);
+  };
+
+  const openTrait = openTraitIndex !== null ? traits[openTraitIndex] : null;
+
+  return (
     <div className="relative">
-      <button
-        className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer"
-        onClick={() => setShowTooltip(!showTooltip)}
-        title={language === "cn" ? "点击查看详情" : "Click to see details"}
-      >
-        {name}
-      </button>
-      {showTooltip && (
-        <TraitTooltip
-          trait={trait}
+      <div className="flex flex-wrap gap-1">
+        {traits.map((trait, idx) => (
+          <TraitPill
+            key={idx}
+            trait={trait}
+            language={language}
+            isOpen={openTraitIndex === idx}
+            onToggle={() => handleToggle(idx)}
+          />
+        ))}
+      </div>
+      {openTrait && (
+        <TraitDetail
+          trait={openTrait}
           language={language}
-          onClose={() => setShowTooltip(false)}
+          onClose={() => setOpenTraitIndex(null)}
         />
       )}
     </div>
@@ -157,11 +192,7 @@ export const StatBlock: React.FC<StatBlockProps> = ({
             {language === "cn" ? "暂无特质" : "No traits"}
           </p>
         ) : (
-          <div className="flex flex-wrap gap-1">
-            {traits.map((trait, idx) => (
-              <TraitPill key={idx} trait={trait} language={language} />
-            ))}
-          </div>
+          <TraitsList traits={traits} language={language} />
         )}
       </div>
 
