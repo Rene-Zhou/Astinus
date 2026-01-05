@@ -342,6 +342,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
+| 2026-01-05 | Web前端Phase显示修复 | `fix/web-phase-display` | 修复 Phase 不更新/显示错误的问题：1) 后端在 _handle_player_input 和 _handle_dice_result 完成后发送 waiting_input 的 phase 变更消息；2) 确保 game_state.set_phase(GamePhase.WAITING_INPUT) 在处理完成后被调用；3) 添加前端 StatBlock Phase 显示测试覆盖全部5种 phase；4) 添加后端集成测试验证 phase 回到 waiting_input |
 | 2026-01-05 | 掷骰结果叙事修复 | `fix/dice-result-narrative` | 修复掷骰后无叙事输出的问题：1) _handle_dice_result 调用 Rule Agent 的 process_result 生成叙事；2) 在发送 dice_check 时保存上下文到 temp_context，处理 dice_result 时取回；3) 传递场景上下文给 Rule Agent 以生成更好的叙事；4) 添加 fallback 叙事生成；5) 流式传输长叙事 |
 | 2026-01-05 | NPC Agent 调度修复 | `fix/npc-agent-dispatch` | 修复 NPC 扮演无法触发的问题：1) 在 main.py 启动时为场景 NPC 注册 NPCAgent 到 GM sub_agents；2) 在 start_new_game API 中动态注册 NPC Agents；3) GM prompt 显示 NPC id 以便 LLM 正确调用；4) 添加指代消解指引，支持"那个老人"等模糊指代映射到 NPC id |
 | 2026-01-05 | GamePage 布局和介绍消息修复 | `fix/gamepage-layout-and-intro` | 修复 Web 前端问题：1) 三栏布局 (StatBlock \| ChatBox \| DiceRoller)；2) 防止 intro 消息被 fetchMessages 覆盖；3) DiceRoller 固定显示，无检定时显示空状态；4) Button 组件支持 className 属性 |
@@ -387,6 +388,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 - ~~GM Agent 缺少场景上下文~~ ✅ 已修复（fix/gm-agent-scene-context）
 - ~~Lore Agent 未接入系统~~ ✅ 已修复（fix/gm-agent-scene-context）
 - ~~前端缺少开场介绍~~ ✅ 已修复（fix/gm-agent-scene-context）
+- ~~Web前端 Phase 不更新~~ ✅ 已修复（fix/web-phase-display）
 
 ---
 

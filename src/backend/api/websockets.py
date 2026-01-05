@@ -326,6 +326,12 @@ async def _handle_player_input(
             metadata=result.metadata,
             success=True,
         )
+
+        # Return to waiting_input phase after completing response
+        from src.backend.models.game_state import GamePhase
+
+        gm_agent.game_state.set_phase(GamePhase.WAITING_INPUT)
+        await manager.send_phase_change(session_id, "waiting_input")
     else:
         await manager.send_complete(
             session_id,
@@ -335,6 +341,12 @@ async def _handle_player_input(
         )
         if result.error:
             await manager.send_error(session_id, result.error)
+
+        # Return to waiting_input phase even on failure
+        from src.backend.models.game_state import GamePhase
+
+        gm_agent.game_state.set_phase(GamePhase.WAITING_INPUT)
+        await manager.send_phase_change(session_id, "waiting_input")
 
 
 async def _handle_dice_result(
@@ -479,6 +491,10 @@ async def _handle_dice_result(
         metadata=response_metadata,
         success=True,
     )
+
+    # Return to waiting_input phase after completing dice result narrative
+    gm_agent.game_state.set_phase(GamePhase.WAITING_INPUT)
+    await manager.send_phase_change(session_id, "waiting_input")
 
 
 def _generate_fallback_narrative(result: int, outcome: str) -> str:

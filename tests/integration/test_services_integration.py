@@ -342,7 +342,7 @@ class TestWebSocketHandlers:
         self, connection_manager, mock_websocket, mock_gm_agent
     ):
         """Test handling dice result with missing result field."""
-        session_id = "dice-missing-test"
+        session_id = "missing-result-test"
 
         await connection_manager.connect(session_id, mock_websocket)
 
@@ -351,9 +351,9 @@ class TestWebSocketHandlers:
 
         try:
             data = {
-                "all_rolls": [4, 3],
-                "outcome": "success",
-                # Missing "result" field
+                "all_rolls": [3, 4],
+                "kept_rolls": [3, 4],
+                "outcome": "failure",
             }
 
             await _handle_dice_result(session_id, data, mock_gm_agent)
@@ -362,6 +362,108 @@ class TestWebSocketHandlers:
             calls = mock_websocket.send_json.call_args_list
             error_sent = any(call[0][0].get("type") == "error" for call in calls)
             assert error_sent
+        finally:
+            manager.active_connections = original_active
+
+    @pytest.mark.asyncio
+    async def test_phase_returns_to_waiting_input_after_player_input(
+        self, connection_manager, mock_websocket, mock_gm_agent
+    ):
+        """Test that phase returns to waiting_input after player input processing completes."""
+        session_id = "phase-return-test"
+
+        await connection_manager.connect(session_id, mock_websocket)
+
+        original_active = manager.active_connections
+        manager.active_connections = connection_manager.active_connections
+
+        try:
+            data = {
+                "content": "我查看书架",
+                "lang": "cn",
+                "stream": False,
+            }
+
+            await _handle_player_input(session_id, data, mock_gm_agent)
+
+            # Verify phase was set to waiting_input at the end
+            assert mock_gm_agent.game_state.current_phase == GamePhase.WAITING_INPUT
+
+            # Verify waiting_input phase message was sent
+            calls = mock_websocket.send_json.call_args_list
+            phase_messages = [call[0][0] for call in calls if call[0][0].get("type") == "phase"]
+            # The last phase message should be waiting_input
+            assert len(phase_messages) >= 1
+            last_phase_msg = phase_messages[-1]
+            assert last_phase_msg["data"]["phase"] == "waiting_input"
+        finally:
+            manager.active_connections = original_active
+
+    @pytest.mark.asyncio
+    async def test_phase_returns_to_waiting_input_after_dice_result(
+        self, connection_manager, mock_websocket, mock_gm_agent
+    ):
+        """Test that phase returns to waiting_input after dice result processing completes."""
+        session_id = "phase-dice-return-test"
+
+        await connection_manager.connect(session_id, mock_websocket)
+
+        original_active = manager.active_connections
+        manager.active_connections = connection_manager.active_connections
+
+        try:
+            data = {
+                "result": 8,
+                "all_rolls": [5, 3],
+                "kept_rolls": [5, 3],
+                "outcome": "success",
+            }
+
+            await _handle_dice_result(session_id, data, mock_gm_agent)
+
+            # Verify phase was set to waiting_input at the end
+            assert mock_gm_agent.game_state.current_phase == GamePhase.WAITING_INPUT
+
+            # Verify waiting_input phase message was sent as the last phase
+            calls = mock_websocket.send_json.call_args_list
+            phase_messages = [call[0][0] for call in calls if call[0][0].get("type") == "phase"]
+            # The last phase message should be waiting_input
+            assert len(phase_messages) >= 1
+            last_phase_msg = phase_messages[-1]
+            assert last_phase_msg["data"]["phase"] == "waiting_input"
+        finally:
+            manager.active_connections = original_active
+
+    @pytest.mark.asyncio
+    async def test_phase_stays_dice_check_when_check_needed(
+        self, connection_manager, mock_websocket, mock_gm_agent_with_dice_check
+    ):
+        """Test that phase stays at dice_check when a dice check is needed."""
+        session_id = "phase-dice-check-test"
+
+        await connection_manager.connect(session_id, mock_websocket)
+
+        original_active = manager.active_connections
+        manager.active_connections = connection_manager.active_connections
+
+        try:
+            data = {
+                "content": "我翻找书架",
+                "lang": "cn",
+            }
+
+            await _handle_player_input(session_id, data, mock_gm_agent_with_dice_check)
+
+            # Verify phase is dice_check (should NOT go back to waiting_input)
+            assert mock_gm_agent_with_dice_check.game_state.current_phase == GamePhase.DICE_CHECK
+
+            # Verify dice_check phase message was sent
+            calls = mock_websocket.send_json.call_args_list
+            phase_messages = [call[0][0] for call in calls if call[0][0].get("type") == "phase"]
+            # The last phase message should be dice_check, not waiting_input
+            assert len(phase_messages) >= 1
+            last_phase_msg = phase_messages[-1]
+            assert last_phase_msg["data"]["phase"] == "dice_check"
         finally:
             manager.active_connections = original_active
 
