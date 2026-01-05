@@ -87,10 +87,11 @@ const GamePage: React.FC = () => {
     );
   }
 
+  // Calculate height: 100vh - global header (~57px) - global footer (~49px)
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      {/* Header */}
-      <header className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-3">
+    <div className="flex h-[calc(100vh-106px)] flex-col overflow-hidden">
+      {/* Status Bar */}
+      <div className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-2">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3 text-sm text-gray-600">
             <span className="rounded-full bg-green-100 px-2 py-1 text-green-700">
@@ -100,13 +101,8 @@ const GamePage: React.FC = () => {
               Session: {sessionId}
             </span>
           </div>
-          <Link to="/">
-            <Button variant="ghost" size="sm">
-              返回菜单
-            </Button>
-          </Link>
         </div>
-      </header>
+      </div>
 
       {/* Main Content - Three Column Layout */}
       <main className="flex-1 overflow-hidden">
