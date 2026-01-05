@@ -1,14 +1,16 @@
-import React from "react";
-import type { GamePhase, LocalizedString } from "../../api/types";
+import React, { useState } from "react";
+import type { GamePhase, LocalizedString, Trait } from "../../api/types";
 import { getLocalizedValue } from "../../api/types";
 
 export interface StatBlockProps {
-  playerName: string;
+  playerName: string; // PL (user) name
+  characterName: string; // PC name
   concept: LocalizedString;
   location: string;
   phase: GamePhase;
   turnCount: number;
   fatePoints: number;
+  traits: Trait[];
   tags: string[];
   language: "cn" | "en";
   className?: string;
@@ -22,13 +24,87 @@ const phaseLabel: Record<GamePhase, { cn: string; en: string }> = {
   narrating: { cn: "叙述中", en: "Narrating" },
 };
 
+interface TraitTooltipProps {
+  trait: Trait;
+  language: "cn" | "en";
+  onClose: () => void;
+}
+
+const TraitTooltip: React.FC<TraitTooltipProps> = ({ trait, language, onClose }) => {
+  const name = getLocalizedValue(trait.name, language);
+  const description = getLocalizedValue(trait.description, language);
+  const positive = getLocalizedValue(trait.positive_aspect, language);
+  const negative = getLocalizedValue(trait.negative_aspect, language);
+
+  return (
+    <div className="absolute z-50 left-0 right-0 mt-1 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-gray-900">{name}</h4>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+      <p className="mt-1 text-xs text-gray-600">{description}</p>
+      <div className="mt-2 grid gap-1">
+        <div className="rounded bg-green-50 px-2 py-1">
+          <span className="text-xs font-medium text-green-700">
+            {language === "cn" ? "+ " : "+ "}
+          </span>
+          <span className="text-xs text-green-600">{positive}</span>
+        </div>
+        <div className="rounded bg-red-50 px-2 py-1">
+          <span className="text-xs font-medium text-red-700">
+            {language === "cn" ? "- " : "- "}
+          </span>
+          <span className="text-xs text-red-600">{negative}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface TraitPillProps {
+  trait: Trait;
+  language: "cn" | "en";
+}
+
+const TraitPill: React.FC<TraitPillProps> = ({ trait, language }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const name = getLocalizedValue(trait.name, language);
+
+  return (
+    <div className="relative">
+      <button
+        className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer"
+        onClick={() => setShowTooltip(!showTooltip)}
+        title={language === "cn" ? "点击查看详情" : "Click to see details"}
+      >
+        {name}
+      </button>
+      {showTooltip && (
+        <TraitTooltip
+          trait={trait}
+          language={language}
+          onClose={() => setShowTooltip(false)}
+        />
+      )}
+    </div>
+  );
+};
+
 export const StatBlock: React.FC<StatBlockProps> = ({
   playerName,
+  characterName,
   concept,
   location,
   phase,
   turnCount,
   fatePoints,
+  traits,
   tags,
   language,
   className = "",
@@ -46,30 +122,55 @@ export const StatBlock: React.FC<StatBlockProps> = ({
         .filter(Boolean)
         .join(" ")}
     >
+      {/* Player and Character Info */}
       <div className="flex items-center justify-between gap-2">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">
             {language === "cn" ? "玩家" : "Player"}
           </p>
-          <h2 className="text-lg font-semibold text-gray-900">{playerName}</h2>
+          <p className="text-sm text-gray-700">{playerName}</p>
+          <p className="text-xs uppercase tracking-wide text-gray-500 mt-1">
+            {language === "cn" ? "角色" : "Character"}
+          </p>
+          <h2 className="text-lg font-semibold text-gray-900">{characterName}</h2>
         </div>
         <div className="flex items-center gap-2 text-sm font-medium text-indigo-700">
           <span className="rounded-md bg-indigo-50 px-3 py-1">
-            {language === "cn" ? "命运点" : "Fate Points"}: {fatePoints}
+            {language === "cn" ? "命运点" : "FP"}: {fatePoints}
           </span>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            {language === "cn" ? "角色概念" : "Concept"}
-          </p>
-          <p className="rounded-md bg-indigo-50 px-3 py-2 text-sm text-indigo-900">
-            {conceptText}
-          </p>
-        </div>
+      {/* Concept */}
+      <div className="space-y-1">
+        <p className="text-xs uppercase tracking-wide text-gray-500">
+          {language === "cn" ? "角色概念" : "Concept"}
+        </p>
+        <p className="rounded-md bg-indigo-50 px-3 py-2 text-sm text-indigo-900">
+          {conceptText}
+        </p>
+      </div>
 
+      {/* Traits */}
+      <div className="space-y-2">
+        <p className="text-xs uppercase tracking-wide text-gray-500">
+          {language === "cn" ? "特质" : "Traits"}
+        </p>
+        {traits.length === 0 ? (
+          <p className="text-xs text-gray-400">
+            {language === "cn" ? "暂无特质" : "No traits"}
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {traits.map((trait, idx) => (
+              <TraitPill key={idx} trait={trait} language={language} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Location and Phase */}
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-wide text-gray-500">
             {language === "cn" ? "当前位置" : "Location"}
@@ -78,9 +179,7 @@ export const StatBlock: React.FC<StatBlockProps> = ({
             {location || (language === "cn" ? "未知" : "Unknown")}
           </p>
         </div>
-      </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-wide text-gray-500">
             {language === "cn" ? "阶段" : "Phase"}
@@ -90,17 +189,17 @@ export const StatBlock: React.FC<StatBlockProps> = ({
             {phaseText}
           </p>
         </div>
-
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wide text-gray-500">
-            {language === "cn" ? "回合" : "Turn"}
-          </p>
-          <p className="rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-900">
-            {turnCount}
-          </p>
-        </div>
       </div>
 
+      {/* Turn */}
+      <div className="space-y-1">
+        <p className="text-xs uppercase tracking-wide text-gray-500">
+          {language === "cn" ? "回合" : "Turn"}
+        </p>
+        <p className="text-sm text-gray-900">{turnCount}</p>
+      </div>
+
+      {/* Tags */}
       <div className="space-y-2">
         <p className="text-xs uppercase tracking-wide text-gray-500">
           {language === "cn" ? "状态标签" : "Tags"}

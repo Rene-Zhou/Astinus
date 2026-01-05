@@ -12,6 +12,7 @@ import { useGameActions } from "../hooks/useGameActions";
 const GamePage: React.FC = () => {
   const {
     sessionId,
+    playerName,
     player,
     currentLocation,
     currentPhase,
@@ -40,8 +41,9 @@ const GamePage: React.FC = () => {
 
   const fatePoints = player?.fate_points ?? 0;
   const tags = player?.tags ?? [];
+  const traits = player?.traits ?? [];
   const concept = player?.concept ?? { cn: "", en: "" };
-  const playerName = player?.name ?? "";
+  const characterName = player?.name ?? "";
 
   const showDice = Boolean(pendingDiceCheck);
 
@@ -118,11 +120,13 @@ const GamePage: React.FC = () => {
             <aside className="h-full overflow-y-auto lg:col-span-1">
               <StatBlock
                 playerName={playerName}
+                characterName={characterName}
                 concept={concept}
                 location={currentLocation}
                 phase={currentPhase}
                 turnCount={turnCount}
                 fatePoints={fatePoints}
+                traits={traits}
                 tags={tags}
                 language={language}
                 className="h-full"
