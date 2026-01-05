@@ -103,7 +103,7 @@ class PromptTemplate:
 
     def get_system_message(self, lang: str = "cn", **kwargs: Any) -> str:
         """
-        Get the system message portion (role + guidelines).
+        Get the system message portion (role + guidelines + information_control).
 
         Args:
             lang: Language code
@@ -125,6 +125,11 @@ class PromptTemplate:
                 sections.append("\n".join(f"- {g}" for g in guidelines))
             elif isinstance(guidelines, str):
                 sections.append(guidelines)
+
+        # Add information control rules (critical for preventing metagaming)
+        if "information_control" in lang_data:
+            info_control_template = self.env.from_string(lang_data["information_control"])
+            sections.append(info_control_template.render(**kwargs))
 
         return "\n\n".join(sections)
 
@@ -236,11 +241,7 @@ class PromptLoader:
         if not self.prompts_dir.exists():
             return []
 
-        return [
-            p.stem
-            for p in self.prompts_dir.glob("*.yaml")
-            if p.is_file()
-        ]
+        return [p.stem for p in self.prompts_dir.glob("*.yaml") if p.is_file()]
 
     def reload(self) -> None:
         """

@@ -598,7 +598,14 @@ class GMAgent(BaseAgent):
         # Build synthesis prompt
         if lang == "cn":
             synthesis_prompt = f"""请将以下 Agent 的响应综合成一段连贯的叙事文本。
-使用第二人称（"你"），保持沉浸感。不要提及 Agent 的名称或技术细节。
+使用第二人称（"你"），保持沉浸感。
+
+【信息控制规则 - 必须遵守】：
+1. 绝对禁止在叙事中显示任何 ID、标识符或技术名称（如 village_well、old_guard 等）
+2. 除非 NPC 已自我介绍或玩家通过其他方式得知，否则不要使用 NPC 的真名
+3. 不要透露玩家角色不应该知道的背景信息
+4. 不要提及 Agent 的名称或任何技术细节
+5. 所有信息的揭示必须有合理的来源（NPC告知、检定成功、阅读文件等）
 
 玩家意图：{player_intent}
 玩家输入：{player_input}
@@ -607,7 +614,14 @@ Agent 响应：
 """
         else:
             synthesis_prompt = f"""Please synthesize the following agent responses into a coherent narrative.
-Use second person ("you"), maintain immersion. Do not mention agent names or technical details.
+Use second person ("you"), maintain immersion.
+
+【Information Control Rules - MUST FOLLOW】:
+1. NEVER show any IDs, identifiers, or technical names in narrative (e.g., village_well, old_guard)
+2. Do NOT use NPC's real name unless they have introduced themselves or player learned it otherwise
+3. Do NOT reveal background information the player character shouldn't know
+4. Do NOT mention agent names or any technical details
+5. All information revelation must have a reasonable source (NPC told them, successful check, read document)
 
 Player intent: {player_intent}
 Player input: {player_input}
@@ -624,9 +638,18 @@ Agent responses:
         # Call LLM for synthesis
         messages = [
             SystemMessage(
-                content="你是一个 TTRPG 叙事助手，负责将多个来源的信息整合成流畅的叙事文本。"
+                content=(
+                    "你是一个 TTRPG 叙事助手，负责将多个来源的信息整合成流畅的叙事文本。"
+                    "【重要】你必须严格遵守信息控制规则：禁止泄露任何内部ID或标识符，"
+                    "禁止使用玩家尚未得知的NPC名字，禁止透露玩家不应知道的背景信息。"
+                )
                 if lang == "cn"
-                else "You are a TTRPG narrative assistant, responsible for synthesizing information from multiple sources into smooth narrative text."
+                else (
+                    "You are a TTRPG narrative assistant, responsible for synthesizing information "
+                    "from multiple sources into smooth narrative text. "
+                    "【IMPORTANT】You MUST follow information control rules: NEVER expose internal IDs or identifiers, "
+                    "NEVER use NPC names the player hasn't learned, NEVER reveal background info the player shouldn't know."
+                )
             ),
             HumanMessage(content=synthesis_prompt),
         ]
