@@ -104,10 +104,17 @@ const GamePage: React.FC = () => {
     );
   }
 
-  // Calculate height: use dynamic viewport height for mobile browser support
-  // Fallback to calc() for browsers without dvh support
+  // Calculate height: use dynamic viewport height for desktop only
+  // Mobile allows natural scrolling
   return (
-    <div className="flex h-screen-dynamic flex-col overflow-hidden" style={{ height: "calc(100vh - 106px)" }}>
+    <div
+      className={
+        isMobile
+          ? "flex flex-col"
+          : "flex h-screen-dynamic flex-col overflow-hidden"
+      }
+      style={isMobile ? undefined : { height: "calc(100vh - 106px)" }}
+    >
       {/* Status Bar */}
       <div className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-2">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -123,22 +130,32 @@ const GamePage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
+      <main className={isMobile ? "" : "flex-1 overflow-hidden"}>
         {!player ? (
           <div className="flex h-full items-center justify-center">
             <Loading text="正在加载角色信息..." />
           </div>
         ) : isMobile ? (
-          /* Mobile Layout - Collapsible panels */
-          <div className="flex h-full flex-col gap-2 p-2">
+          /* Mobile Layout - Collapsible panels with natural scrolling */
+          <div className="flex flex-col gap-2 p-2">
             {/* StatBlock - Collapsible */}
             <CollapsiblePanel
               title="角色状态"
               isOpen={mobileStatBlockOpen}
               onToggle={toggleMobileStatBlock}
               icon={
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
                 </svg>
               }
             >
@@ -156,8 +173,8 @@ const GamePage: React.FC = () => {
               />
             </CollapsiblePanel>
 
-            {/* ChatBox - Main area */}
-            <div className="min-h-0 flex-1 overflow-hidden">
+            {/* ChatBox - Main area with taller height */}
+            <div className="min-h-[500px]">
               <ChatBox
                 messages={messages}
                 onSendMessage={handleSend}
@@ -173,8 +190,18 @@ const GamePage: React.FC = () => {
               isOpen={mobileDiceRollerOpen}
               onToggle={toggleMobileDiceRoller}
               icon={
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                  />
                 </svg>
               }
               badge={
