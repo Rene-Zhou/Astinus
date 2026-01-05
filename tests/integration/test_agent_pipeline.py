@@ -102,19 +102,17 @@ class TestAgentPipeline:
         return mock_loader
 
     @pytest.mark.asyncio
-    async def test_gm_to_rule_pipeline(
-        self, mock_llm, sample_game_state
-    ):
+    async def test_gm_to_rule_pipeline(self, mock_llm, sample_game_state):
         """Test GM dispatching to Rule Agent."""
         # Create Rule Agent with mock LLM
         rule_llm = AsyncMock()
         rule_llm.ainvoke.return_value = AIMessage(
             content='{"needs_check": true, "check_request": '
-                   '{"intention": "翻找书架", '
-                   '"influencing_factors": {"traits": [], "tags": ["右腿受伤"]}, '
-                   '"dice_formula": "3d6kl2", '
-                   '"instructions": {"cn": "受伤导致劣势", "en": "Injury causes disadvantage"}}, '
-                   '"reasoning": "翻找书架需要检定，受伤影响"}'
+            '{"intention": "翻找书架", '
+            '"influencing_factors": {"traits": [], "tags": ["右腿受伤"]}, '
+            '"dice_formula": "3d6kl2", '
+            '"instructions": {"cn": "受伤导致劣势", "en": "Injury causes disadvantage"}}, '
+            '"reasoning": "翻找书架需要检定，受伤影响"}'
         )
         rule_agent = RuleAgent(rule_llm)
 
@@ -135,10 +133,12 @@ class TestAgentPipeline:
             }"""
         )
 
-        result = await gm_agent.process({
-            "player_input": "我要翻找书架",
-            "lang": "cn",
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": "我要翻找书架",
+                "lang": "cn",
+            }
+        )
 
         assert result.success is True
         assert "rule" in result.metadata["agents_called"]
@@ -154,8 +154,8 @@ class TestAgentPipeline:
         npc_llm = AsyncMock()
         npc_llm.ainvoke.return_value = AIMessage(
             content='{"response": "你...你好。需要找什么书吗？", '
-                   '"emotion": "shy", "action": "推了推眼镜", '
-                   '"relation_change": 0}'
+            '"emotion": "shy", "action": "推了推眼镜", '
+            '"relation_change": 0}'
         )
         npc_agent = NPCAgent(npc_llm)
 
@@ -167,24 +167,33 @@ class TestAgentPipeline:
             world_pack_loader=mock_world_pack_loader,
         )
 
-        # Mock GM LLM response
-        mock_llm.ainvoke.return_value = AIMessage(
-            content="""{
-                "player_intent": "talk",
-                "agents_to_call": ["npc_chen_ling"],
-                "context_slices": {},
-                "reasoning": "玩家想和陈玲对话"
-            }"""
-        )
+        # Mock GM LLM responses:
+        # 1st call: _parse_intent_and_plan
+        # 2nd call: _synthesize_response
+        mock_llm.ainvoke.side_effect = [
+            AIMessage(
+                content="""{
+                    "player_intent": "talk",
+                    "agents_to_call": ["npc_chen_ling"],
+                    "context_slices": {},
+                    "reasoning": "玩家想和陈玲对话"
+                }"""
+            ),
+            AIMessage(
+                content='你走向陈玲，礼貌地打了个招呼。她推了推眼镜，略显害羞地回应道："你...你好。需要找什么书吗？"'
+            ),
+        ]
 
-        result = await gm_agent.process({
-            "player_input": "你好，能帮我找本书吗？",
-            "lang": "cn",
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": "你好，能帮我找本书吗？",
+                "lang": "cn",
+            }
+        )
 
         assert result.success is True
         assert "npc_chen_ling" in result.metadata["agents_called"]
-        # Check NPC response is included
+        # Check synthesized narrative contains NPC response
         assert "你好" in result.content or "书" in result.content
 
     @pytest.mark.asyncio
@@ -202,8 +211,7 @@ class TestAgentPipeline:
         # Create NPC Agent
         npc_llm = AsyncMock()
         npc_llm.ainvoke.return_value = AIMessage(
-            content='{"response": "古籍区在二楼...", '
-                   '"emotion": "helpful", "action": "指向楼梯"}'
+            content='{"response": "古籍区在二楼...", "emotion": "helpful", "action": "指向楼梯"}'
         )
         npc_agent = NPCAgent(npc_llm)
 
@@ -215,29 +223,36 @@ class TestAgentPipeline:
             world_pack_loader=mock_world_pack_loader,
         )
 
-        # Mock GM LLM response
-        mock_llm.ainvoke.return_value = AIMessage(
-            content="""{
-                "player_intent": "ask",
-                "agents_to_call": ["rule", "npc_chen_ling"],
-                "context_slices": {},
-                "reasoning": "询问NPC，需要规则判断和NPC回应"
-            }"""
-        )
+        # Mock GM LLM responses:
+        # 1st call: _parse_intent_and_plan
+        # 2nd call: _synthesize_response
+        mock_llm.ainvoke.side_effect = [
+            AIMessage(
+                content="""{
+                    "player_intent": "ask",
+                    "agents_to_call": ["rule", "npc_chen_ling"],
+                    "context_slices": {},
+                    "reasoning": "询问NPC，需要规则判断和NPC回应"
+                }"""
+            ),
+            AIMessage(
+                content='你礼貌地询问古籍区的位置。陈玲微笑着指向楼梯，说道："古籍区在二楼..."'
+            ),
+        ]
 
-        result = await gm_agent.process({
-            "player_input": "请问古籍区在哪里？",
-            "lang": "cn",
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": "请问古籍区在哪里？",
+                "lang": "cn",
+            }
+        )
 
         assert result.success is True
         assert "rule" in result.metadata["agents_called"]
         assert "npc_chen_ling" in result.metadata["agents_called"]
 
     @pytest.mark.asyncio
-    async def test_agent_pipeline_error_handling(
-        self, mock_llm, sample_game_state
-    ):
+    async def test_agent_pipeline_error_handling(self, mock_llm, sample_game_state):
         """Test pipeline handles agent errors gracefully."""
         # Create failing Rule Agent
         failing_agent = AsyncMock()
@@ -264,10 +279,12 @@ class TestAgentPipeline:
             }"""
         )
 
-        result = await gm_agent.process({
-            "player_input": "尝试做某事",
-            "lang": "cn",
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": "尝试做某事",
+                "lang": "cn",
+            }
+        )
 
         # GM should still succeed even if sub-agent fails
         assert result.success is True
@@ -305,12 +322,8 @@ class TestAgentPipeline:
         )
 
         # Verify context slices are isolated
-        chen_ling_context = gm_agent._slice_context_for_npc(
-            "chen_ling", "你好", "cn"
-        )
-        li_ming_context = gm_agent._slice_context_for_npc(
-            "li_ming", "你好", "cn"
-        )
+        chen_ling_context = gm_agent._slice_context_for_npc("chen_ling", "你好", "cn")
+        li_ming_context = gm_agent._slice_context_for_npc("li_ming", "你好", "cn")
 
         # Each NPC should only have their own ID
         assert chen_ling_context["npc_id"] == "chen_ling"
@@ -320,9 +333,7 @@ class TestAgentPipeline:
         assert "li_ming" not in str(chen_ling_context.get("npc_data", {}))
 
     @pytest.mark.asyncio
-    async def test_game_state_message_history(
-        self, mock_llm, sample_game_state
-    ):
+    async def test_game_state_message_history(self, mock_llm, sample_game_state):
         """Test that game state correctly tracks message history."""
         initial_message_count = len(sample_game_state.messages)
 
@@ -349,15 +360,19 @@ class TestAgentPipeline:
             }"""
         )
 
-        await gm_agent.process({
-            "player_input": "第一个动作",
-            "lang": "cn",
-        })
+        await gm_agent.process(
+            {
+                "player_input": "第一个动作",
+                "lang": "cn",
+            }
+        )
 
-        await gm_agent.process({
-            "player_input": "第二个动作",
-            "lang": "cn",
-        })
+        await gm_agent.process(
+            {
+                "player_input": "第二个动作",
+                "lang": "cn",
+            }
+        )
 
         # Should have added 4 messages (2 player + 2 assistant)
         assert len(sample_game_state.messages) == initial_message_count + 4
@@ -368,9 +383,7 @@ class TestAgentPipeline:
         assert "第二个动作" in messages[-2]["content"]
 
     @pytest.mark.asyncio
-    async def test_turn_count_increment(
-        self, mock_llm, sample_game_state
-    ):
+    async def test_turn_count_increment(self, mock_llm, sample_game_state):
         """Test that turn count increments correctly."""
         initial_turn = sample_game_state.turn_count
 
