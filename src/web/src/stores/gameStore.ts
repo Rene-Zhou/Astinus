@@ -7,6 +7,10 @@ import {
   type GameState as BackendGameState,
   type Message,
   type NewGameResponse,
+  type WorldInfo,
+  type StartingScene,
+  getLocalizedValue,
+  type Language,
 } from "../api/types";
 import { apiClient } from "../api/client";
 import { GameWebSocketClient } from "../api/websocket";
@@ -19,6 +23,10 @@ export interface GameStoreState {
   // Session
   sessionId: string | null;
   worldPackId: string;
+
+  // World info
+  worldInfo: WorldInfo | null;
+  startingScene: StartingScene | null;
 
   // Player & game state
   player: BackendGameState["player"] | null;
@@ -57,6 +65,67 @@ export interface GameStoreState {
 }
 
 /**
+ * Generate introduction message from world info and starting scene
+ */
+function generateIntroductionMessage(
+  worldInfo: WorldInfo,
+  startingScene: StartingScene,
+  lang: Language = "cn",
+): string {
+  const parts: string[] = [];
+
+  // World background
+  const worldName = getLocalizedValue(worldInfo.name, lang);
+  const worldDesc = getLocalizedValue(worldInfo.description, lang);
+  parts.push(`【${worldName}】`);
+  parts.push(worldDesc);
+  parts.push("");
+
+  // Starting location
+  const locationName = getLocalizedValue(startingScene.location_name, lang);
+  const locationDesc = getLocalizedValue(startingScene.description, lang);
+  parts.push(
+    lang === "cn"
+      ? `你来到了${locationName}。`
+      : `You arrive at ${locationName}.`,
+  );
+  parts.push(locationDesc);
+
+  // NPCs in scene
+  if (startingScene.npcs && startingScene.npcs.length > 0) {
+    parts.push("");
+    const npcIntro =
+      lang === "cn"
+        ? "你注意到这里有："
+        : "You notice the following people here:";
+    parts.push(npcIntro);
+    for (const npc of startingScene.npcs) {
+      const npcDesc = getLocalizedValue(npc.description, lang);
+      // Take first sentence or first 100 chars as brief
+      const brief = npcDesc.split(/[。.]/)[0] + (lang === "cn" ? "。" : ".");
+      parts.push(`- ${npc.name}：${brief}`);
+    }
+  }
+
+  // Connected locations
+  if (
+    startingScene.connected_locations &&
+    startingScene.connected_locations.length > 0
+  ) {
+    parts.push("");
+    const connectionIntro =
+      lang === "cn" ? "从这里，你可以前往：" : "From here, you can go to:";
+    parts.push(connectionIntro);
+    const locations = startingScene.connected_locations
+      .map((loc) => getLocalizedValue(loc.name, lang))
+      .join(lang === "cn" ? "、" : ", ");
+    parts.push(locations);
+  }
+
+  return parts.join("\n");
+}
+
+/**
  * Helpers
  */
 const initialState = (): Omit<
@@ -75,6 +144,8 @@ const initialState = (): Omit<
 > => ({
   sessionId: null,
   worldPackId: "demo_pack",
+  worldInfo: null,
+  startingScene: null,
   player: null,
   currentLocation: "",
   currentPhase: "waiting_input",
@@ -113,9 +184,19 @@ export const useGameStore = create<GameStoreState>()(
       }
 
       const data: NewGameResponse = res.data;
+
+      // Generate introduction message from world info and starting scene
+      const introMessage = generateIntroductionMessage(
+        data.world_info,
+        data.starting_scene,
+        "cn",
+      );
+
       set((state) => {
         state.sessionId = data.session_id;
         state.worldPackId = worldPackId ?? "demo_pack";
+        state.worldInfo = data.world_info;
+        state.startingScene = data.starting_scene;
         state.player = data.player;
         state.currentLocation = data.game_state.current_location;
         state.currentPhase = data.game_state.current_phase;
@@ -124,10 +205,10 @@ export const useGameStore = create<GameStoreState>()(
         state.messages = [
           {
             role: "assistant",
-            content: data.message,
+            content: introMessage,
             timestamp: new Date().toISOString(),
-            turn: data.game_state.turn_count,
-            metadata: { phase: data.game_state.current_phase },
+            turn: 0,
+            metadata: { phase: "narrating", agent: "gm" },
           },
         ];
         state.pendingDiceCheck = null;

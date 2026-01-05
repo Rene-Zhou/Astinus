@@ -27,6 +27,8 @@ class NewGameResponse(BaseModel):
     session_id: str
     player: dict[str, Any]
     game_state: dict[str, Any]
+    world_info: dict[str, Any]
+    starting_scene: dict[str, Any]
     message: str
 
 
@@ -36,14 +38,16 @@ async def start_new_game(request: NewGameRequest):
     Start a new game session.
 
     Creates a new game session with the specified world pack and player info.
+    Loads the world pack and sets up the starting location with full scene info.
 
     Args:
         request: NewGameRequest containing world_pack_id and player info
 
     Returns:
-        NewGameResponse with session_id, player data, and initial game state
+        NewGameResponse with session_id, player data, initial game state,
+        world info, and starting scene description
     """
-    from src.backend.main import gm_agent
+    from src.backend.main import get_world_pack_loader, gm_agent
 
     if gm_agent is None:
         raise HTTPException(
@@ -51,13 +55,60 @@ async def start_new_game(request: NewGameRequest):
             detail="Game engine not initialized",
         )
 
+    world_pack_loader = get_world_pack_loader()
+    if world_pack_loader is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="World pack loader not initialized",
+        )
+
     try:
         # Generate a new session ID
         session_id = str(uuid.uuid4())
 
+        # Load the world pack
+        try:
+            world_pack = world_pack_loader.load(request.world_pack_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"World pack not found: {request.world_pack_id}. "
+                f"Available packs: {world_pack_loader.list_available()}",
+            ) from exc
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid world pack: {exc}",
+            ) from exc
+
+        # Find starting location (look for "starting_area" tag)
+        starting_location_id = None
+        starting_location = None
+        for loc_id, loc in world_pack.locations.items():
+            if "starting_area" in loc.tags:
+                starting_location_id = loc_id
+                starting_location = loc
+                break
+
+        # Fallback to first location if no starting_area tag found
+        if starting_location_id is None and world_pack.locations:
+            starting_location_id = next(iter(world_pack.locations.keys()))
+            starting_location = world_pack.locations[starting_location_id]
+
+        if starting_location is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="World pack has no locations defined",
+            )
+
+        # Get NPCs at starting location
+        active_npc_ids = starting_location.present_npc_ids or []
+
         # Update game state with new session
         gm_agent.game_state.session_id = session_id
         gm_agent.game_state.world_pack_id = request.world_pack_id
+        gm_agent.game_state.current_location = starting_location_id
+        gm_agent.game_state.active_npc_ids = active_npc_ids
 
         # Update player info if provided
         if request.player_name:
@@ -68,6 +119,8 @@ async def start_new_game(request: NewGameRequest):
         gm_agent.game_state.turn_count = 0
         gm_agent.game_state.last_check_result = None
         gm_agent.game_state.temp_context = {}
+        gm_agent.game_state.flags = set()
+        gm_agent.game_state.discovered_items = set()
 
         # Build player data response
         player_data = {
@@ -80,19 +133,65 @@ async def start_new_game(request: NewGameRequest):
 
         # Build game state response
         game_state_data = {
-            "current_location": gm_agent.game_state.current_location,
+            "current_location": starting_location_id,
             "current_phase": gm_agent.game_state.current_phase.value,
             "turn_count": gm_agent.game_state.turn_count,
-            "active_npc_ids": gm_agent.game_state.active_npc_ids,
+            "active_npc_ids": active_npc_ids,
         }
+
+        # Build world info response
+        world_info = {
+            "id": request.world_pack_id,
+            "name": world_pack.info.name.model_dump(),
+            "description": world_pack.info.description.model_dump(),
+            "version": world_pack.info.version,
+            "author": world_pack.info.author,
+        }
+
+        # Build starting scene response
+        starting_scene = {
+            "location_id": starting_location_id,
+            "location_name": starting_location.name.model_dump(),
+            "description": starting_location.description.model_dump(),
+            "items": starting_location.items or [],
+            "connected_locations": [],
+            "npcs": [],
+        }
+
+        # Add connected location names
+        for loc_id in starting_location.connected_locations or []:
+            connected_loc = world_pack.get_location(loc_id)
+            if connected_loc:
+                starting_scene["connected_locations"].append(
+                    {
+                        "id": loc_id,
+                        "name": connected_loc.name.model_dump(),
+                    }
+                )
+
+        # Add NPC info
+        for npc_id in active_npc_ids:
+            npc = world_pack.get_npc(npc_id)
+            if npc:
+                starting_scene["npcs"].append(
+                    {
+                        "id": npc_id,
+                        "name": npc.soul.name,
+                        "description": npc.soul.description.model_dump(),
+                    }
+                )
 
         return NewGameResponse(
             session_id=session_id,
             player=player_data,
             game_state=game_state_data,
+            world_info=world_info,
+            starting_scene=starting_scene,
             message="Game session created successfully",
         )
 
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -163,9 +262,9 @@ async def get_game_state():
     Get the current game state.
 
     Returns:
-        Current game state including player info, location, etc.
+        Current game state including player info, location, scene details, etc.
     """
-    from src.backend.main import gm_agent
+    from src.backend.main import get_world_pack_loader, gm_agent
 
     if gm_agent is None:
         raise HTTPException(
@@ -175,8 +274,10 @@ async def get_game_state():
 
     try:
         state = gm_agent.game_state
+        world_pack_loader = get_world_pack_loader()
 
-        return {
+        # Basic state response
+        response = {
             "session_id": state.session_id,
             "world_pack_id": state.world_pack_id,
             "player": {
@@ -193,6 +294,32 @@ async def get_game_state():
             "language": state.language,
             "messages": state.messages[-10:],  # Last 10 messages
         }
+
+        # Try to add scene details from world pack
+        if world_pack_loader:
+            try:
+                world_pack = world_pack_loader.load(state.world_pack_id)
+                location = world_pack.get_location(state.current_location)
+                if location:
+                    response["current_scene"] = {
+                        "location_name": location.name.model_dump(),
+                        "description": location.description.model_dump(),
+                        "items": location.items or [],
+                        "connected_locations": location.connected_locations or [],
+                    }
+
+                    # Add NPC names
+                    npcs = []
+                    for npc_id in state.active_npc_ids:
+                        npc = world_pack.get_npc(npc_id)
+                        if npc:
+                            npcs.append({"id": npc_id, "name": npc.soul.name})
+                    response["current_scene"]["npcs"] = npcs
+            except Exception:
+                # If world pack loading fails, continue without scene details
+                pass
+
+        return response
 
     except Exception as exc:
         raise HTTPException(
@@ -312,6 +439,8 @@ async def reset_game_state():
         gm_agent.game_state.turn_count = 0
         gm_agent.game_state.last_check_result = None
         gm_agent.game_state.temp_context = {}
+        gm_agent.game_state.flags = set()
+        gm_agent.game_state.discovered_items = set()
         gm_agent.game_state.set_phase("waiting_input")
 
         return {
@@ -323,4 +452,100 @@ async def reset_game_state():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to reset game: {str(exc)}",
+        ) from exc
+
+
+@router.get("/game/world-packs")
+async def list_world_packs():
+    """
+    List available world packs.
+
+    Returns:
+        List of available world pack IDs
+    """
+    from src.backend.main import get_world_pack_loader
+
+    world_pack_loader = get_world_pack_loader()
+    if world_pack_loader is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="World pack loader not initialized",
+        )
+
+    try:
+        available = world_pack_loader.list_available()
+        return {
+            "world_packs": available,
+            "count": len(available),
+        }
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list world packs: {str(exc)}",
+        ) from exc
+
+
+@router.get("/game/world-pack/{pack_id}")
+async def get_world_pack_info(pack_id: str):
+    """
+    Get information about a specific world pack.
+
+    Args:
+        pack_id: World pack identifier
+
+    Returns:
+        World pack metadata and summary
+    """
+    from src.backend.main import get_world_pack_loader
+
+    world_pack_loader = get_world_pack_loader()
+    if world_pack_loader is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="World pack loader not initialized",
+        )
+
+    try:
+        world_pack = world_pack_loader.load(pack_id)
+
+        return {
+            "id": pack_id,
+            "info": {
+                "name": world_pack.info.name.model_dump(),
+                "description": world_pack.info.description.model_dump(),
+                "version": world_pack.info.version,
+                "author": world_pack.info.author,
+            },
+            "summary": {
+                "locations": len(world_pack.locations),
+                "npcs": len(world_pack.npcs),
+                "lore_entries": len(world_pack.entries),
+            },
+            "locations": [
+                {
+                    "id": loc_id,
+                    "name": loc.name.model_dump(),
+                    "tags": loc.tags,
+                }
+                for loc_id, loc in world_pack.locations.items()
+            ],
+            "npcs": [
+                {
+                    "id": npc_id,
+                    "name": npc.soul.name,
+                    "location": npc.body.location,
+                }
+                for npc_id, npc in world_pack.npcs.items()
+            ],
+        }
+
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"World pack not found: {pack_id}",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get world pack info: {str(exc)}",
         ) from exc

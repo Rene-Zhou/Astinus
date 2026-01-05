@@ -22,7 +22,7 @@ export interface LocalizedString {
 /**
  * Supported languages
  */
-export type Language = 'cn' | 'en';
+export type Language = "cn" | "en";
 
 // ============================================================================
 // Character Types
@@ -57,11 +57,11 @@ export interface PlayerCharacter {
  * Game phases - matches backend GamePhase enum
  */
 export type GamePhase =
-  | 'waiting_input'  // Waiting for player input
-  | 'processing'     // GM is processing player action
-  | 'dice_check'     // Waiting for player to roll dice
-  | 'npc_response'   // NPC is responding
-  | 'narrating';     // GM is narrating outcome
+  | "waiting_input" // Waiting for player input
+  | "processing" // GM is processing player action
+  | "dice_check" // Waiting for player to roll dice
+  | "npc_response" // NPC is responding
+  | "narrating"; // GM is narrating outcome
 
 /**
  * Current game state
@@ -82,12 +82,12 @@ export interface GameState {
  * A single message in the conversation history
  */
 export interface Message {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
-  timestamp: string;  // ISO 8601 format
+  timestamp: string; // ISO 8601 format
   turn: number;
   metadata?: {
-    agent?: string;   // Which agent generated this (gm, npc, rule, lore)
+    agent?: string; // Which agent generated this (gm, npc, rule, lore)
     phase?: GamePhase;
     [key: string]: unknown;
   };
@@ -128,7 +128,7 @@ export interface DiceResult {
 /**
  * Possible outcomes of a dice roll
  */
-export type DiceOutcome = 'critical' | 'success' | 'partial' | 'failure';
+export type DiceOutcome = "critical" | "success" | "partial" | "failure";
 
 // ============================================================================
 // REST API Types
@@ -137,9 +137,49 @@ export type DiceOutcome = 'critical' | 'success' | 'partial' | 'failure';
 // --- POST /api/v1/game/new ---
 
 export interface NewGameRequest {
-  world_pack_id?: string;   // Default: "demo_pack"
-  player_name?: string;     // Default: "玩家"
-  player_concept?: string;  // Default: "冒险者"
+  world_pack_id?: string; // Default: "demo_pack"
+  player_name?: string; // Default: "玩家"
+  player_concept?: string; // Default: "冒险者"
+}
+
+/**
+ * World pack info returned when starting a new game
+ */
+export interface WorldInfo {
+  id: string;
+  name: LocalizedString;
+  description: LocalizedString;
+  version: string;
+  author: string;
+}
+
+/**
+ * Connected location reference
+ */
+export interface ConnectedLocation {
+  id: string;
+  name: LocalizedString;
+}
+
+/**
+ * NPC info in scene
+ */
+export interface SceneNPC {
+  id: string;
+  name: string;
+  description: LocalizedString;
+}
+
+/**
+ * Starting scene information
+ */
+export interface StartingScene {
+  location_id: string;
+  location_name: LocalizedString;
+  description: LocalizedString;
+  items: string[];
+  connected_locations: ConnectedLocation[];
+  npcs: SceneNPC[];
 }
 
 export interface NewGameResponse {
@@ -151,6 +191,8 @@ export interface NewGameResponse {
     turn_count: number;
     active_npc_ids: string[];
   };
+  world_info: WorldInfo;
+  starting_scene: StartingScene;
   message: string;
 }
 
@@ -158,7 +200,7 @@ export interface NewGameResponse {
 
 export interface ActionRequest {
   player_input: string;
-  lang?: Language;  // Default: "cn"
+  lang?: Language; // Default: "cn"
 }
 
 export interface ActionResponse {
@@ -209,7 +251,7 @@ export interface ResetResponse {
 // --- GET /health ---
 
 export interface HealthResponse {
-  status: 'healthy' | 'unhealthy';
+  status: "healthy" | "unhealthy";
   version: string;
   agents: {
     gm_agent: boolean;
@@ -235,34 +277,37 @@ export interface RootResponse {
  * WebSocket message types
  */
 export type WSMessageType =
-  | 'player_input'   // Client -> Server: Player action
-  | 'dice_result'    // Client -> Server: Dice roll result
-  | 'status'         // Server -> Client: Processing status
-  | 'content'        // Server -> Client: Streamed content chunk
-  | 'complete'       // Server -> Client: Final response
-  | 'dice_check'     // Server -> Client: Dice check required
-  | 'phase'          // Server -> Client: Phase change
-  | 'error';         // Server -> Client: Error message
+  | "player_input" // Client -> Server: Player action
+  | "dice_result" // Client -> Server: Dice roll result
+  | "status" // Server -> Client: Processing status
+  | "content" // Server -> Client: Streamed content chunk
+  | "complete" // Server -> Client: Final response
+  | "dice_check" // Server -> Client: Dice check required
+  | "phase" // Server -> Client: Phase change
+  | "error"; // Server -> Client: Error message
 
 /**
  * Base WebSocket message structure
  */
-export interface WSMessage<T extends WSMessageType = WSMessageType, D = unknown> {
+export interface WSMessage<
+  T extends WSMessageType = WSMessageType,
+  D = unknown,
+> {
   type: T;
   data: D;
 }
 
 // --- Client -> Server Messages ---
 
-export interface WSPlayerInputMessage extends WSMessage<'player_input'> {
-  type: 'player_input';
+export interface WSPlayerInputMessage extends WSMessage<"player_input"> {
+  type: "player_input";
   content: string;
   lang?: Language;
-  stream?: boolean;  // Default: true
+  stream?: boolean; // Default: true
 }
 
-export interface WSDiceResultMessage extends WSMessage<'dice_result'> {
-  type: 'dice_result';
+export interface WSDiceResultMessage extends WSMessage<"dice_result"> {
+  type: "dice_result";
   result: number;
   all_rolls: number[];
   kept_rolls: number[];
@@ -273,16 +318,16 @@ export type WSClientMessage = WSPlayerInputMessage | WSDiceResultMessage;
 
 // --- Server -> Client Messages ---
 
-export interface WSStatusMessage extends WSMessage<'status'> {
-  type: 'status';
+export interface WSStatusMessage extends WSMessage<"status"> {
+  type: "status";
   data: {
     phase: string;
     message: string;
   };
 }
 
-export interface WSContentMessage extends WSMessage<'content'> {
-  type: 'content';
+export interface WSContentMessage extends WSMessage<"content"> {
+  type: "content";
   data: {
     chunk: string;
     is_partial: boolean;
@@ -290,8 +335,8 @@ export interface WSContentMessage extends WSMessage<'content'> {
   };
 }
 
-export interface WSCompleteMessage extends WSMessage<'complete'> {
-  type: 'complete';
+export interface WSCompleteMessage extends WSMessage<"complete"> {
+  type: "complete";
   data: {
     content: string;
     metadata: Record<string, unknown>;
@@ -299,22 +344,22 @@ export interface WSCompleteMessage extends WSMessage<'complete'> {
   };
 }
 
-export interface WSDiceCheckMessage extends WSMessage<'dice_check'> {
-  type: 'dice_check';
+export interface WSDiceCheckMessage extends WSMessage<"dice_check"> {
+  type: "dice_check";
   data: {
     check_request: DiceCheckRequest;
   };
 }
 
-export interface WSPhaseMessage extends WSMessage<'phase'> {
-  type: 'phase';
+export interface WSPhaseMessage extends WSMessage<"phase"> {
+  type: "phase";
   data: {
     phase: GamePhase;
   };
 }
 
-export interface WSErrorMessage extends WSMessage<'error'> {
-  type: 'error';
+export interface WSErrorMessage extends WSMessage<"error"> {
+  type: "error";
   data: {
     error: string;
   };
@@ -336,11 +381,11 @@ export type WSServerMessage =
  * WebSocket connection status
  */
 export type ConnectionStatus =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'reconnecting'
-  | 'error';
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "error";
 
 // ============================================================================
 // Utility Types
@@ -356,6 +401,9 @@ export interface APIError {
 /**
  * Helper to get localized string value
  */
-export function getLocalizedValue(str: LocalizedString, lang: Language): string {
+export function getLocalizedValue(
+  str: LocalizedString,
+  lang: Language,
+): string {
   return str[lang] || str.cn || str.en;
 }

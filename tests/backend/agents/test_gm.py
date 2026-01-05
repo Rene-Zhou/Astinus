@@ -202,10 +202,7 @@ class TestGMAgent:
         assert "npc_unknown" in result.metadata["agents_called"]
         # Check that error is recorded in results
         agent_results = result.metadata["agent_results"]
-        assert any(
-            r["agent"] == "npc_unknown" and not r["success"]
-            for r in agent_results
-        )
+        assert any(r["agent"] == "npc_unknown" and not r["success"] for r in agent_results)
 
     @pytest.mark.asyncio
     async def test_synthesize_response(self, gm_agent):
@@ -219,6 +216,9 @@ class TestGMAgent:
                 ),
             }
         ]
+
+        # Mock LLM response for synthesis
+        gm_agent.llm.ainvoke.return_value.content = "你尝试逃离房间，但需要进行检定。"
 
         narrative = await gm_agent._synthesize_response(
             player_input="逃离房间",
@@ -291,10 +291,12 @@ class TestGMAgent:
             }"""
         )
 
-        result = gm_agent.invoke({
-            "player_input": "查看",
-            "lang": "cn",
-        })
+        result = gm_agent.invoke(
+            {
+                "player_input": "查看",
+                "lang": "cn",
+            }
+        )
 
         assert result.success is True
         assert result.content != ""
@@ -379,9 +381,7 @@ class TestGMAgent:
         assert context["context"]["location"] == "暗室"
 
     @pytest.mark.asyncio
-    async def test_slice_context_for_npc_without_world_pack(
-        self, gm_agent
-    ):
+    async def test_slice_context_for_npc_without_world_pack(self, gm_agent):
         """Test NPC context slicing without world pack loader."""
         context = gm_agent._slice_context_for_npc("chen_ling", "你好", "cn")
 
@@ -392,9 +392,7 @@ class TestGMAgent:
         assert "npc_data" not in context
 
     @pytest.mark.asyncio
-    async def test_process_with_npc_agent(
-        self, mock_llm, sample_game_state
-    ):
+    async def test_process_with_npc_agent(self, mock_llm, sample_game_state):
         """Test processing with NPC agent dispatch."""
         # Create mock NPC agent
         mock_npc_agent = AsyncMock()
@@ -422,10 +420,12 @@ class TestGMAgent:
             }"""
         )
 
-        result = await gm_agent.process({
-            "player_input": "我想和陈玲说话",
-            "lang": "cn",
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": "我想和陈玲说话",
+                "lang": "cn",
+            }
+        )
 
         assert result.success is True
         assert "npc_chen_ling" in result.metadata["agents_called"]
@@ -460,7 +460,9 @@ class TestGMAgentConversationHistoryRetrieval:
             traits=[
                 Trait(
                     name=LocalizedString(cn="勇敢", en="Brave"),
-                    description=LocalizedString(cn="敢于面对危险", en="Brave in the face of danger"),
+                    description=LocalizedString(
+                        cn="敢于面对危险", en="Brave in the face of danger"
+                    ),
                     positive_aspect=LocalizedString(cn="能够保护他人", en="Can protect others"),
                     negative_aspect=LocalizedString(cn="有时过于鲁莽", en="Sometimes reckless"),
                 )
@@ -476,8 +478,9 @@ class TestGMAgentConversationHistoryRetrieval:
     @pytest.fixture
     def gm_agent_with_vector_store(self, mock_llm, sample_game_state):
         """Create GM Agent with vector store."""
-        from src.backend.services.vector_store import VectorStoreService
         import tempfile
+
+        from src.backend.services.vector_store import VectorStoreService
 
         with tempfile.TemporaryDirectory() as tmpdir:
             vector_store = VectorStoreService(tmpdir)
@@ -501,6 +504,7 @@ class TestGMAgentConversationHistoryRetrieval:
     def test_gm_agent_initialization_with_vector_store(self, mock_llm, sample_game_state):
         """Test GMAgent can be initialized with and without vector store."""
         import tempfile
+
         from src.backend.services.vector_store import VectorStoreService
 
         # Without vector store
@@ -641,6 +645,7 @@ class TestGMAgentConversationHistoryRetrieval:
     def test_game_state_add_message_with_vector_indexing(self, mock_llm, sample_game_state):
         """Test that GameState.add_message can index messages in vector store."""
         import tempfile
+
         from src.backend.services.vector_store import VectorStoreService
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -662,9 +667,7 @@ class TestGMAgentConversationHistoryRetrieval:
             collections = vector_store.list_collections()
             assert "conversation_history_test-session" in collections
 
-    def test_game_state_add_message_without_vector_store(
-        self, mock_llm, sample_game_state
-    ):
+    def test_game_state_add_message_without_vector_store(self, mock_llm, sample_game_state):
         """Test that GameState.add_message works without vector store."""
         # Add message without vector indexing
         sample_game_state.add_message(
@@ -677,9 +680,7 @@ class TestGMAgentConversationHistoryRetrieval:
         assert len(sample_game_state.messages) == 1
         assert sample_game_state.messages[0]["content"] == "玩家进入图书馆"
 
-    def test_retrieve_relevant_history_empty_messages(
-        self, gm_agent_without_vector_store
-    ):
+    def test_retrieve_relevant_history_empty_messages(self, gm_agent_without_vector_store):
         """Test that empty message list is handled correctly."""
         result = gm_agent_without_vector_store._retrieve_relevant_history(
             session_id="test-session",

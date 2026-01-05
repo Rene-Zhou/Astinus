@@ -100,39 +100,45 @@ class GMAgent(BaseAgent):
                 metadata={"agent": self.agent_name},
             )
 
-        # Execute agent dispatch plan
-        agents_to_call = agent_dispatch_plan["agents_to_call"]
-        context_slices = agent_dispatch_plan["context_slices"]
+        # Check if GM can respond directly
+        if agent_dispatch_plan.get("can_respond_directly", False):
+            narrative = agent_dispatch_plan.get("direct_response", "")
+            agents_to_call = []
+            agent_results = []
+        else:
+            # Execute agent dispatch plan
+            agents_to_call = agent_dispatch_plan.get("agents_to_call", [])
+            context_slices = agent_dispatch_plan.get("context_slices", {})
 
-        agent_results = []
-        for agent_name in agents_to_call:
-            if agent_name in self.sub_agents:
-                agent = self.sub_agents[agent_name]
-                context = context_slices.get(agent_name, {})
+            agent_results = []
+            for agent_name in agents_to_call:
+                if agent_name in self.sub_agents:
+                    agent = self.sub_agents[agent_name]
+                    context = context_slices.get(agent_name, {})
 
-                # Call sub-agent
-                result = await agent.ainvoke(context)
-                agent_results.append(
-                    {
-                        "agent": agent_name,
-                        "result": result,
-                    }
-                )
-            else:
-                agent_results.append(
-                    {
-                        "agent": agent_name,
-                        "error": f"Agent not found: {agent_name}",
-                    }
-                )
+                    # Call sub-agent
+                    result = await agent.ainvoke(context)
+                    agent_results.append(
+                        {
+                            "agent": agent_name,
+                            "result": result,
+                        }
+                    )
+                else:
+                    agent_results.append(
+                        {
+                            "agent": agent_name,
+                            "error": f"Agent not found: {agent_name}",
+                        }
+                    )
 
-        # Synthesize responses into narrative
-        narrative = await self._synthesize_response(
-            player_input,
-            agent_dispatch_plan["player_intent"],
-            agent_results,
-            lang,
-        )
+            # Synthesize responses into narrative
+            narrative = await self._synthesize_response(
+                player_input,
+                agent_dispatch_plan["player_intent"],
+                agent_results,
+                lang,
+            )
 
         # Update game state
         self.game_state.add_message(
@@ -152,6 +158,7 @@ class GMAgent(BaseAgent):
             metadata={
                 "agent": self.agent_name,
                 "player_intent": agent_dispatch_plan["player_intent"],
+                "can_respond_directly": agent_dispatch_plan.get("can_respond_directly", False),
                 "agents_called": agents_to_call,
                 "agent_results": [
                     {
@@ -163,6 +170,80 @@ class GMAgent(BaseAgent):
             },
             success=True,
         )
+
+    def _get_scene_context(self, lang: str) -> dict[str, Any]:
+        """
+        Get complete scene context from the world pack.
+
+        Args:
+            lang: Language code (cn/en)
+
+        Returns:
+            Dict containing location description, items, NPCs, etc.
+        """
+        context = {
+            "location_description": None,
+            "location_items": [],
+            "connected_locations": [],
+            "active_npcs_details": [],
+            "world_background": None,
+        }
+
+        if not self.world_pack_loader:
+            return context
+
+        try:
+            world_pack = self.world_pack_loader.load(self.game_state.world_pack_id)
+
+            # Get current location details
+            location = world_pack.get_location(self.game_state.current_location)
+            if location:
+                context["location_description"] = location.description.get(lang)
+                context["location_items"] = location.items or []
+
+                # Get connected location names
+                connected = []
+                for loc_id in location.connected_locations or []:
+                    connected_loc = world_pack.get_location(loc_id)
+                    if connected_loc:
+                        connected.append(connected_loc.name.get(lang))
+                    else:
+                        connected.append(loc_id)
+                context["connected_locations"] = connected
+
+            # Get NPC details for active NPCs
+            npcs_details = []
+            for npc_id in self.game_state.active_npc_ids:
+                npc = world_pack.get_npc(npc_id)
+                if npc:
+                    # Get a brief description (first 50 chars of description)
+                    description = npc.soul.description.get(lang)
+                    brief = description[:100] + "..." if len(description) > 100 else description
+                    npcs_details.append(
+                        {
+                            "id": npc_id,
+                            "name": npc.soul.name,
+                            "brief": brief,
+                        }
+                    )
+            context["active_npcs_details"] = npcs_details
+
+            # Get world background from constant entries
+            constant_entries = world_pack.get_constant_entries()
+            if constant_entries:
+                backgrounds = []
+                for entry in constant_entries:
+                    content = entry.content.get(lang)
+                    if content:
+                        backgrounds.append(content)
+                if backgrounds:
+                    context["world_background"] = "\n".join(backgrounds)
+
+        except Exception:
+            # If loading fails, return empty context
+            pass
+
+        return context
 
     async def _parse_intent_and_plan(
         self,
@@ -180,6 +261,8 @@ class GMAgent(BaseAgent):
             Dict with:
                 - success: bool
                 - player_intent: str
+                - can_respond_directly: bool
+                - direct_response: str (if can_respond_directly)
                 - agents_to_call: list[str]
                 - context_slices: dict[str, dict]
                 - error: str (if success=False)
@@ -187,10 +270,17 @@ class GMAgent(BaseAgent):
         # Get template
         template = self.prompt_loader.get_template("gm_agent")
 
+        # Get scene context from world pack
+        scene_context = self._get_scene_context(lang)
+
         # Prepare template variables
         template_vars = {
             "current_location": self.game_state.current_location,
-            "active_npcs": self.game_state.active_npc_ids,
+            "location_description": scene_context.get("location_description"),
+            "location_items": scene_context.get("location_items", []),
+            "connected_locations": scene_context.get("connected_locations", []),
+            "active_npcs_details": scene_context.get("active_npcs_details", []),
+            "world_background": scene_context.get("world_background"),
             "game_phase": self.game_state.current_phase.value,
             "turn_count": self.game_state.turn_count,
             "player_input": player_input,
@@ -219,12 +309,21 @@ class GMAgent(BaseAgent):
 
         # Validate and prepare context slices
         player_intent = result.get("player_intent", "unknown")
+        can_respond_directly = result.get("can_respond_directly", False)
+        direct_response = result.get("direct_response", "")
         agents_to_call = result.get("agents_to_call", [])
         context_slices = result.get("context_slices", {})
 
         # Prepare context for Rule Agent if needed
         if "rule" in agents_to_call:
             context_slices["rule"] = self._slice_context_for_rule(
+                player_input,
+                lang,
+            )
+
+        # Prepare context for Lore Agent if needed
+        if "lore" in agents_to_call:
+            context_slices["lore"] = self._slice_context_for_lore(
                 player_input,
                 lang,
             )
@@ -242,6 +341,8 @@ class GMAgent(BaseAgent):
         return {
             "success": True,
             "player_intent": player_intent,
+            "can_respond_directly": can_respond_directly,
+            "direct_response": direct_response,
             "agents_to_call": agents_to_call,
             "context_slices": context_slices,
         }
@@ -268,11 +369,31 @@ class GMAgent(BaseAgent):
             "character": {
                 "name": self.game_state.player.name,
                 "concept": self.game_state.player.concept.model_dump(),
-                "traits": [
-                    t.model_dump() for t in self.game_state.player.traits
-                ],
+                "traits": [t.model_dump() for t in self.game_state.player.traits],
             },
             "tags": self.game_state.player.tags,
+            "lang": lang,
+        }
+
+    def _slice_context_for_lore(
+        self,
+        player_input: str,
+        lang: str,
+    ) -> dict[str, Any]:
+        """
+        Prepare context slice for Lore Agent.
+
+        Args:
+            player_input: Player's query or action
+            lang: Language code
+
+        Returns:
+            Context slice for Lore Agent
+        """
+        return {
+            "query": player_input,
+            "context": f"Player is at {self.game_state.current_location}",
+            "world_pack_id": self.game_state.world_pack_id,
             "lang": lang,
         }
 
@@ -298,9 +419,7 @@ class GMAgent(BaseAgent):
         # Get recent messages with this NPC
         recent_messages = self.game_state.get_recent_messages(count=10)
         npc_messages = [
-            msg
-            for msg in recent_messages
-            if msg.get("metadata", {}).get("npc_id") == npc_id
+            msg for msg in recent_messages if msg.get("metadata", {}).get("npc_id") == npc_id
         ]
 
         # Try to get NPC data from world pack
@@ -418,6 +537,8 @@ class GMAgent(BaseAgent):
         """
         Synthesize sub-agent responses into unified narrative.
 
+        Uses LLM to transform agent results into coherent narrative.
+
         Args:
             player_input: Original player input
             player_intent: Parsed intent
@@ -427,37 +548,97 @@ class GMAgent(BaseAgent):
         Returns:
             Unified narrative response
         """
-        # Simple synthesis for now - can be enhanced later
-        parts = []
-
-        # Add brief intro
-        if lang == "cn":
-            parts.append(f"你尝试{player_input}。")
-        else:
-            parts.append(f"You attempt: {player_input}.")
-
-        # Add agent responses
+        # Collect agent outputs
+        agent_outputs = []
         for agent_result in agent_results:
             if "result" in agent_result and agent_result["result"].success:
                 result = agent_result["result"]
-                # Add action result or narrative
-                if result.content:
-                    parts.append(result.content)
+                agent_outputs.append(
+                    {
+                        "agent": agent_result["agent"],
+                        "content": result.content,
+                        "metadata": result.metadata,
+                    }
+                )
             elif "error" in agent_result:
-                # Log error but don't expose to player
-                continue
+                agent_outputs.append(
+                    {
+                        "agent": agent_result["agent"],
+                        "error": agent_result["error"],
+                    }
+                )
 
-        # Join parts
-        narrative = " ".join(parts)
+        # If no successful agent outputs, generate a fallback response
+        if not agent_outputs or all("error" in o for o in agent_outputs):
+            if lang == "cn":
+                return f"你尝试{player_input}，但似乎什么也没有发生。"
+            else:
+                return f"You try to {player_input}, but nothing seems to happen."
+
+        # Build synthesis prompt
+        if lang == "cn":
+            synthesis_prompt = f"""请将以下 Agent 的响应综合成一段连贯的叙事文本。
+使用第二人称（"你"），保持沉浸感。不要提及 Agent 的名称或技术细节。
+
+玩家意图：{player_intent}
+玩家输入：{player_input}
+
+Agent 响应：
+"""
+        else:
+            synthesis_prompt = f"""Please synthesize the following agent responses into a coherent narrative.
+Use second person ("you"), maintain immersion. Do not mention agent names or technical details.
+
+Player intent: {player_intent}
+Player input: {player_input}
+
+Agent responses:
+"""
+
+        for output in agent_outputs:
+            if "content" in output:
+                synthesis_prompt += f"\n{output['agent']}: {output['content']}"
+
+        synthesis_prompt += "\n\n请生成叙事：" if lang == "cn" else "\n\nGenerate narrative:"
+
+        # Call LLM for synthesis
+        messages = [
+            SystemMessage(
+                content="你是一个 TTRPG 叙事助手，负责将多个来源的信息整合成流畅的叙事文本。"
+                if lang == "cn"
+                else "You are a TTRPG narrative assistant, responsible for synthesizing information from multiple sources into smooth narrative text."
+            ),
+            HumanMessage(content=synthesis_prompt),
+        ]
+
+        try:
+            narrative = await self._call_llm(messages)
+        except Exception:
+            # Fallback to simple concatenation if synthesis fails
+            parts = []
+            for output in agent_outputs:
+                if "content" in output and output["content"]:
+                    parts.append(output["content"])
+            narrative = (
+                " ".join(parts)
+                if parts
+                else (
+                    f"你尝试{player_input}。" if lang == "cn" else f"You attempt to {player_input}."
+                )
+            )
 
         # Update game phase
         from src.backend.models.game_state import GamePhase
 
         if "rule" in [r["agent"] for r in agent_results]:
-            self.game_state.set_phase(GamePhase.DICE_CHECK)
-        else:
-            self.game_state.set_phase(GamePhase.NARRATING)
+            # Check if dice check is needed
+            for result in agent_results:
+                if result.get("agent") == "rule" and "result" in result:
+                    if result["result"].metadata.get("needs_check"):
+                        self.game_state.set_phase(GamePhase.DICE_CHECK)
+                        return narrative
 
+        self.game_state.set_phase(GamePhase.NARRATING)
         return narrative
 
     def __repr__(self) -> str:

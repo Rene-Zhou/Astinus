@@ -5,12 +5,14 @@ Provides REST API and WebSocket endpoints for the TTRPG game engine.
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.backend.agents.gm import GMAgent
+from src.backend.agents.lore import LoreAgent
 from src.backend.agents.rule import RuleAgent
 from src.backend.api import websockets
 from src.backend.api.v1 import game
@@ -19,9 +21,23 @@ from src.backend.core.llm_provider import LLMConfig, LLMProvider, get_llm
 from src.backend.models.character import PlayerCharacter, Trait
 from src.backend.models.game_state import GameState
 from src.backend.models.i18n import LocalizedString
+from src.backend.services.vector_store import VectorStoreService
+from src.backend.services.world import WorldPackLoader
 
-# Global GM Agent instance (managed by lifespan)
+# Global instances (managed by lifespan)
 gm_agent: GMAgent | None = None
+world_pack_loader: WorldPackLoader | None = None
+vector_store: VectorStoreService | None = None
+
+
+def get_world_pack_loader() -> WorldPackLoader | None:
+    """Get the global world pack loader instance."""
+    return world_pack_loader
+
+
+def get_vector_store() -> VectorStoreService | None:
+    """Get the global vector store instance."""
+    return vector_store
 
 
 @asynccontextmanager
@@ -31,13 +47,36 @@ async def lifespan(app: FastAPI):
 
     Initializes agents on startup and cleans up on shutdown.
     """
-    global gm_agent
+    global gm_agent, world_pack_loader, vector_store
 
     # Startup
     print("🚀 Starting Astinus backend...")
 
     # Load settings from config file
     settings = get_settings()
+
+    # Initialize Vector Store
+    try:
+        vector_store_path = Path("data/vector_store/chroma_db")
+        vector_store_path.parent.mkdir(parents=True, exist_ok=True)
+        vector_store = VectorStoreService(persist_directory=str(vector_store_path))
+        print("✅ Vector store initialized")
+    except Exception as exc:
+        print(f"⚠️ Vector store initialization failed (continuing without): {exc}")
+        vector_store = None
+
+    # Initialize World Pack Loader
+    try:
+        packs_dir = Path("data/packs")
+        world_pack_loader = WorldPackLoader(
+            packs_dir=packs_dir,
+            vector_store=vector_store,
+            enable_vector_indexing=vector_store is not None,
+        )
+        print(f"✅ World pack loader initialized (packs: {world_pack_loader.list_available()})")
+    except Exception as exc:
+        print(f"❌ Failed to initialize world pack loader: {exc}")
+        raise
 
     # Initialize LLM using settings
     try:
@@ -63,6 +102,40 @@ async def lifespan(app: FastAPI):
         print(f"❌ Failed to initialize LLM: {exc}")
         raise
 
+    # Load default world pack and get starting location
+    try:
+        default_pack_id = "demo_pack"
+        world_pack = world_pack_loader.load(default_pack_id)
+
+        # Find starting location (look for "starting_area" tag or use first location)
+        starting_location_id = None
+        starting_location = None
+        for loc_id, loc in world_pack.locations.items():
+            if "starting_area" in loc.tags:
+                starting_location_id = loc_id
+                starting_location = loc
+                break
+
+        # Fallback to first location if no starting_area tag found
+        if starting_location_id is None and world_pack.locations:
+            starting_location_id = next(iter(world_pack.locations.keys()))
+            starting_location = world_pack.locations[starting_location_id]
+
+        if starting_location is None:
+            starting_location_id = "unknown"
+            active_npc_ids = []
+        else:
+            active_npc_ids = starting_location.present_npc_ids or []
+
+        print(f"✅ World pack loaded: {default_pack_id}")
+        print(f"   Starting location: {starting_location_id}")
+        print(f"   Active NPCs: {active_npc_ids}")
+
+    except Exception as exc:
+        print(f"⚠️ Failed to load default world pack: {exc}")
+        starting_location_id = "unknown"
+        active_npc_ids = []
+
     # Initialize agents
     try:
         default_character = PlayerCharacter(
@@ -87,23 +160,34 @@ async def lifespan(app: FastAPI):
 
         game_state = GameState(
             session_id="default-session",
-            world_pack_id="demo-pack",
+            world_pack_id=default_pack_id,
             player=default_character,
-            current_location="起始地点",
-            active_npc_ids=[],
+            current_location=starting_location_id,
+            active_npc_ids=active_npc_ids,
         )
 
         # Create sub-agents
         rule_agent = RuleAgent(llm)
+        lore_agent = LoreAgent(
+            llm=llm,
+            world_pack_loader=world_pack_loader,
+            vector_store=vector_store,
+        )
 
         # Create GM Agent (central orchestrator)
         gm_agent = GMAgent(
             llm=llm,
-            sub_agents={"rule": rule_agent},
+            sub_agents={
+                "rule": rule_agent,
+                "lore": lore_agent,
+            },
             game_state=game_state,
+            world_pack_loader=world_pack_loader,
+            vector_store=vector_store,
         )
 
         print("✅ Agents initialized")
+        print(f"   Sub-agents: {list(gm_agent.sub_agents.keys())}")
     except Exception as exc:
         print(f"❌ Failed to initialize agents: {exc}")
         raise
@@ -116,6 +200,8 @@ async def lifespan(app: FastAPI):
     # Shutdown
     print("\n🛑 Shutting down Astinus backend...")
     gm_agent = None
+    world_pack_loader = None
+    vector_store = None
     print("✅ Shutdown complete")
 
 
@@ -165,7 +251,16 @@ async def health_check():
         "version": "0.1.0",
         "agents": {
             "gm_agent": gm_agent is not None,
-            "rule_agent": gm_agent is not None if gm_agent else False,
+            "rule_agent": gm_agent is not None and "rule" in gm_agent.sub_agents
+            if gm_agent
+            else False,
+            "lore_agent": gm_agent is not None and "lore" in gm_agent.sub_agents
+            if gm_agent
+            else False,
+        },
+        "services": {
+            "world_pack_loader": world_pack_loader is not None,
+            "vector_store": vector_store is not None,
         },
     }
 
