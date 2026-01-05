@@ -37,12 +37,12 @@ const TraitTooltip: React.FC<TraitTooltipProps> = ({ trait, language, onClose })
   const negative = getLocalizedValue(trait.negative_aspect, language);
 
   return (
-    <div className="absolute z-50 left-0 right-0 mt-1 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
-      <div className="flex items-center justify-between">
+    <div className="absolute z-50 left-0 mt-1 w-64 max-w-xs rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+      <div className="flex items-center justify-between gap-2">
         <h4 className="text-sm font-semibold text-gray-900">{name}</h4>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600"
+          className="text-gray-400 hover:text-gray-600 flex-shrink-0"
           aria-label="Close"
         >
           ×
@@ -51,15 +51,11 @@ const TraitTooltip: React.FC<TraitTooltipProps> = ({ trait, language, onClose })
       <p className="mt-1 text-xs text-gray-600">{description}</p>
       <div className="mt-2 grid gap-1">
         <div className="rounded bg-green-50 px-2 py-1">
-          <span className="text-xs font-medium text-green-700">
-            {language === "cn" ? "+ " : "+ "}
-          </span>
+          <span className="text-xs font-medium text-green-700">+ </span>
           <span className="text-xs text-green-600">{positive}</span>
         </div>
         <div className="rounded bg-red-50 px-2 py-1">
-          <span className="text-xs font-medium text-red-700">
-            {language === "cn" ? "- " : "- "}
-          </span>
+          <span className="text-xs font-medium text-red-700">- </span>
           <span className="text-xs text-red-600">{negative}</span>
         </div>
       </div>
