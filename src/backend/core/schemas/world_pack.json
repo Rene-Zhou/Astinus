@@ -109,11 +109,17 @@
           "default": "Unknown"
         },
         "setting": {
-          "$ref": "#/definitions/WorldPackSetting",
+          "oneOf": [
+            { "$ref": "#/definitions/WorldPackSetting" },
+            { "type": "null" }
+          ],
           "description": "World setting (era, genre, tone)"
         },
         "player_hook": {
-          "$ref": "#/definitions/LocalizedString",
+          "oneOf": [
+            { "$ref": "#/definitions/LocalizedString" },
+            { "type": "null" }
+          ],
           "description": "Player motivation/hook for entering the story"
         }
       },
@@ -195,7 +201,10 @@
           "$ref": "#/definitions/LocalizedString"
         },
         "appearance": {
-          "$ref": "#/definitions/LocalizedString",
+          "oneOf": [
+            { "$ref": "#/definitions/LocalizedString" },
+            { "type": "null" }
+          ],
           "description": "Brief external appearance description for initial encounter (no name, no background)"
         },
         "personality": {
@@ -322,7 +331,10 @@
           "$ref": "#/definitions/LocalizedString"
         },
         "atmosphere": {
-          "$ref": "#/definitions/LocalizedString",
+          "oneOf": [
+            { "$ref": "#/definitions/LocalizedString" },
+            { "type": "null" }
+          ],
           "description": "Time, weather, and environmental atmosphere for scene-setting"
         },
         "connected_locations": {

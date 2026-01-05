@@ -284,16 +284,22 @@ class WorldPack(BaseModel):
         keyword_lower = keyword.lower()
 
         for entry in self.entries.values():
-            # Check primary keys
-            if any(keyword_lower in k.lower() for k in entry.key):
+            # Check primary keys (bidirectional: keyword in key OR key in keyword)
+            if any(
+                keyword_lower in k.lower() or k.lower() in keyword_lower
+                for k in entry.key
+            ):
                 matches.append(entry)
                 continue
 
-            # Check secondary keys if enabled
+            # Check secondary keys if enabled (bidirectional match)
             if (
                 include_secondary
                 and entry.secondary_keys
-                and any(keyword_lower in k.lower() for k in entry.secondary_keys)
+                and any(
+                    keyword_lower in k.lower() or k.lower() in keyword_lower
+                    for k in entry.secondary_keys
+                )
             ):
                 matches.append(entry)
 

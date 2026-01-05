@@ -6,10 +6,12 @@ import type { GamePhase, LocalizedString } from "../api/types";
 describe("StatBlock Phase Display", () => {
   const defaultProps = {
     playerName: "测试玩家",
+    characterName: "测试角色",
     concept: { cn: "勇敢的探险者", en: "Brave Explorer" } as LocalizedString,
     location: "书房",
     turnCount: 1,
     fatePoints: 3,
+    traits: [],
     tags: ["新手"],
     language: "cn" as const,
   };
