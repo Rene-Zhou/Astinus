@@ -37,12 +37,12 @@ const TraitDetail: React.FC<TraitDetailProps> = ({ trait, language, onClose }) =
   const negative = getLocalizedValue(trait.negative_aspect, language);
 
   return (
-    <div className="absolute z-10 left-[10%] right-[10%] mt-2 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+    <div className="absolute z-10 left-[5%] right-[5%] mt-2 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
       <div className="flex items-center justify-between gap-2">
         <h4 className="text-sm font-semibold text-gray-900">{name}</h4>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+          className="text-lg leading-none text-gray-400 hover:text-gray-600 flex-shrink-0 px-1"
           aria-label="Close"
         >
           ×
