@@ -180,6 +180,15 @@ export interface NewGameRequest {
 }
 
 /**
+ * World setting information for establishing game context
+ */
+export interface WorldSetting {
+  era: LocalizedString;
+  genre: LocalizedString;
+  tone: LocalizedString;
+}
+
+/**
  * World pack info returned when starting a new game
  */
 export interface WorldInfo {
@@ -188,6 +197,10 @@ export interface WorldInfo {
   description: LocalizedString;
   version: string;
   author: string;
+  /** Optional world setting (era, genre, tone) */
+  setting?: WorldSetting;
+  /** Optional player motivation/hook */
+  player_hook?: LocalizedString;
 }
 
 /**
@@ -199,12 +212,12 @@ export interface ConnectedLocation {
 }
 
 /**
- * NPC info in scene
+ * NPC info in scene - only appearance, no name (to prevent metagaming)
  */
 export interface SceneNPC {
   id: string;
-  name: string;
-  description: LocalizedString;
+  /** External appearance description (player hasn't learned name yet) */
+  appearance: LocalizedString;
 }
 
 /**
@@ -214,6 +227,8 @@ export interface StartingScene {
   location_id: string;
   location_name: LocalizedString;
   description: LocalizedString;
+  /** Optional atmosphere (time, weather, environment) */
+  atmosphere?: LocalizedString;
   items: string[];
   connected_locations: ConnectedLocation[];
   npcs: SceneNPC[];

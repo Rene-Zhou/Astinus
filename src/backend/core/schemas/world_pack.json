@@ -58,6 +58,26 @@
       },
       "additionalProperties": false
     },
+    "WorldPackSetting": {
+      "type": "object",
+      "description": "World setting information for establishing game context",
+      "required": ["era", "genre", "tone"],
+      "properties": {
+        "era": {
+          "$ref": "#/definitions/LocalizedString",
+          "description": "Time period of the setting"
+        },
+        "genre": {
+          "$ref": "#/definitions/LocalizedString",
+          "description": "Genre and magic/realism level"
+        },
+        "tone": {
+          "$ref": "#/definitions/LocalizedString",
+          "description": "Overall tone and atmosphere"
+        }
+      },
+      "additionalProperties": false
+    },
     "WorldPackInfo": {
       "type": "object",
       "description": "Metadata for a world pack",
@@ -79,6 +99,14 @@
           "type": "string",
           "description": "Pack author",
           "default": "Unknown"
+        },
+        "setting": {
+          "$ref": "#/definitions/WorldPackSetting",
+          "description": "World setting (era, genre, tone)"
+        },
+        "player_hook": {
+          "$ref": "#/definitions/LocalizedString",
+          "description": "Player motivation/hook for entering the story"
         }
       },
       "additionalProperties": false
@@ -157,6 +185,10 @@
         },
         "description": {
           "$ref": "#/definitions/LocalizedString"
+        },
+        "appearance": {
+          "$ref": "#/definitions/LocalizedString",
+          "description": "Brief external appearance description for initial encounter (no name, no background)"
         },
         "personality": {
           "type": "array",
@@ -280,6 +312,10 @@
         },
         "description": {
           "$ref": "#/definitions/LocalizedString"
+        },
+        "atmosphere": {
+          "$ref": "#/definitions/LocalizedString",
+          "description": "Time, weather, and environmental atmosphere for scene-setting"
         },
         "connected_locations": {
           "type": "array",

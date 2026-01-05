@@ -65,7 +65,13 @@ export interface GameStoreState {
 }
 
 /**
- * Generate introduction message from world info and starting scene
+ * Generate introduction message from world info and starting scene.
+ *
+ * IMPORTANT: This function follows information control rules:
+ * - Does NOT reveal NPC names (player hasn't learned them yet)
+ * - Does NOT reveal background lore (player must discover it)
+ * - Uses appearance descriptions for NPCs
+ * - Includes atmosphere (time, weather) for immersion
  */
 function generateIntroductionMessage(
   worldInfo: WorldInfo,
@@ -74,14 +80,34 @@ function generateIntroductionMessage(
 ): string {
   const parts: string[] = [];
 
-  // World background
+  // World title (just the name, no spoiler description)
   const worldName = getLocalizedValue(worldInfo.name, lang);
-  const worldDesc = getLocalizedValue(worldInfo.description, lang);
   parts.push(`【${worldName}】`);
-  parts.push(worldDesc);
+
+  // World setting (era, genre, tone) - establishes context without spoilers
+  if (worldInfo.setting) {
+    const era = getLocalizedValue(worldInfo.setting.era, lang);
+    const genre = getLocalizedValue(worldInfo.setting.genre, lang);
+    parts.push(lang === "cn" ? `时代：${era}` : `Era: ${era}`);
+    parts.push(lang === "cn" ? `类型：${genre}` : `Genre: ${genre}`);
+  }
   parts.push("");
 
-  // Starting location
+  // Player hook - motivation for being here
+  if (worldInfo.player_hook) {
+    const hook = getLocalizedValue(worldInfo.player_hook, lang);
+    parts.push(hook);
+    parts.push("");
+  }
+
+  // Scene atmosphere (time, weather, environment) - sets the mood
+  if (startingScene.atmosphere) {
+    const atmosphere = getLocalizedValue(startingScene.atmosphere, lang);
+    parts.push(atmosphere);
+    parts.push("");
+  }
+
+  // Starting location description
   const locationName = getLocalizedValue(startingScene.location_name, lang);
   const locationDesc = getLocalizedValue(startingScene.description, lang);
   parts.push(
@@ -91,23 +117,20 @@ function generateIntroductionMessage(
   );
   parts.push(locationDesc);
 
-  // NPCs in scene
+  // NPCs in scene - describe by appearance only, NO NAMES
   if (startingScene.npcs && startingScene.npcs.length > 0) {
     parts.push("");
     const npcIntro =
-      lang === "cn"
-        ? "你注意到这里有："
-        : "You notice the following people here:";
+      lang === "cn" ? "你注意到这里有人：" : "You notice someone here:";
     parts.push(npcIntro);
     for (const npc of startingScene.npcs) {
-      const npcDesc = getLocalizedValue(npc.description, lang);
-      // Take first sentence or first 100 chars as brief
-      const brief = npcDesc.split(/[。.]/)[0] + (lang === "cn" ? "。" : ".");
-      parts.push(`- ${npc.name}：${brief}`);
+      // Use appearance, not name - player hasn't learned names yet
+      const appearance = getLocalizedValue(npc.appearance, lang);
+      parts.push(`- ${appearance}`);
     }
   }
 
-  // Connected locations
+  // Connected locations - only show names, not descriptions
   if (
     startingScene.connected_locations &&
     startingScene.connected_locations.length > 0

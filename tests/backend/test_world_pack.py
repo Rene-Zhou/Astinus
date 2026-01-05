@@ -27,10 +27,7 @@ class TestLoreEntry:
         entry = LoreEntry(
             uid=1,
             key=["暴风城", "Stormwind"],
-            content=LocalizedString(
-                cn="暴风城是人类的首都",
-                en="Stormwind is the human capital"
-            ),
+            content=LocalizedString(cn="暴风城是人类的首都", en="Stormwind is the human capital"),
         )
 
         assert entry.uid == 1
@@ -76,17 +73,11 @@ class TestNPCData:
             soul=NPCSoul(
                 name="陈玲",
                 description=LocalizedString(
-                    cn="一位年轻的历史学研究生",
-                    en="A young history graduate student"
+                    cn="一位年轻的历史学研究生", en="A young history graduate student"
                 ),
                 personality=["理性", "好奇", "谨慎"],
-                speech_style=LocalizedString(
-                    cn="说话条理清晰",
-                    en="Speaks with clear logic"
-                ),
-                example_dialogue=[
-                    {"user": "你好", "char": "你好，有什么需要帮助的吗？"}
-                ],
+                speech_style=LocalizedString(cn="说话条理清晰", en="Speaks with clear logic"),
+                example_dialogue=[{"user": "你好", "char": "你好，有什么需要帮助的吗？"}],
             ),
             body=NPCBody(
                 location="manor_entrance",
@@ -127,8 +118,7 @@ class TestLocationData:
             id="manor_hall",
             name=LocalizedString(cn="庄园大厅", en="Manor Hall"),
             description=LocalizedString(
-                cn="宽敞的大厅已经破败不堪",
-                en="The spacious hall has fallen into disrepair"
+                cn="宽敞的大厅已经破败不堪", en="The spacious hall has fallen into disrepair"
             ),
             connected_locations=["manor_entrance", "study"],
             present_npc_ids=[],
@@ -294,11 +284,12 @@ class TestDemoPackIntegration:
 
     def test_demo_pack_entries(self, demo_pack):
         """Test demo pack lore entries."""
-        # Should have constant entry for manor background
+        # Manor background is now selective (not constant) to prevent metagaming
+        # Player must discover it through checks or NPC dialogue
         constants = demo_pack.get_constant_entries()
-        assert len(constants) >= 1
+        # No constant entries expected - all lore should be discovered
 
-        # Search for manor keyword
+        # Search for manor keyword - should still find entries
         matches = demo_pack.search_entries_by_keyword("庄园")
         assert len(matches) >= 1
 

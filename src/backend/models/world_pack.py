@@ -13,17 +13,36 @@ from pydantic import BaseModel, Field
 from .i18n import LocalizedString
 
 
+class WorldPackSetting(BaseModel):
+    """
+    World setting information for establishing the game's context.
+
+    Helps players understand the era, genre, and tone of the world.
+    """
+
+    era: LocalizedString = Field(..., description="Time period of the setting")
+    genre: LocalizedString = Field(..., description="Genre and magic/realism level")
+    tone: LocalizedString = Field(..., description="Overall tone and atmosphere")
+
+
 class WorldPackInfo(BaseModel):
     """
     Metadata for a world pack.
 
-    Contains the pack's name, description, version, and author.
+    Contains the pack's name, description, version, author,
+    and optional setting/player_hook for introduction.
     """
 
     name: LocalizedString = Field(..., description="World pack name")
     description: LocalizedString = Field(..., description="World pack description")
     version: str = Field(default="1.0.0", description="Semantic version")
     author: str = Field(default="Unknown", description="Pack author")
+    setting: WorldPackSetting | None = Field(
+        default=None, description="World setting (era, genre, tone)"
+    )
+    player_hook: LocalizedString | None = Field(
+        default=None, description="Player motivation/hook for entering the story"
+    )
 
 
 class LoreEntry(BaseModel):
@@ -53,9 +72,7 @@ class LoreEntry(BaseModel):
     comment: LocalizedString | None = Field(
         default=None, description="Editor notes (not sent to AI)"
     )
-    constant: bool = Field(
-        default=False, description="Always include in context (use sparingly)"
-    )
+    constant: bool = Field(default=False, description="Always include in context (use sparingly)")
     selective: bool = Field(default=True, description="Only load when triggered")
     order: int = Field(default=100, description="Insertion order (lower = earlier)")
 
@@ -71,6 +88,10 @@ class NPCSoul(BaseModel):
     name: str = Field(..., description="NPC identifier name")
     description: LocalizedString = Field(
         ..., description="Appearance, background, personality (100-300 words)"
+    )
+    appearance: LocalizedString | None = Field(
+        default=None,
+        description="Brief external appearance description for initial encounter (no name, no background)",
     )
     personality: list[str] = Field(
         ..., description="3-5 personality adjectives", min_length=1, max_length=5
@@ -92,9 +113,7 @@ class NPCBody(BaseModel):
     """
 
     location: str = Field(..., description="Current scene/location ID")
-    inventory: list[str] = Field(
-        default_factory=list, description="Items held by NPC"
-    )
+    inventory: list[str] = Field(default_factory=list, description="Items held by NPC")
     relations: dict[str, int] = Field(
         default_factory=dict,
         description="Relationship scores with entities (-100 to +100)",
@@ -162,8 +181,10 @@ class LocationData(BaseModel):
 
     id: str = Field(..., description="Unique location identifier (snake_case)")
     name: LocalizedString = Field(..., description="Display name")
-    description: LocalizedString = Field(
-        ..., description="Scene description for narration"
+    description: LocalizedString = Field(..., description="Scene description for narration")
+    atmosphere: LocalizedString | None = Field(
+        default=None,
+        description="Time, weather, and environmental atmosphere for scene-setting",
     )
     connected_locations: list[str] = Field(
         default_factory=list, description="IDs of adjacent locations"
@@ -171,9 +192,7 @@ class LocationData(BaseModel):
     present_npc_ids: list[str] = Field(
         default_factory=list, description="NPCs currently at this location"
     )
-    items: list[str] = Field(
-        default_factory=list, description="Interactable items in the scene"
-    )
+    items: list[str] = Field(default_factory=list, description="Interactable items in the scene")
     tags: list[str] = Field(
         default_factory=list, description="Location tags (dark, dangerous, etc.)"
     )
@@ -196,9 +215,7 @@ class WorldPack(BaseModel):
     entries: dict[str, LoreEntry] = Field(
         default_factory=dict, description="Lore entries keyed by uid string"
     )
-    npcs: dict[str, NPCData] = Field(
-        default_factory=dict, description="NPCs keyed by id"
-    )
+    npcs: dict[str, NPCData] = Field(default_factory=dict, description="NPCs keyed by id")
     locations: dict[str, LocationData] = Field(
         default_factory=dict, description="Locations keyed by id"
     )

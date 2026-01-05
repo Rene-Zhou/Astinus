@@ -165,6 +165,13 @@ async def start_new_game(request: NewGameRequest):
             "author": world_pack.info.author,
         }
 
+        # Add optional setting and player_hook if available
+        info_dict = world_pack.info.model_dump() if hasattr(world_pack.info, "model_dump") else {}
+        if "setting" in info_dict:
+            world_info["setting"] = info_dict["setting"]
+        if "player_hook" in info_dict:
+            world_info["player_hook"] = info_dict["player_hook"]
+
         # Build starting scene response
         starting_scene = {
             "location_id": starting_location_id,
@@ -174,6 +181,13 @@ async def start_new_game(request: NewGameRequest):
             "connected_locations": [],
             "npcs": [],
         }
+
+        # Add atmosphere if available
+        loc_dict = (
+            starting_location.model_dump() if hasattr(starting_location, "model_dump") else {}
+        )
+        if "atmosphere" in loc_dict and loc_dict["atmosphere"]:
+            starting_scene["atmosphere"] = loc_dict["atmosphere"]
 
         # Add connected location names
         for loc_id in starting_location.connected_locations or []:
@@ -186,17 +200,22 @@ async def start_new_game(request: NewGameRequest):
                     }
                 )
 
-        # Add NPC info
+        # Add NPC info - only appearance, NOT name (to prevent metagaming)
         for npc_id in active_npc_ids:
             npc = world_pack.get_npc(npc_id)
             if npc:
-                starting_scene["npcs"].append(
-                    {
-                        "id": npc_id,
-                        "name": npc.soul.name,
-                        "description": npc.soul.description.model_dump(),
-                    }
-                )
+                npc_info = {
+                    "id": npc_id,
+                    # Don't include name - player hasn't learned it yet
+                }
+                # Use appearance if available, otherwise use first sentence of description
+                soul_dict = npc.soul.model_dump() if hasattr(npc.soul, "model_dump") else {}
+                if "appearance" in soul_dict and soul_dict["appearance"]:
+                    npc_info["appearance"] = soul_dict["appearance"]
+                else:
+                    # Fallback: use first sentence of description (external appearance only)
+                    npc_info["appearance"] = npc.soul.description.model_dump()
+                starting_scene["npcs"].append(npc_info)
 
         return NewGameResponse(
             session_id=session_id,

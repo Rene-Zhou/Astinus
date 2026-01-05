@@ -5,11 +5,29 @@
       "en": "The Dark Manor"
     },
     "description": {
-      "cn": "一个位于偏僻山区的神秘庄园，传说中曾发生过离奇的失踪事件。",
-      "en": "A mysterious manor in a remote mountain area, rumored to be the site of strange disappearances."
+      "cn": "一个关于神秘庄园与失落真相的哥特式悬疑故事。",
+      "en": "A gothic mystery story about a mysterious manor and lost truths."
     },
     "version": "1.0.0",
-    "author": "Astinus Team"
+    "author": "Astinus Team",
+    "setting": {
+      "era": {
+        "cn": "1920年代，民国初期",
+        "en": "1920s, Early Republic of China"
+      },
+      "genre": {
+        "cn": "哥特式悬疑，无魔法的现实主义",
+        "en": "Gothic mystery, realistic without magic"
+      },
+      "tone": {
+        "cn": "阴郁、神秘、充满未知",
+        "en": "Gloomy, mysterious, full of unknowns"
+      }
+    },
+    "player_hook": {
+      "cn": "你是一名旅行者，听闻山中有一座古老的庄园，据说那里藏着某位富商遗留的宝藏。怀着好奇与一丝贪念，你踏上了这条崎岖的山路。",
+      "en": "You are a traveler who has heard tales of an ancient manor in the mountains, said to hold treasures left behind by a wealthy merchant. Driven by curiosity and a hint of greed, you set out on this rugged mountain path."
+    }
   },
   "entries": {
     "1": {
@@ -21,11 +39,11 @@
         "en": "The Dark Manor is a Gothic structure built a century ago, perched atop a mist-shrouded mountain peak. It is said to have been the residence of a mysterious noble family, but after a great fire, the family vanished without a trace, leaving behind only this crumbling manor and countless eerie legends."
       },
       "comment": {
-        "cn": "主要场景背景",
-        "en": "Main scene background"
+        "cn": "主要场景背景 - 玩家需要通过检定或NPC对话才能获知",
+        "en": "Main scene background - player must learn through checks or NPC dialogue"
       },
-      "constant": true,
-      "selective": false,
+      "constant": false,
+      "selective": true,
       "order": 1
     },
     "2": {
@@ -67,6 +85,10 @@
           "cn": "陈玲是一位年轻的历史学研究生，专门研究本地区的民俗传说。她戴着一副圆框眼镜，总是随身携带一个破旧的笔记本，上面记满了关于幽暗庄园的调查笔记。虽然她表面上保持着学术的冷静，但对超自然现象有着强烈的好奇心。",
           "en": "Chen Ling is a young history graduate student specializing in local folklore. She wears round-framed glasses and always carries a worn notebook filled with investigation notes about the Dark Manor. Though she maintains academic composure on the surface, she harbors an intense curiosity about the supernatural."
         },
+        "appearance": {
+          "cn": "一位戴着圆框眼镜的年轻女子，手里紧握着一本破旧的笔记本，眼神中透着学者特有的好奇与专注。",
+          "en": "A young woman wearing round-framed glasses, clutching a worn notebook in her hands, her eyes revealing the curiosity and focus characteristic of a scholar."
+        },
         "personality": ["理性", "好奇", "谨慎"],
         "speech_style": {
           "cn": "说话条理清晰，喜欢引用史料。遇到有趣的线索时会下意识推眼镜，语速会不自觉加快。",
@@ -100,6 +122,10 @@
         "description": {
           "cn": "老王是庄园附近村子的守夜人，一位沉默寡言的老人。他的右眼有一道旧伤疤，据说是年轻时在庄园附近遇到'什么东西'留下的。他对庄园的事情讳莫如深，但如果获得他的信任，也许会透露一些关键信息。",
           "en": "Old Wang is the night watchman of the village near the manor, a taciturn old man. He has an old scar over his right eye, said to have been left by 'something' he encountered near the manor in his youth. He is deeply secretive about manor matters, but if you gain his trust, he might reveal crucial information."
+        },
+        "appearance": {
+          "cn": "一位沉默的老人，右眼上有一道显眼的陈年伤疤，手里紧握着一根粗糙的木棍。他的眼神警惕而深邃，审视着每一个试图接近的外来者。",
+          "en": "A silent old man with a prominent old scar over his right eye, gripping a rough wooden stick in his hand. His gaze is vigilant and profound, scrutinizing every outsider who approaches."
         },
         "personality": ["沉默", "警惕", "固执"],
         "speech_style": {
@@ -137,8 +163,12 @@
         "en": "Mountain Village"
       },
       "description": {
-        "cn": "一个安静的小村庄，坐落在通往庄园的山路起点。村民们对外来者并不热情，尤其是那些打听庄园的人。",
-        "en": "A quiet little village at the foot of the mountain path leading to the manor. The villagers are not welcoming to outsiders, especially those asking about the manor."
+        "cn": "一个安静的小村庄，坐落在通往山顶的小路起点。低矮的石屋紧挨着蜿蜒的山路，偶尔能看到几个村民匆匆走过，他们对外来者投去警惕的目光。",
+        "en": "A quiet little village at the foot of the mountain path leading upward. Low stone houses line the winding mountain road, with occasional villagers hurrying past, casting wary glances at outsiders."
+      },
+      "atmosphere": {
+        "cn": "晚秋时节，微风中带着丝丝凉意。天空阴沉沉的，像是随时要下雨的样子。夕阳被厚重的云层遮挡，只透出一丝昏黄的光芒。",
+        "en": "Late autumn, with a chill in the breeze. The sky is overcast, as if rain could fall at any moment. The setting sun is obscured by heavy clouds, letting through only a dim yellowish glow."
       },
       "connected_locations": ["mountain_path"],
       "present_npc_ids": ["old_guard"],
@@ -155,6 +185,10 @@
         "cn": "一条蜿蜒曲折的小路，两旁是茂密的灌木丛。随着海拔升高，雾气越来越浓，能见度逐渐降低。",
         "en": "A winding narrow path flanked by dense shrubbery. As the elevation increases, the fog grows thicker and visibility gradually decreases."
       },
+      "atmosphere": {
+        "cn": "山风呼啸，带着湿冷的雾气扑面而来。脚下的石阶湿滑，偶尔能听到不知名鸟类的叫声回荡在山谷中。",
+        "en": "The mountain wind howls, bringing cold, damp fog against your face. The stone steps underfoot are slippery, and occasionally you can hear the calls of unknown birds echoing through the valley."
+      },
       "connected_locations": ["village", "manor_entrance"],
       "present_npc_ids": [],
       "items": [],
@@ -169,6 +203,10 @@
       "description": {
         "cn": "两扇锈迹斑斑的铁门半开着，仿佛在无声地邀请来客。门柱上的石像狮子已经残破不堪，眼窝处长满了青苔。",
         "en": "Two rust-covered iron gates stand half-open, as if silently inviting visitors. The stone lion statues on the gate pillars are crumbling, their eye sockets overgrown with moss."
+      },
+      "atmosphere": {
+        "cn": "浓雾从门内飘出，带着一股陈腐的气息。铁门在风中发出吱呀的声响，似乎在诉说着什么。",
+        "en": "Thick fog drifts out from within the gates, carrying a musty odor. The iron gates creak in the wind, as if telling some story."
       },
       "connected_locations": ["mountain_path", "manor_hall"],
       "present_npc_ids": ["chen_ling"],
@@ -185,6 +223,10 @@
         "cn": "宽敞的大厅已经破败不堪。吊灯早已坠落，地板上散落着碎玻璃。墙上挂着几幅模糊的肖像画，画中人的眼睛似乎在跟随着你移动。",
         "en": "The spacious hall has fallen into disrepair. The chandelier has long since fallen, and broken glass litters the floor. Several blurry portraits hang on the walls, their subjects' eyes seeming to follow your movement."
       },
+      "atmosphere": {
+        "cn": "空气中弥漫着灰尘和霉味，每一步都会扬起细小的尘埃。偶尔传来木地板吱呀作响的声音，不知是风还是别的什么。",
+        "en": "The air is thick with dust and mold, each step stirring up fine particles. Occasionally the wooden floor creaks, whether from the wind or something else."
+      },
       "connected_locations": ["manor_entrance", "study", "dining_room"],
       "present_npc_ids": [],
       "items": ["fallen_chandelier", "family_portraits", "broken_staircase"],
@@ -199,6 +241,10 @@
       "description": {
         "cn": "一间堆满书籍的房间，大部分书页已经发黄腐烂。书桌上放着一盏油灯和一些散落的文件。墙边的书架似乎可以移动...",
         "en": "A room filled with books, most pages yellowed and decaying. An oil lamp and scattered documents sit on the desk. The bookshelf by the wall seems movable..."
+      },
+      "atmosphere": {
+        "cn": "纸张腐烂的气味充斥着整个房间。阳光透过积满灰尘的窗户，在空气中投下一道道光柱，照亮了飞舞的尘埃。",
+        "en": "The smell of decaying paper fills the room. Sunlight filters through dust-covered windows, casting beams that illuminate the dancing dust particles."
       },
       "connected_locations": ["manor_hall", "secret_room"],
       "present_npc_ids": [],
@@ -215,6 +261,10 @@
         "cn": "一个尘封已久的小房间，空气中弥漫着霉味。中央的书桌上放着一本保存完好的日记，似乎在等待有人来阅读。",
         "en": "A long-sealed small room, the air thick with a musty smell. A well-preserved diary sits on the central desk, as if waiting for someone to read it."
       },
+      "atmosphere": {
+        "cn": "房间里异常安静，甚至能听到自己的心跳声。墙壁上似乎有什么东西在微微发光...",
+        "en": "The room is eerily quiet, so much so that you can hear your own heartbeat. Something on the walls seems to be faintly glowing..."
+      },
       "connected_locations": ["study"],
       "present_npc_ids": [],
       "items": ["ancient_diary", "dusty_desk", "hidden_safe"],
@@ -230,6 +280,10 @@
         "cn": "长长的餐桌上还摆着碗碟，仿佛主人刚刚离席。蜡烛台上的蜡烛早已燃尽，只剩下干枯的蜡痕。壁炉旁的角落里似乎有什么东西在发光...",
         "en": "The long dining table still has dishes set, as if the hosts just stepped away. The candles on the candelabra have long burned out, leaving only dried wax trails. Something seems to be glowing in the corner by the fireplace..."
       },
+      "atmosphere": {
+        "cn": "尽管餐具还在，但一切都覆盖着厚厚的灰尘。壁炉早已熄灭，但偶尔似乎能听到火焰噼啪作响的幻听。",
+        "en": "Though the tableware remains, everything is covered in thick dust. The fireplace has long been cold, but occasionally you seem to hear the phantom crackling of flames."
+      },
       "connected_locations": ["manor_hall", "kitchen"],
       "present_npc_ids": [],
       "items": ["dining_table", "empty_candelabra", "glowing_object"],
@@ -244,6 +298,10 @@
       "description": {
         "cn": "厨房里弥漫着一股奇怪的气味。炉灶已经冷却多年，但锅里似乎还残留着什么东西。后门通向庄园的后花园。",
         "en": "A strange smell permeates the kitchen. The stove has been cold for years, but something seems to remain in the pot. The back door leads to the manor's rear garden."
+      },
+      "atmosphere": {
+        "cn": "除了霉味，还有一股说不清的腥甜气息。厨具上锈迹斑斑，水槽里积满了黑色的污水。",
+        "en": "Besides the musty smell, there's an indescribable sweet metallic odor. The utensils are covered in rust, and the sink is filled with black stagnant water."
       },
       "connected_locations": ["dining_room"],
       "present_npc_ids": [],
