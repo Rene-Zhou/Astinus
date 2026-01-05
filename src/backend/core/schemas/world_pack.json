@@ -38,6 +38,14 @@
         }
       },
       "additionalProperties": false
+    },
+    "preset_characters": {
+      "type": "array",
+      "description": "Preset characters for players to choose from",
+      "items": {
+        "$ref": "#/definitions/PresetCharacter"
+      },
+      "default": []
     }
   },
   "additionalProperties": false,
@@ -350,6 +358,56 @@
             "type": "string"
           },
           "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "Trait": {
+      "type": "object",
+      "description": "A character trait with positive and negative aspects",
+      "required": ["name", "description", "positive_aspect", "negative_aspect"],
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "description": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "positive_aspect": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "negative_aspect": {
+          "$ref": "#/definitions/LocalizedString"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PresetCharacter": {
+      "type": "object",
+      "description": "A preset character for players to choose from",
+      "required": ["id", "name", "concept", "traits"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier (snake_case)",
+          "pattern": "^[a-z_]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Fixed character name (PC name)",
+          "minLength": 1
+        },
+        "concept": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "traits": {
+          "type": "array",
+          "description": "Character traits (1-4)",
+          "items": {
+            "$ref": "#/definitions/Trait"
+          },
+          "minItems": 1,
+          "maxItems": 4
         }
       },
       "additionalProperties": false

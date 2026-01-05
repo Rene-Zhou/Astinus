@@ -49,6 +49,49 @@ export interface PlayerCharacter {
   fate_points: number;
 }
 
+/**
+ * Preset character for player selection (before game starts)
+ */
+export interface PresetCharacter {
+  id: string;
+  name: string;
+  concept: LocalizedString;
+  traits: Trait[];
+}
+
+// ============================================================================
+// World Pack Types
+// ============================================================================
+
+/**
+ * World setting information (era, genre, tone)
+ */
+export interface WorldPackSetting {
+  era: LocalizedString;
+  genre: LocalizedString;
+  tone: LocalizedString;
+}
+
+/**
+ * World pack basic information
+ */
+export interface WorldInfo {
+  name: LocalizedString;
+  description: LocalizedString;
+  version?: string;
+  author?: string;
+  setting?: WorldPackSetting;
+  player_hook?: LocalizedString;
+}
+
+/**
+ * Response from GET /api/v1/game/world-pack/{pack_id}
+ */
+export interface WorldPackDetailResponse {
+  info: WorldInfo;
+  preset_characters: PresetCharacter[];
+}
+
 // ============================================================================
 // Game State Types
 // ============================================================================
@@ -69,7 +112,8 @@ export type GamePhase =
 export interface GameState {
   session_id: string;
   world_pack_id: string;
-  player: PlayerCharacter;
+  player_name: string;          // Player (user) name - distinct from character name
+  player: PlayerCharacter;      // Player character data
   current_location: string;
   active_npc_ids: string[];
   current_phase: GamePhase;
@@ -137,14 +181,16 @@ export type DiceOutcome = 'critical' | 'success' | 'partial' | 'failure';
 // --- POST /api/v1/game/new ---
 
 export interface NewGameRequest {
-  world_pack_id?: string;   // Default: "demo_pack"
-  player_name?: string;     // Default: "玩家"
-  player_concept?: string;  // Default: "冒险者"
+  world_pack_id?: string;         // Default: "demo_pack"
+  player_name?: string;           // Default: "玩家" - the user/player name (PL)
+  preset_character_id?: string;   // Selected preset character ID (if using presets)
+  player_concept?: string;        // Default: "冒险者" (only used if no preset selected)
 }
 
 export interface NewGameResponse {
   session_id: string;
-  player: PlayerCharacter;
+  player_name: string;     // Player (user) name
+  player: PlayerCharacter; // Character data
   game_state: {
     current_location: string;
     current_phase: GamePhase;

@@ -342,6 +342,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
+| 2026-01-05 | 角色创建流程改进 | `feature/character-creation-flow` | 改进游戏流程，添加角色选择阶段：1) 添加 PresetCharacter 模型和 world_pack.json Schema；2) demo_pack 添加 2 个预设角色（学者/流浪者）；3) API 添加 GET /world-pack/{id}、修改 NewGameRequest；4) MenuPage 简化为世界包选择；5) CharacterPage 改造为双模式（选择/查看）；6) StatBlock 添加特质标签显示；7) 区分玩家名(PL)和角色名(PC)；8) 更新 docs/API_TYPES.ts |
 | 2026-01-05 | 游戏介绍消息重构 | `fix/gm-information-control` | 重构游戏开场介绍以避免剧透：1) 世界包添加 setting（年代/类型/氛围）、player_hook（玩家动机）、atmosphere（场景氛围）、appearance（NPC外观）字段；2) API 返回 NPC 外观而非名字；3) 前端 generateIntroductionMessage 重写，展示年代、玩家动机、场景氛围，只用外观描述NPC；4) 更新 JSON Schema 和 Pydantic 模型；5) 庄园背景改为 selective（需要发现） |
 | 2026-01-05 | GM Agent 信息控制修复 | `fix/gm-information-control` | 防止 GM Agent 泄露敏感信息：1) 在 gm_agent.yaml 中添加 information_control 规则，禁止泄露内部ID、NPC名字、无来源的背景信息；2) 更新 prompt_loader.py 支持 information_control 字段；3) 在 _synthesize_response 中添加信息控制指引；4) 模板中明确标注内部参考信息，提示 GM 不可直接输出给玩家 |
 | 2026-01-05 | Web前端Phase显示修复 | `fix/web-phase-display` | 修复 Phase 不更新/显示错误的问题：1) 后端在 _handle_player_input 和 _handle_dice_result 完成后发送 waiting_input 的 phase 变更消息；2) 确保 game_state.set_phase(GamePhase.WAITING_INPUT) 在处理完成后被调用；3) 添加前端 StatBlock Phase 显示测试覆盖全部5种 phase；4) 添加后端集成测试验证 phase 回到 waiting_input |
