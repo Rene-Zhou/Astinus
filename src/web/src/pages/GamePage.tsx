@@ -136,23 +136,14 @@ const GamePage: React.FC = () => {
   if (isMobile) {
     const mobileContent = (
       <div className="fixed inset-0 z-40 flex h-dvh flex-col overflow-hidden bg-gray-50">
-        {/* Status Bar - Compact for mobile */}
-        <div className="flex-shrink-0 border-b border-gray-200 bg-white px-3 py-1.5">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
-              {headerStatus}
-            </span>
-          </div>
-        </div>
-
         {/* Main Content - Full screen ChatBox */}
-        <main className="flex flex-1 flex-col overflow-hidden px-2 pb-14">
+        <main className="flex flex-1 flex-col overflow-hidden px-2 pb-20 pt-2">
           {!player ? (
             <div className="flex h-full items-center justify-center">
               <Loading text="正在加载角色信息..." />
             </div>
           ) : (
-            <div className="flex-1 overflow-hidden pt-2">
+            <div className="flex-1 overflow-hidden">
               <ChatBox
                 messages={messages}
                 onSendMessage={handleSend}

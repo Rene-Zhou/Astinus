@@ -105,9 +105,6 @@ function ChatInput({ onSend, disabled = false }: ChatInputProps) {
 
   return (
     <div className="space-y-2 rounded-lg border border-gray-200 bg-white/70 p-3 shadow-sm">
-      <label className="block text-sm font-medium text-gray-700">
-        你的行动
-      </label>
       <textarea
         ref={textareaRef}
         value={value}
