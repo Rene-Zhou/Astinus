@@ -3,7 +3,7 @@ import { immer } from "zustand/middleware/immer";
 
 type Language = "cn" | "en";
 type Theme = "light" | "dark";
-export type MobilePanelType = "character" | "dice" | null;
+export type MobilePanelType = "character" | "dice" | "menu" | null;
 
 export interface UIState {
   language: Language;

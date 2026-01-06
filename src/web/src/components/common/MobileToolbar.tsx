@@ -1,8 +1,8 @@
 import React from "react";
-
-export type MobilePanelType = "character" | "dice" | null;
+import type { MobilePanelType } from "../../stores/uiStore";
 
 export interface MobileToolbarProps {
+  onMenuClick: () => void;
   onCharacterClick: () => void;
   onDiceClick: () => void;
   activePanel: MobilePanelType;
@@ -11,9 +11,10 @@ export interface MobileToolbarProps {
 
 /**
  * Fixed bottom toolbar for mobile game interface.
- * Contains buttons to open character and dice panels.
+ * Contains buttons to open menu, character, and dice panels.
  */
 export const MobileToolbar: React.FC<MobileToolbarProps> = ({
+  onMenuClick,
   onCharacterClick,
   onDiceClick,
   activePanel,
@@ -22,11 +23,37 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
       <div className="flex items-center justify-around py-2">
+        {/* Menu Button */}
+        <button
+          onClick={onMenuClick}
+          className={[
+            "flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors",
+            activePanel === "menu"
+              ? "bg-indigo-100 text-indigo-700"
+              : "text-gray-600 hover:bg-gray-100",
+          ].join(" ")}
+        >
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+            />
+          </svg>
+          <span className="text-xs font-medium">菜单</span>
+        </button>
+
         {/* Character Button */}
         <button
           onClick={onCharacterClick}
           className={[
-            "flex flex-col items-center gap-1 rounded-lg px-6 py-2 transition-colors",
+            "flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors",
             activePanel === "character"
               ? "bg-indigo-100 text-indigo-700"
               : "text-gray-600 hover:bg-gray-100",
@@ -52,7 +79,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
         <button
           onClick={onDiceClick}
           className={[
-            "relative flex flex-col items-center gap-1 rounded-lg px-6 py-2 transition-colors",
+            "relative flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors",
             activePanel === "dice"
               ? "bg-indigo-100 text-indigo-700"
               : "text-gray-600 hover:bg-gray-100",
@@ -60,7 +87,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
         >
           {/* Notification dot */}
           {hasPendingDice && (
-            <span className="absolute right-4 top-1 h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
+            <span className="absolute right-3 top-1 h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
           )}
           <svg
             className="h-6 w-6"

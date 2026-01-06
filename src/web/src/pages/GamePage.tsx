@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { Link, useNavigate } from "react-router-dom";
 import ChatBox from "../components/ChatBox/ChatBox";
 import StatBlock from "../components/StatBlock/StatBlock";
 import DiceRoller from "../components/DiceRoller/DiceRoller";
@@ -34,6 +35,7 @@ const GamePage: React.FC = () => {
     useUIStore();
   const { refreshState } = useGameActions();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   // Sync game state when sessionId changes
   // Note: We only call refreshState, not fetchMessages, to avoid overwriting
@@ -113,6 +115,10 @@ const GamePage: React.FC = () => {
   }
 
   // Mobile layout handlers
+  const handleMenuClick = () => {
+    setMobileActivePanel(mobileActivePanel === "menu" ? null : "menu");
+  };
+
   const handleCharacterClick = () => {
     setMobileActivePanel(mobileActivePanel === "character" ? null : "character");
   };
@@ -121,10 +127,15 @@ const GamePage: React.FC = () => {
     setMobileActivePanel(mobileActivePanel === "dice" ? null : "dice");
   };
 
-  // Mobile layout
+  const handleNavigate = (path: string) => {
+    closeMobilePanel();
+    navigate(path);
+  };
+
+  // Mobile layout - rendered via Portal to bypass Layout's Header/Footer
   if (isMobile) {
-    return (
-      <div className="flex h-[calc(100dvh-57px)] flex-col overflow-hidden">
+    const mobileContent = (
+      <div className="fixed inset-0 z-40 flex h-dvh flex-col overflow-hidden bg-gray-50">
         {/* Status Bar - Compact for mobile */}
         <div className="flex-shrink-0 border-b border-gray-200 bg-white px-3 py-1.5">
           <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -155,11 +166,41 @@ const GamePage: React.FC = () => {
 
         {/* Mobile Toolbar */}
         <MobileToolbar
+          onMenuClick={handleMenuClick}
           onCharacterClick={handleCharacterClick}
           onDiceClick={handleDiceClick}
           activePanel={mobileActivePanel}
           hasPendingDice={showDice}
         />
+
+        {/* Menu Bottom Sheet */}
+        <BottomSheet
+          isOpen={mobileActivePanel === "menu"}
+          onClose={closeMobilePanel}
+          title="导航"
+          maxHeight="50vh"
+        >
+          <nav className="flex flex-col gap-2">
+            <button
+              onClick={() => handleNavigate("/")}
+              className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-gray-700 hover:bg-gray-100"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+              </svg>
+              <span className="font-medium">菜单</span>
+            </button>
+            <button
+              onClick={() => handleNavigate("/character")}
+              className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-gray-700 hover:bg-gray-100"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+              <span className="font-medium">角色创建</span>
+            </button>
+          </nav>
+        </BottomSheet>
 
         {/* Character Bottom Sheet */}
         <BottomSheet
@@ -200,6 +241,8 @@ const GamePage: React.FC = () => {
         </BottomSheet>
       </div>
     );
+
+    return createPortal(mobileContent, document.body);
   }
 
   // Desktop layout - Three Column Layout

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useLayoutEffect } from "react";
+import React, { useRef, useLayoutEffect } from "react";
 
 export interface BottomSheetProps {
   isOpen: boolean;
@@ -39,17 +39,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     }
   }, [isOpen]);
 
-  // Prevent body scroll when open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
+  // Note: Body scroll is managed by the parent page (e.g., GamePage)
+  // to avoid conflicts when multiple components try to control body overflow.
 
   // Don't render if not open (no animation needed for initial state)
   if (!isOpen) return null;
