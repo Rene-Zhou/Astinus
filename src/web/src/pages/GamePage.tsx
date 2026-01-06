@@ -51,6 +51,19 @@ const GamePage: React.FC = () => {
     }
   }, [pendingDiceCheck, isMobile, setMobileActivePanel]);
 
+  // Prevent body scroll on mobile
+  useEffect(() => {
+    if (isMobile && sessionId) {
+      document.body.style.overflow = "hidden";
+      document.body.style.height = "100vh";
+      document.body.style.height = "100dvh";
+      return () => {
+        document.body.style.overflow = "";
+        document.body.style.height = "";
+      };
+    }
+  }, [isMobile, sessionId]);
+
   const fatePoints = player?.fate_points ?? 0;
   const tags = player?.tags ?? [];
   const traits = player?.traits ?? [];
@@ -111,7 +124,7 @@ const GamePage: React.FC = () => {
   // Mobile layout
   if (isMobile) {
     return (
-      <div className="flex h-[calc(100dvh-57px)] flex-col">
+      <div className="flex h-[calc(100dvh-57px)] flex-col overflow-hidden">
         {/* Status Bar - Compact for mobile */}
         <div className="flex-shrink-0 border-b border-gray-200 bg-white px-3 py-1.5">
           <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -122,13 +135,13 @@ const GamePage: React.FC = () => {
         </div>
 
         {/* Main Content - Full screen ChatBox */}
-        <main className="flex-1 overflow-hidden pb-14">
+        <main className="flex flex-1 flex-col overflow-hidden px-2 pb-14">
           {!player ? (
             <div className="flex h-full items-center justify-center">
               <Loading text="正在加载角色信息..." />
             </div>
           ) : (
-            <div className="h-full p-2">
+            <div className="flex-1 overflow-hidden pt-2">
               <ChatBox
                 messages={messages}
                 onSendMessage={handleSend}
