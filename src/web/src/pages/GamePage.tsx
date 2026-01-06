@@ -5,9 +5,12 @@ import StatBlock from "../components/StatBlock/StatBlock";
 import DiceRoller from "../components/DiceRoller/DiceRoller";
 import Button from "../components/common/Button";
 import { Card, Loading } from "../components/common/Card";
+import { BottomSheet } from "../components/common/BottomSheet";
+import { MobileToolbar } from "../components/common/MobileToolbar";
 import { useGameStore } from "../stores/gameStore";
 import { useUIStore } from "../stores/uiStore";
 import { useGameActions } from "../hooks/useGameActions";
+import { useIsMobile } from "../hooks/useMediaQuery";
 
 const GamePage: React.FC = () => {
   const {
@@ -27,8 +30,10 @@ const GamePage: React.FC = () => {
     addMessage,
   } = useGameStore();
 
-  const { language } = useUIStore();
+  const { language, mobileActivePanel, setMobileActivePanel, closeMobilePanel } =
+    useUIStore();
   const { refreshState } = useGameActions();
+  const isMobile = useIsMobile();
 
   // Sync game state when sessionId changes
   // Note: We only call refreshState, not fetchMessages, to avoid overwriting
@@ -38,6 +43,13 @@ const GamePage: React.FC = () => {
     if (!sessionId) return;
     void refreshState();
   }, [sessionId, refreshState]);
+
+  // Auto-open dice panel when there's a pending dice check on mobile
+  useEffect(() => {
+    if (pendingDiceCheck && isMobile) {
+      setMobileActivePanel("dice");
+    }
+  }, [pendingDiceCheck, isMobile, setMobileActivePanel]);
 
   const fatePoints = player?.fate_points ?? 0;
   const tags = player?.tags ?? [];
@@ -87,6 +99,97 @@ const GamePage: React.FC = () => {
     );
   }
 
+  // Mobile layout handlers
+  const handleCharacterClick = () => {
+    setMobileActivePanel(mobileActivePanel === "character" ? null : "character");
+  };
+
+  const handleDiceClick = () => {
+    setMobileActivePanel(mobileActivePanel === "dice" ? null : "dice");
+  };
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="flex h-[calc(100dvh-57px)] flex-col">
+        {/* Status Bar - Compact for mobile */}
+        <div className="flex-shrink-0 border-b border-gray-200 bg-white px-3 py-1.5">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+              {headerStatus}
+            </span>
+          </div>
+        </div>
+
+        {/* Main Content - Full screen ChatBox */}
+        <main className="flex-1 overflow-hidden pb-14">
+          {!player ? (
+            <div className="flex h-full items-center justify-center">
+              <Loading text="正在加载角色信息..." />
+            </div>
+          ) : (
+            <div className="h-full p-2">
+              <ChatBox
+                messages={messages}
+                onSendMessage={handleSend}
+                isStreaming={isStreaming}
+                streamingContent={streamingContent}
+                disabled={showDice}
+              />
+            </div>
+          )}
+        </main>
+
+        {/* Mobile Toolbar */}
+        <MobileToolbar
+          onCharacterClick={handleCharacterClick}
+          onDiceClick={handleDiceClick}
+          activePanel={mobileActivePanel}
+          hasPendingDice={showDice}
+        />
+
+        {/* Character Bottom Sheet */}
+        <BottomSheet
+          isOpen={mobileActivePanel === "character"}
+          onClose={closeMobilePanel}
+          title="角色状态"
+          maxHeight="75vh"
+        >
+          {player && (
+            <StatBlock
+              playerName={playerName}
+              characterName={characterName}
+              concept={concept}
+              location={currentLocation}
+              phase={currentPhase}
+              turnCount={turnCount}
+              fatePoints={fatePoints}
+              traits={traits}
+              tags={tags}
+              language={language}
+            />
+          )}
+        </BottomSheet>
+
+        {/* Dice Bottom Sheet */}
+        <BottomSheet
+          isOpen={mobileActivePanel === "dice"}
+          onClose={closeMobilePanel}
+          title="骰子检定"
+          maxHeight="80vh"
+        >
+          <DiceRoller
+            visible={true}
+            checkRequest={pendingDiceCheck}
+            onRoll={handleDiceRoll}
+            onCancel={handleDiceCancel}
+          />
+        </BottomSheet>
+      </div>
+    );
+  }
+
+  // Desktop layout - Three Column Layout
   // Calculate height: 100vh - global header (~57px) - global footer (~49px)
   return (
     <div className="flex h-[calc(100vh-106px)] flex-col overflow-hidden">
@@ -97,9 +200,7 @@ const GamePage: React.FC = () => {
             <span className="rounded-full bg-green-100 px-2 py-1 text-green-700">
               {headerStatus}
             </span>
-            <span className="hidden text-gray-500 sm:inline">
-              Session: {sessionId}
-            </span>
+            <span className="text-gray-500">Session: {sessionId}</span>
           </div>
         </div>
       </div>
@@ -111,9 +212,9 @@ const GamePage: React.FC = () => {
             <Loading text="正在加载角色信息..." />
           </div>
         ) : (
-          <div className="mx-auto grid h-full max-w-7xl grid-cols-1 gap-4 p-4 lg:grid-cols-4">
+          <div className="mx-auto grid h-full max-w-7xl grid-cols-4 gap-4 p-4">
             {/* Left Column - StatBlock */}
-            <aside className="h-full overflow-y-auto lg:col-span-1">
+            <aside className="h-full overflow-y-auto">
               <StatBlock
                 playerName={playerName}
                 characterName={characterName}
@@ -130,7 +231,7 @@ const GamePage: React.FC = () => {
             </aside>
 
             {/* Center Column - ChatBox */}
-            <section className="h-full min-h-[400px] overflow-hidden lg:col-span-2">
+            <section className="col-span-2 h-full min-h-[400px] overflow-hidden">
               <ChatBox
                 messages={messages}
                 onSendMessage={handleSend}
@@ -141,7 +242,7 @@ const GamePage: React.FC = () => {
             </section>
 
             {/* Right Column - DiceRoller (always visible) */}
-            <aside className="h-full overflow-y-auto lg:col-span-1">
+            <aside className="h-full overflow-y-auto">
               <DiceRoller
                 visible={true}
                 checkRequest={pendingDiceCheck}

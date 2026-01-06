@@ -31,3 +31,15 @@ a {
     color: inherit;
     text-decoration: none;
 }
+
+/* Dynamic viewport height support for mobile browsers */
+/* Use dvh when supported (modern browsers), fallback to vh */
+.h-screen-dynamic {
+    height: 100vh;
+}
+
+@supports (height: 100dvh) {
+    .h-screen-dynamic {
+        height: 100dvh;
+    }
+}
