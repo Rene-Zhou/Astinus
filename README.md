@@ -41,6 +41,8 @@ cp config/settings.example.yaml config/settings.yaml
 
 ### 启动开发服务器
 
+#### 方式一：手动启动（推荐用于调试）
+
 ```bash
 # 启动后端 API 服务器（终端 1）
 uv run uvicorn src.backend.main:app --reload --port 8000
@@ -51,6 +53,27 @@ npm run dev
 ```
 
 然后在浏览器中打开 `http://localhost:5173`
+
+#### 方式二：使用 PM2 保活管理（推荐用于持续开发/部署）
+
+```bash
+# 安装 PM2（全局安装一次即可）
+npm install -g pm2
+
+# 使用配置文件启动前后端服务
+pm2 start pm2.config.js
+
+# 查看运行状态
+pm2 status
+
+# 查看实时日志
+pm2 logs
+
+# 停止所有服务
+pm2 stop all
+```
+
+项目根目录的 `pm2.config.js` 配置了前后端进程的保活管理。详细说明参见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
 
 ### 运行测试
 
@@ -173,6 +196,76 @@ graph TD
 - **信息隔离**: 每个 Agent 只能访问必要的上下文切片
 - **职责单一**: 每个 Agent 有明确的职责边界
 - **可扩展**: 易于添加新的 Agent 类型
+
+### Multi-Agent LangChain 循环链
+
+游戏回合通过以下循环流程运行：
+
+```mermaid
+graph TD
+    Start([玩家输入]) --> GM_Receive[GM Agent 接收输入]
+    GM_Receive --> GM_Analyze{GM 分析意图}
+
+    GM_Analyze -->|需要规则判定| Rule[Rule Agent<br/>生成骰子检定]
+    GM_Analyze -->|NPC 对话| NPC[NPC Agent<br/>角色扮演]
+    GM_Analyze -->|查询背景| Lore[Lore Agent<br/>向量检索]
+    GM_Analyze -->|简单行动| Direct[直接响应]
+
+    Rule --> GM_Synthesize[GM 综合响应]
+    NPC --> GM_Synthesize
+    Lore --> GM_Synthesize
+    Direct --> GM_Synthesize
+
+    GM_Synthesize --> Stream[WebSocket 流式输出]
+    Stream --> Wait{需要玩家<br/>掷骰?}
+
+    Wait -->|是| DiceCheck[前端展示骰子检定]
+    DiceCheck --> DiceResult[玩家掷骰并提交结果]
+    DiceResult --> Rule_Process[Rule Agent 处理结果]
+    Rule_Process --> GM_Narrate[GM 生成叙事]
+    GM_Narrate --> Stream
+
+    Wait -->|否| End([等待下一轮输入])
+    GM_Narrate --> End
+
+    End -.下一回合.-> Start
+
+    style Start fill:#c8e6c9,stroke:#2e7d32,color:#000000
+    style GM_Receive fill:#e1f5fe,stroke:#01579b,color:#000000
+    style GM_Analyze fill:#e1f5fe,stroke:#01579b,color:#000000
+    style GM_Synthesize fill:#e1f5fe,stroke:#01579b,color:#000000
+    style GM_Narrate fill:#e1f5fe,stroke:#01579b,color:#000000
+    style Rule fill:#f3e5f5,stroke:#4a148c,color:#000000
+    style NPC fill:#f3e5f5,stroke:#4a148c,color:#000000
+    style Lore fill:#f3e5f5,stroke:#4a148c,color:#000000
+    style Direct fill:#fff9c4,stroke:#f57f17,color:#000000
+    style Rule_Process fill:#f3e5f5,stroke:#4a148c,color:#000000
+    style Stream fill:#fff3e0,stroke:#e65100,color:#000000
+    style DiceCheck fill:#fce4ec,stroke:#880e4f,color:#000000
+    style DiceResult fill:#fce4ec,stroke:#880e4f,color:#000000
+    style End fill:#c8e6c9,stroke:#2e7d32,color:#000000
+```
+
+**流程说明**:
+
+1. **玩家输入阶段**: 玩家通过自然语言描述行动
+2. **GM 意图分析**: 解析玩家意图，决定调用哪些子 Agent
+3. **Agent 协作处理**:
+   - **Rule Agent**: 判断是否需要骰子检定，生成检定请求
+   - **NPC Agent**: 处理 NPC 对话，维护角色记忆和关系
+   - **Lore Agent**: 检索相关世界观背景信息
+   - **Direct**: 简单行动直接响应，无需调用子 Agent
+4. **GM 综合响应**: 整合所有 Agent 的输出，生成连贯叙事
+5. **流式输出**: 通过 WebSocket 实时推送内容到前端
+6. **骰子检定（可选）**: 如需检定，前端展示骰子界面，玩家掷骰后提交结果
+7. **结果处理**: Rule Agent 处理骰子结果，GM 生成相应叙事
+8. **循环继续**: 等待玩家下一轮输入
+
+这种设计确保了：
+- **响应及时**: GM 可以快速做出直接响应
+- **规则透明**: 骰子检定过程对玩家可见
+- **叙事连贯**: GM 负责统一所有 Agent 的输出
+- **可扩展性**: 易于添加新的 Agent 类型
 
 ### 上下文切片机制
 

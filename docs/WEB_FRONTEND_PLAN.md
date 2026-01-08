@@ -1021,6 +1021,8 @@ test('complete game flow', async ({ page }) => {
 
 ### 开发环境
 
+#### 方式一：手动启动（推荐用于调试）
+
 ```bash
 # 启动后端
 cd Astinus
@@ -1030,6 +1032,32 @@ uv run uvicorn src.backend.main:app --reload
 cd Astinus/src/web
 npm run dev
 ```
+
+#### 方式二：使用 PM2 保活管理（推荐用于持续开发）
+
+PM2 可以自动保持服务运行，崩溃自动重启，方便开发和测试。
+
+```bash
+# 安装 PM2（全局安装一次即可）
+npm install -g pm2
+
+# 使用项目配置文件启动所有服务
+pm2 start pm2.config.js
+
+# 查看运行状态
+pm2 status
+
+# 查看日志
+pm2 logs
+
+# 停止所有服务
+pm2 stop all
+
+# 重启前端（代码修改后）
+pm2 restart astinus-frontend
+```
+
+项目根目录的 `pm2.config.js` 配置了前后端进程，详细说明参见 [DEPLOYMENT.md](./DEPLOYMENT.md)。
 
 ### 生产构建
 
