@@ -190,7 +190,166 @@ server {
 }
 ```
 
-### 方案二：Docker 部署
+### 方案二：使用 PM2 进行保活和管理
+
+[PM2](https://pm2.keymetrics.io/) 是一个流行的 Node.js 进程管理器，支持进程保活、日志管理和集群模式。
+
+#### 1. 安装 PM2
+
+```bash
+# 安装 Node.js 和 npm
+sudo apt install -y nodejs npm
+
+# 全局安装 PM2
+sudo npm install -g pm2
+```
+
+#### 2. 使用项目配置文件
+
+项目根目录提供了 `pm2.config.js` 配置文件（参见 `@pm2.config.js`），定义了后端和前端的进程配置。
+
+**配置文件内容**：
+```javascript
+// pm2.config.js
+module.exports = {
+  apps: [
+    {
+      name: "astinus-backend",
+      script: "uv",
+      args: ["run", "uvicorn", "src.backend.main:app",
+             "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"],
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "1G",
+      restart_delay: 2000,
+      out_file: "logs/pm2-backend-out.log",
+      error_file: "logs/pm2-backend-error.log",
+    },
+    {
+      name: "astinus-frontend",
+      cwd: "src/web",
+      script: "npm",
+      args: ["run", "dev", "--", "--host", "--port", "5173"],
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "512M",
+      restart_delay: 2000,
+      out_file: "logs/pm2-frontend-out.log",
+      error_file: "logs/pm2-frontend-error.log",
+    },
+  ],
+};
+```
+
+#### 3. 启动应用
+
+```bash
+# 确保日志目录存在
+mkdir -p logs
+
+# 启动所有服务
+pm2 start pm2.config.js
+
+# 查看进程状态
+pm2 status
+
+# 查看日志
+pm2 logs
+
+# 查看特定进程日志
+pm2 logs astinus-backend
+pm2 logs astinus-frontend
+```
+
+#### 4. PM2 常用命令
+
+```bash
+# 停止服务
+pm2 stop astinus-backend    # 停止后端
+pm2 stop astinus-frontend   # 停止前端
+pm2 stop all                # 停止所有服务
+
+# 重启服务
+pm2 restart astinus-backend
+pm2 restart all
+
+# 删除服务
+pm2 delete astinus-backend
+pm2 delete all
+
+# 保存当前进程列表
+pm2 save
+
+# 设置开机自启
+pm2 startup
+
+# 查看详细监控信息
+pm2 monit
+```
+
+#### 5. 生产环境优化
+
+对于生产环境，建议修改 `pm2.config.js` 中的配置：
+
+```javascript
+// 生产环境配置示例
+{
+  name: "astinus-backend",
+  script: "uv",
+  args: ["run", "uvicorn", "src.backend.main:app",
+         "--host", "0.0.0.0", "--port", "8000",
+         "--workers", "4",  // 多 worker 模式
+         "--log-level", "warning"],
+  instances: 1,  // 或设置为 "max" 启用集群模式
+  exec_mode: "fork",  // 或 "cluster"
+  autorestart: true,
+  watch: false,
+  max_memory_restart: "2G",
+  restart_delay: 5000,
+  min_uptime: "10s",
+  max_restarts: 10,
+  out_file: "/var/log/astinus/pm2-backend-out.log",
+  error_file: "/var/log/astinus/pm2-backend-error.log",
+  env: {
+    NODE_ENV: "production",
+    ENVIRONMENT: "production",
+  },
+}
+```
+
+#### 6. PM2 与 systemd 集成
+
+PM2 可以生成 systemd 服务，实现开机自启：
+
+```bash
+# 生成 startup 脚本
+pm2 startup systemd -u astinus --hp /home/astinus
+
+# 启动所有服务
+pm2 start pm2.config.js
+
+# 保存进程列表
+pm2 save
+
+# 禁用开机自启（如需）
+pm2 unstartup systemd
+```
+
+#### 7. 日志轮转
+
+PM2 内置日志管理，但也可以配合 `pm2-logrotate` 模块：
+
+```bash
+# 安装日志轮转模块
+pm2 install pm2-logrotate
+
+# 配置日志轮转
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 7
+pm2 set pm2-logrotate:compress true
+```
+
+### 方案三：Docker 部署
 
 详见 [Docker 部署](#docker-部署) 章节。
 

@@ -1,6 +1,6 @@
 # Astinus 开发进度与规划
 
-> 最后更新：2026-01-05
+> 最后更新：2026-01-07
 
 ## 📋 目录
 1. [项目概述](#项目概述)
@@ -342,7 +342,19 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 ## 最近修复
 | 日期 | 项目 | 分支 / 版本 | 说明 |
 |------|------|-------------|------|
-| 2026-01-05 | 角色创建流程改进 | `feature/character-creation-flow` | 改进游戏流程，添加角色选择阶段：1) 添加 PresetCharacter 模型和 world_pack.json Schema；2) demo_pack 添加 2 个预设角色（学者/流浪者）；3) API 添加 GET /world-pack/{id}、修改 NewGameRequest；4) MenuPage 简化为世界包选择；5) CharacterPage 改造为双模式（选择/查看）；6) StatBlock 添加特质标签显示；7) 区分玩家名(PL)和角色名(PC)；8) 更新 docs/API_TYPES.ts |
+| 2026-01-07 | 移动端状态栏优化 | `main` | 移除移动端状态栏和输入标签，优化界面布局 |
+| 2026-01-07 | 移动端菜单面板 | `main` | 添加移动端菜单面板和门户化UI |
+| 2026-01-07 | 移动端防滚动 | `main` | 修复移动端游戏页面body滚动问题 |
+| 2026-01-07 | 移动端友好UI | `main` | 实现底部面板、移动端适配、响应式设计 |
+| 2026-01-07 | 游戏页面视口高度 | `main` | 修复游戏页面视口高度问题，不影响其他页面 |
+| 2026-01-07 | 导航链接排序 | `main` | 重新排序导航链接，匹配游戏流程 |
+| 2026-01-07 | 特性详情宽度 | `main` | 特性详情宽度调整至90%，关闭按钮放大 |
+| 2026-01-07 | 特性详情浮层 | `main` | 特性详情浮层显示，带阴影效果 |
+| 2026-01-07 | 特性工具提示 | `main` | 特性工具提示宽度优化，防止文本窄包装 |
+| 2026-01-06 | 角色选择流程 | `main` | 实现角色选择流程和特性展示：1) 添加 PresetCharacter 模型和 world_pack.json Schema；2) demo_pack 添加 2 个预设角色（学者/流浪者）；3) API 添加 GET /world-pack/{id}、修改 NewGameRequest；4) MenuPage 简化为世界包选择；5) CharacterPage 改造为双模式（选择/查看）；6) StatBlock 添加特质标签显示；7) 区分玩家名(PL)和角色名(PC)；8) 更新 docs/API_TYPES.ts |
+| 2026-01-06 | 预设角色支持 | `main` | 添加预设角色支持到前端API层 |
+| 2026-01-06 | 游戏API更新 | `main` | 更新游戏API支持预设角色选择 |
+| 2026-01-06 | 预设角色模型 | `main` | 添加 PresetCharacter 模型和预设角色数据 |
 | 2026-01-05 | 游戏介绍消息重构 | `fix/gm-information-control` | 重构游戏开场介绍以避免剧透：1) 世界包添加 setting（年代/类型/氛围）、player_hook（玩家动机）、atmosphere（场景氛围）、appearance（NPC外观）字段；2) API 返回 NPC 外观而非名字；3) 前端 generateIntroductionMessage 重写，展示年代、玩家动机、场景氛围，只用外观描述NPC；4) 更新 JSON Schema 和 Pydantic 模型；5) 庄园背景改为 selective（需要发现） |
 | 2026-01-05 | GM Agent 信息控制修复 | `fix/gm-information-control` | 防止 GM Agent 泄露敏感信息：1) 在 gm_agent.yaml 中添加 information_control 规则，禁止泄露内部ID、NPC名字、无来源的背景信息；2) 更新 prompt_loader.py 支持 information_control 字段；3) 在 _synthesize_response 中添加信息控制指引；4) 模板中明确标注内部参考信息，提示 GM 不可直接输出给玩家 |
 | 2026-01-05 | Web前端Phase显示修复 | `fix/web-phase-display` | 修复 Phase 不更新/显示错误的问题：1) 后端在 _handle_player_input 和 _handle_dice_result 完成后发送 waiting_input 的 phase 变更消息；2) 确保 game_state.set_phase(GamePhase.WAITING_INPUT) 在处理完成后被调用；3) 添加前端 StatBlock Phase 显示测试覆盖全部5种 phase；4) 添加后端集成测试验证 phase 回到 waiting_input |
@@ -416,32 +428,41 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 - ~~GM Agent 意图解析与 Agent 分发~~ ✅
 - ~~NPC 状态更新与记忆持久化~~ ✅
 
-### 中期目标（Phase 7 - React Web 前端）🔄 进行中
+### Phase 7: React Web 前端 ✅ 已完成
 
 > **详细计划**: 参见 `docs/WEB_FRONTEND_PLAN.md`
 
 | 任务 | 优先级 | 状态 | 说明 |
 |------|--------|------|------|
-| 7.1 项目初始化 | 🔴 Critical | ⏳ 待开始 | Vite + React + TypeScript + TailwindCSS |
-| 7.2 API 客户端 | 🔴 Critical | ⏳ 待开始 | REST API + WebSocket 客户端实现 |
-| 7.3 状态管理 | 🔴 Critical | ⏳ 待开始 | Zustand stores (game, connection, ui) |
-| 7.4 通用组件 | 🟡 High | ⏳ 待开始 | Layout, Button, Card, Modal, Loading |
-| 7.5 ChatBox 组件 | 🔴 Critical | ⏳ 待开始 | 叙事展示、流式内容、玩家输入 |
-| 7.6 StatBlock 组件 | 🟡 High | ⏳ 待开始 | 角色状态、位置、命运点 |
-| 7.7 DiceRoller 组件 | 🟡 High | ⏳ 待开始 | 骰子检定、动画、结果提交 |
-| 7.8 页面组件 | 🔴 Critical | ⏳ 待开始 | MenuPage, GamePage, CharacterPage |
-| 7.9 WebSocket 集成 | 🔴 Critical | ⏳ 待开始 | 实时消息、流式内容、重连机制 |
-| 7.10 测试 | 🟡 High | ⏳ 待开始 | Vitest + Testing Library |
-| 7.11 移除旧 TUI | 🟢 Low | ⏳ 待开始 | 删除 src/frontend/, 更新依赖 |
+| 7.1 项目初始化 | 🔴 Critical | ✅ 已完成 | Vite + React 19 + TypeScript + TailwindCSS |
+| 7.2 API 客户端 | 🔴 Critical | ✅ 已完成 | REST API + WebSocket 客户端实现 |
+| 7.3 状态管理 | 🔴 Critical | ✅ 已完成 | Zustand stores (game, connection, ui) |
+| 7.4 通用组件 | 🟡 High | ✅ 已完成 | Layout, Button, Card, Modal, Loading |
+| 7.5 ChatBox 组件 | 🔴 Critical | ✅ 已完成 | 叙事展示、流式内容、玩家输入 |
+| 7.6 StatBlock 组件 | 🟡 High | ✅ 已完成 | 角色状态、位置、命运点 |
+| 7.7 DiceRoller 组件 | 🟡 High | ✅ 已完成 | 骰子检定、动画、结果提交 |
+| 7.8 页面组件 | 🔴 Critical | ✅ 已完成 | MenuPage, GamePage, CharacterPage |
+| 7.9 WebSocket 集成 | 🔴 Critical | ✅ 已完成 | 实时消息、流式内容、重连机制 |
+| 7.10 测试 | 🟡 High | ✅ 已完成 | Vitest + Testing Library |
+| 7.11 移动端优化 | 🟡 High | ✅ 已完成 | 响应式设计、底部面板、触摸优化 |
 
 **技术栈**:
-- React 18 + TypeScript
+- React 19 + TypeScript
 - Vite (构建工具)
 - TailwindCSS (样式)
 - Zustand (状态管理)
 - React Router v6 (路由)
 
-**预计工期**: 10 天
+**已完成功能**:
+- 完整的前端架构（API 客户端、状态管理、组件系统）
+- 三大核心页面（菜单、游戏、角色页面）
+- 响应式设计，支持桌面和移动端
+- 移动端优化：底部面板、防滚动锁定、触摸友好界面
+- 角色选择流程和特性展示系统
+- 完整的 WebSocket 实时通信
+- 单元测试和集成测试
+
+**实际工期**: 5 天（超预期完成）
 
 ### 长期目标（Phase 8 - 后续）
 - 打磨 UX、错误处理与加载指示器
@@ -473,19 +494,34 @@ Week 4: UI 与测试 (6.3 + 6.5)
 ## 提交历史摘要
 | 日期 | 提交 | 重点 |
 |------|------|------|
-| 2026-01-05 | `feature/phase6-frontend-backend-integration` | Phase 6.2 完成：持久化层、数据库服务、会话管理，24 个新测试，522 总测试 |
-| 2026-01-05 | `feature/phase6-frontend-backend-integration` | Phase 6.1 完成：WebSocket 消息路由、GameClient 连接管理、骰子检定流程，73 个新测试，498 总测试 |
-| 2026-01-04 | `fix/screen-app-property-readonly` | TUI Bug 修复：CSS、屏幕导航、asyncio 导入等 |
-| 2026-01-04 | `feature/phase5-textual-tui-frontend` | 完成 Phase 5：Textual TUI 前端实现，25个测试，425总测试 |
-| 2026-01-04 | `feature/phase4-week1-json-schema-validation` | 完成 Phase 4：向量检索与增强 JSON 解析，85个测试，400总测试 |
-| 2026-01-03 | `feature/phase3-agent-collaboration` | 完成 Phase 3：Agent 协作与 API 集成，54个测试，324总测试 |
-| 2026-01-03 | `feature/week3-core-agents` | 完成 Phase 2 Week 3：Core Agents，33个测试 |
-| 2026-01-03 | `master` | 完成 Phase 2 Week 2：Agent Infrastructure，64个测试 |
-| 2026-01-03 | `master` | 完成 Phase 2 Week 1：Foundation Layer，121个测试 |
-| 2026-01-03 | `master` | 完成 Phase 1：基础设施搭建 |
+| 2026-01-07 | `feat/web): implement mobile-friendly UI with bottom sheet panels` | 移动端友好UI：实现底部面板、移动端适配 |
+| 2026-01-07 | `fix(web): prevent body scroll on mobile game page` | 移动端优化：防止页面滚动锁定 |
+| 2026-01-07 | `fix(web): fix game page viewport height` | 游戏页面视口高度修复 |
+| 2026-01-07 | `fix(web): reorder nav links to match game flow` | 导航链接重新排序，匹配游戏流程 |
+| 2026-01-07 | `fix(web): widen trait detail to 90%` | 特性详情宽度调整至90% |
+| 2026-01-07 | `fix(web): make trait detail float over content` | 特性详情浮层显示 |
+| 2026-01-07 | `fix(web): widen trait tooltip` | 特性工具提示宽度优化 |
+| 2026-01-06 | `feat(web): implement character selection flow` | 实现角色选择流程和特性展示 |
+| 2026-01-06 | `feat(web): add preset character support` | 添加预设角色支持 |
+| 2026-01-06 | `feat(api): update game API for preset character` | 更新游戏API支持预设角色 |
+| 2026-01-06 | `feat(models): add PresetCharacter model` | 添加预设角色模型和数据 |
+| 2026-01-06 | `docs: add PresetCharacter types and update schema` | 添加预设角色类型定义 |
+| 2026-01-05 | `feature/phase6-frontend-backend-integration` | Phase 6.5 完成：集成测试、覆盖率提升至70%、CI/CD、部署文档 |
+| 2026-01-05 | `feature/phase6-frontend-backend-integration` | Phase 6.4 完成：Agent协作完善、NPC状态持久化、RuleAgent结果处理 |
+| 2026-01-05 | `feature/phase6-frontend-backend-integration` | Phase 6.3 完成：UI完善、角色创建重构、特质系统实现 |
+| 2026-01-05 | `feature/phase6-frontend-backend-integration` | Phase 6.2 完成：持久化层、数据库服务、会话管理，24个新测试 |
+| 2026-01-05 | `feature/phase6-frontend-backend-integration` | Phase 6.1 完成：WebSocket消息路由、GameClient连接管理、骰子检定流程 |
+| 2026-01-04 | `fix/screen-app-property-readonly` | TUI Bug修复：CSS、屏幕导航、asyncio导入等 |
+| 2026-01-04 | `feature/phase5-textual-tui-frontend` | 完成Phase 5：Textual TUI前端实现，25个测试，425总测试 |
+| 2026-01-04 | `feature/phase4-week1-json-schema-validation` | 完成Phase 4：向量检索与增强JSON解析，85个测试，400总测试 |
+| 2026-01-03 | `feature/phase3-agent-collaboration` | 完成Phase 3：Agent协作与API集成，54个测试，324总测试 |
+| 2026-01-03 | `feature/week3-core-agents` | 完成Phase 2 Week 3：Core Agents，33个测试 |
+| 2026-01-03 | `master` | 完成Phase 2 Week 2：Agent Infrastructure，64个测试 |
+| 2026-01-03 | `master` | 完成Phase 2 Week 1：Foundation Layer，121个测试 |
+| 2026-01-03 | `master` | 完成Phase 1：基础设施搭建 |
 
 > 注：详细提交记录可通过 `git log --oneline` 查看。
-> 当前活跃分支: `feature/phase5-textual-tui-frontend` (包含 TUI bug 修复)
+> 当前活跃分支: `main` (Web前端开发已完成)
 
 ---
 

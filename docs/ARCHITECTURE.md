@@ -53,8 +53,8 @@ Astinus/
 │   │   ├── vite.config.ts
 │   │   └── tailwind.config.js
 │   │
-│   ├── frontend/             # [DEPRECATED] Textual TUI Application
-│   │   └── ...               # To be removed after web frontend is complete
+│   ├── frontend/             # [DEPRECATED] Textual TUI Application (已弃用)
+│   │   └── ...               # 已被 React Web 前端替代，将在未来版本中移除
 │   │
 │   └── shared/               # Shared utilities or types (if needed)
 │
@@ -191,88 +191,54 @@ DUAL_MATCH_BOOST = 1.5          # 双重匹配加成
 - 应用重启后自动加载现有数据
 - VectorStoreService.reset_instance() 用于测试隔离
 
-## 4. Textual TUI Frontend
+## 4. Frontend Architecture
 
-The Textual-based Terminal User Interface provides a rich, interactive gaming experience in the terminal.
+### 4.1 React Web Frontend (Current)
 
-### 4.1 Architecture Overview
+The React Web Frontend is the primary user interface for Astinus, providing a modern, responsive gaming experience across desktop and mobile devices.
 
-**Design Pattern**: Screen-based navigation with reactive state management
+**Core Components**:
 
-```
-AstinusApp
-├── Screens (Stack-based navigation)
-│   ├── GameScreen (Main game interface)
-│   ├── CharacterScreen (Character sheet)
-│   └── InventoryScreen (Player inventory)
-├── Widgets (Reusable components)
-│   ├── ChatBox (Narrative display + input)
-│   ├── StatBlock (Character stats)
-│   └── DiceRoller (Dice rolling interface)
-└── Client (Backend communication)
-    ├── HTTP Client (REST API)
-    └── WebSocket Client (Real-time updates)
-```
+1. **API Client Layer** (`src/web/src/api/`)
+   - `client.ts`: REST API communication with FastAPI backend
+   - `websocket.ts`: Real-time WebSocket connection management
+   - `types.ts`: TypeScript type definitions matching backend Pydantic models
 
-### 4.2 Core Components
+2. **State Management** (`src/web/src/stores/`)
+   - `gameStore.ts`: Game state (player, messages, dice checks)
+   - `connectionStore.ts`: WebSocket connection status
+   - `uiStore.ts`: UI state (language, theme, mobile panels)
 
-**AstinusApp** (`src/frontend/app.py`):
-- Main application entry point
-- Manages screen navigation and lifecycle
-- Reactive state: `current_screen`, `player_name`, `game_state`
-- Keyboard shortcuts: G (Game), C (Character), I (Inventory), Q (Quit)
-- Game session management: `start_new_game()`, `send_player_input()`, `submit_dice_result()`
+3. **UI Components** (`src/web/src/components/`)
+   - `ChatBox/`: Narrative display and player input
+   - `StatBlock/`: Character status and game state panel
+   - `DiceRoller/`: Dice rolling interface with animations
+   - `Layout/`: Page layout and navigation
+   - `common/`: Reusable UI elements (Button, Card, Modal, etc.)
 
-**GameClient** (`src/frontend/client.py`):
-- HTTP/WebSocket communication with backend
-- REST API: `/api/v1/game/new`, `/api/v1/game/{id}/state`
-- WebSocket: `/ws/game/{session_id}`
-- Message types: `status`, `content`, `dice_check`, `phase`, `error`
-- Auto-reconnection and error handling
+4. **Pages** (`src/web/src/pages/`)
+   - `MenuPage.tsx`: World pack selection and game options
+   - `GamePage.tsx`: Main three-column game interface
+   - `CharacterPage.tsx`: Character details and traits
 
-**Screens** (`src/frontend/screens/`):
-- **GameScreen**: Main game interface with stat block + chat + dice roller
-- **CharacterScreen**: Detailed character information and traits
-- **InventoryScreen**: Player items and equipment display
+**Key Features**:
+- Responsive design (desktop three-column, mobile bottom panels)
+- Real-time WebSocket streaming with typewriter effect
+- Touch-optimized mobile interface with bottom sheet panels
+- State management via Zustand
+- Type-safe API communication
+- Comprehensive test coverage with Vitest
 
-**Widgets** (`src/frontend/widgets/`):
-- **ChatBox**: Auto-scrolling narrative log with input history (↑/↓ navigation)
-- **StatBlock**: Character name, concept, location, game phase, turn count
-- **DiceRoller**: Virtual dice display, roll button, result submission
+### 4.2 Textual TUI Frontend (Deprecated)
 
-### 4.3 UI/UX Features
+The original Textual-based Terminal User Interface has been **deprecated** in favor of the React Web Frontend. The TUI provided a terminal-based gaming experience but was limited by terminal environment constraints.
 
-**Styling**:
-- CSS-based theming with CSS variables (`$background`, `$primary`, `$accent`)
-- Responsive layout using `Horizontal` and `Vertical` containers
-- Interactive feedback: hover effects, button states
-- Conditional visibility: dice roller shown only when needed
+**Migration Status**:
+- ✅ Replaced by React Web Frontend
+- ⏳ Scheduled for removal in future version
+- 📖 See `docs/WEB_FRONTEND_PLAN.md` for migration details
 
-**Navigation**:
-- Stack-based screen navigation with `push_screen()`
-- Footer hints: `[b]g[/b] Game | [b]c[/b] Character | [b]i[/b] Inventory | [b]q[/b] Quit`
-- Button-based navigation in each screen
-
-**State Management**:
-- Reactive properties using `reactive()` from Textual
-- Message passing via `Message` events
-- Auto-scroll in chat for new messages
-
-### 4.4 Message Flow
-
-```
-Player Input → ChatBox → AstinusApp → GameClient → WebSocket → Backend
-                                           ↓
-Backend ← WebSocket ← GameClient ← GameScreen ← Message Handler
-                      ↓
-                 UI Update (ChatBox/StatBlock/DiceRoller)
-```
-
-### 4.5 Dependencies
-
-- **Textual**: Terminal UI framework (v0.6.12.0)
-- **httpx**: Async HTTP client for REST API
-- **websockets**: WebSocket client for real-time communication
+**Note**: The deprecated TUI frontend details have been omitted. For historical reference, see git history prior to the React Web Frontend migration.
 
 ## 5. Communication Protocols
 
