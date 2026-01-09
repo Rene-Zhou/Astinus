@@ -46,6 +46,39 @@ class WorldPackInfo(BaseModel):
     )
 
 
+class RegionData(BaseModel):
+    """
+    A hierarchical region containing multiple locations.
+
+    Regions provide overarching context (atmosphere, tone) that affects
+    all locations within them, enabling dynamic narrative adaptation.
+    """
+
+    id: str = Field(..., description="Unique region identifier (snake_case)")
+    name: LocalizedString = Field(..., description="Display name")
+    description: LocalizedString = Field(..., description="Region overview for context")
+
+    # Atmosphere/tone guidance for GM Agent
+    narrative_tone: LocalizedString | None = Field(
+        default=None,
+        description="GM narrative tone for this region (e.g., 'tense and foreboding', 'peaceful pastoral')",
+    )
+    atmosphere_keywords: list[str] = Field(
+        default_factory=list,
+        description="Keywords for atmosphere (dark, foggy, bustling, peaceful) - used for prompt injection",
+    )
+
+    # Location hierarchy
+    location_ids: list[str] = Field(
+        default_factory=list, description="IDs of locations within this region"
+    )
+
+    # Context filtering metadata
+    tags: list[str] = Field(
+        default_factory=list, description="Region tags (wilderness, urban, supernatural, etc.)"
+    )
+
+
 class LoreEntry(BaseModel):
     """
     A lore entry for world background information.
@@ -62,6 +95,9 @@ class LoreEntry(BaseModel):
         constant: If True, always include in context
         selective: If True, only load when triggered
         order: Insertion order (lower = earlier in prompt)
+        visibility: Discovery tier ('basic' auto-revealed, 'detailed' requires investigation)
+        applicable_regions: If non-empty, only load in these regions
+        applicable_locations: If non-empty, only load at these locations
     """
 
     uid: int = Field(..., description="Unique identifier")
@@ -76,6 +112,20 @@ class LoreEntry(BaseModel):
     constant: bool = Field(default=False, description="Always include in context (use sparingly)")
     selective: bool = Field(default=True, description="Only load when triggered")
     order: int = Field(default=100, description="Insertion order (lower = earlier)")
+
+    # NEW: Discovery tier and location filtering
+    visibility: str = Field(
+        default="basic",
+        description="Discovery tier: 'basic' (auto-revealed), 'detailed' (requires investigation)",
+    )
+    applicable_regions: list[str] = Field(
+        default_factory=list,
+        description="If non-empty, only load in these regions (empty = global)",
+    )
+    applicable_locations: list[str] = Field(
+        default_factory=list,
+        description="If non-empty, only load at these locations (empty = global)",
+    )
 
 
 class NPCSoul(BaseModel):
@@ -125,6 +175,12 @@ class NPCBody(BaseModel):
     memory: dict[str, list[str]] = Field(
         default_factory=dict,
         description="Key event memories: {'event description': ['keywords']}",
+    )
+
+    # NEW: Location-specific knowledge
+    location_knowledge: dict[str, list[int]] = Field(
+        default_factory=dict,
+        description="Location-based knowledge: {location_id: [lore_entry_uids]}. Empty dict = no restrictions (backward compatible)",
     )
 
 
@@ -217,6 +273,28 @@ class LocationData(BaseModel):
         default_factory=list, description="Location tags (dark, dangerous, etc.)"
     )
 
+    # NEW: Region association
+    region_id: str | None = Field(
+        default=None,
+        description="Parent region ID - if None, belongs to default global region",
+    )
+
+    # NEW: Discovery tiers for hybrid revelation
+    visible_items: list[str] = Field(
+        default_factory=list,
+        description="Items immediately visible (auto-revealed on entry)",
+    )
+    hidden_items: list[str] = Field(
+        default_factory=list,
+        description="Items requiring investigation/checks to discover",
+    )
+
+    # NEW: Lore filtering metadata
+    lore_tags: list[str] = Field(
+        default_factory=list,
+        description="Tags for filtering lore entries relevant to this location",
+    )
+
 
 class WorldPack(BaseModel):
     """
@@ -227,6 +305,7 @@ class WorldPack(BaseModel):
     - entries: Lore entries for background injection
     - npcs: NPC definitions
     - locations: Scene/location definitions
+    - regions: Hierarchical regions containing locations
 
     Based on GUIDE.md Section 4.
     """
@@ -242,6 +321,12 @@ class WorldPack(BaseModel):
     preset_characters: list[PresetCharacter] = Field(
         default_factory=list,
         description="Preset characters for players to choose from",
+    )
+
+    # NEW: Regions hierarchy
+    regions: dict[str, RegionData] = Field(
+        default_factory=dict,
+        description="Regions keyed by id (optional - if empty, single global region)",
     )
 
     def get_entry(self, uid: int) -> LoreEntry | None:
@@ -266,6 +351,76 @@ class WorldPack(BaseModel):
             if preset.id == preset_id:
                 return preset
         return None
+
+    def get_region(self, region_id: str) -> RegionData | None:
+        """Get a region by id."""
+        return self.regions.get(region_id)
+
+    def get_location_region(self, location_id: str) -> RegionData | None:
+        """
+        Get the region containing a location.
+
+        Args:
+            location_id: The location to find the region for
+
+        Returns:
+            The region containing the location, or None if not found
+        """
+        location = self.get_location(location_id)
+        if not location or not location.region_id:
+            return None
+        return self.get_region(location.region_id)
+
+    def get_lore_for_location(
+        self, location_id: str, visibility: str = "basic"
+    ) -> list[LoreEntry]:
+        """
+        Get lore entries applicable to a location, filtered by visibility.
+
+        Priority:
+        1. Location-specific entries (applicable_locations contains location_id)
+        2. Region-specific entries (applicable_regions contains region_id)
+        3. Global entries (both lists empty)
+        4. Constant entries (always included)
+
+        Args:
+            location_id: The location to get lore for
+            visibility: Filter by visibility tier ('basic' or 'detailed')
+
+        Returns:
+            List of matching lore entries, sorted by order
+        """
+        location = self.get_location(location_id)
+        region = self.get_location_region(location_id) if location else None
+
+        matches = []
+        for entry in self.entries.values():
+            # Filter by visibility
+            if entry.visibility != visibility and not entry.constant:
+                continue
+
+            # Constant entries always included
+            if entry.constant:
+                matches.append(entry)
+                continue
+
+            # Check location-specific
+            if entry.applicable_locations:
+                if location_id in entry.applicable_locations:
+                    matches.append(entry)
+                continue
+
+            # Check region-specific
+            if entry.applicable_regions and region:
+                if region.id in entry.applicable_regions:
+                    matches.append(entry)
+                continue
+
+            # Global entries (no restrictions)
+            if not entry.applicable_locations and not entry.applicable_regions:
+                matches.append(entry)
+
+        return sorted(matches, key=lambda e: e.order)
 
     def search_entries_by_keyword(
         self, keyword: str, include_secondary: bool = True

@@ -68,6 +68,8 @@ class LoreAgent(BaseAgent):
                 - query: What the player is asking about
                 - context: Current game context
                 - world_pack_id: Optional specific pack to query
+                - current_location: (Optional) Current location ID for filtering
+                - current_region: (Optional) Current region ID for filtering
 
         Returns:
             AgentResponse with lore information
@@ -76,6 +78,8 @@ class LoreAgent(BaseAgent):
         query = input_data.get("query", "")
         context = input_data.get("context", "")
         world_pack_id = input_data.get("world_pack_id", "demo_pack")
+        current_location = input_data.get("current_location")
+        current_region = input_data.get("current_region")
 
         if not query:
             return AgentResponse(
@@ -89,8 +93,10 @@ class LoreAgent(BaseAgent):
             # Load the world pack
             world_pack = self.world_pack_loader.load(world_pack_id)
 
-            # Search for relevant lore entries
-            lore_entries = self._search_lore(world_pack, query, context)
+            # Search for relevant lore entries with location filtering
+            lore_entries = self._search_lore(
+                world_pack, query, context, current_location, current_region
+            )
 
             # Format the lore for use
             formatted_lore = self._format_lore(lore_entries, query, context)
@@ -102,6 +108,8 @@ class LoreAgent(BaseAgent):
                     "query": query,
                     "entries_found": len(lore_entries),
                     "world_pack_id": world_pack_id,
+                    "current_location": current_location,
+                    "current_region": current_region,
                 },
                 success=True,
             )
@@ -122,19 +130,24 @@ class LoreAgent(BaseAgent):
         world_pack,
         query: str,
         context: str,
+        current_location: str | None = None,
+        current_region: str | None = None,
     ) -> list:
         """
-        Search for relevant lore entries using hybrid search.
+        Search for relevant lore entries using hybrid search with location filtering.
 
         Combines keyword matching and vector similarity:
         - Keyword matches get score = 1.0
         - Vector matches get score = 0.7 * similarity
         - Dual matches (both keyword + vector) get 1.5x boost
+        - Filters by location/region applicability
 
         Args:
             world_pack: WorldPack instance
             query: What the player is asking about
             context: Current game context
+            current_location: (Optional) Current location ID for filtering
+            current_region: (Optional) Current region ID for filtering
 
         Returns:
             List of top 5 relevant lore entries, sorted by score then order
@@ -144,7 +157,9 @@ class LoreAgent(BaseAgent):
 
         # If no vector store, fall back to keyword-only search
         if self.vector_store is None:
-            return self._keyword_only_search(world_pack, query, constant_entries)
+            return self._keyword_only_search(
+                world_pack, query, constant_entries, current_location, current_region
+            )
 
         # Hybrid search: combine keyword and vector scores
         entry_scores = {}
@@ -219,16 +234,73 @@ class LoreAgent(BaseAgent):
                     "vector_match": False,
                 }
 
-        # Step 4: Sort by score (desc), then by order (asc)
+        # Step 4: Filter by location/region applicability
+        filtered_scores = self._filter_by_location(
+            entry_scores.values(), current_location, current_region
+        )
+
+        # Step 5: Sort by score (desc), then by order (asc)
         sorted_entries = sorted(
-            entry_scores.values(),
+            filtered_scores,
             key=lambda x: (-x["score"], x["entry"].order),
         )
 
         # Return top 5
         return [item["entry"] for item in sorted_entries[:5]]
 
-    def _keyword_only_search(self, world_pack, query: str, constant_entries: list) -> list:
+    def _filter_by_location(
+        self,
+        entry_scores: list,
+        current_location: str | None,
+        current_region: str | None,
+    ) -> list:
+        """
+        Filter lore entries by location/region applicability.
+
+        Logic:
+        1. Skip if location-restricted and doesn't match
+        2. Skip if region-restricted and doesn't match
+        3. Only include 'basic' visibility by default (detailed requires investigation)
+
+        Args:
+            entry_scores: List of entry score dictionaries
+            current_location: Current location ID
+            current_region: Current region ID
+
+        Returns:
+            Filtered list of entry scores
+        """
+        filtered = []
+        for item in entry_scores:
+            entry = item["entry"]
+
+            # Filter by visibility (only 'basic' or constant entries)
+            if entry.visibility != "basic" and not entry.constant:
+                continue
+
+            # Skip if location-restricted and doesn't match
+            if entry.applicable_locations:
+                if not current_location or current_location not in entry.applicable_locations:
+                    continue
+
+            # Skip if region-restricted and doesn't match
+            elif entry.applicable_regions:
+                if not current_region or current_region not in entry.applicable_regions:
+                    continue
+
+            # Entry passed all filters
+            filtered.append(item)
+
+        return filtered
+
+    def _keyword_only_search(
+        self,
+        world_pack,
+        query: str,
+        constant_entries: list,
+        current_location: str | None = None,
+        current_region: str | None = None,
+    ) -> list:
         """
         Fallback to keyword-only search when vector store is unavailable.
 
@@ -236,6 +308,8 @@ class LoreAgent(BaseAgent):
             world_pack: WorldPack instance
             query: Search query
             constant_entries: List of constant entries
+            current_location: (Optional) Current location ID for filtering
+            current_region: (Optional) Current region ID for filtering
 
         Returns:
             List of matched entries sorted by order
@@ -247,12 +321,31 @@ class LoreAgent(BaseAgent):
             matches = world_pack.search_entries_by_keyword(term, include_secondary=True)
             matched_entries.extend(matches)
 
-        # Remove duplicates and sort by order
+        # Remove duplicates
         unique_entries = {}
         for entry in constant_entries + matched_entries:
             unique_entries[entry.uid] = entry
 
-        return sorted(unique_entries.values(), key=lambda e: e.order)
+        # Filter by location/region
+        filtered_entries = []
+        for entry in unique_entries.values():
+            # Filter by visibility
+            if entry.visibility != "basic" and not entry.constant:
+                continue
+
+            # Skip if location-restricted and doesn't match
+            if entry.applicable_locations:
+                if not current_location or current_location not in entry.applicable_locations:
+                    continue
+
+            # Skip if region-restricted and doesn't match
+            elif entry.applicable_regions:
+                if not current_region or current_region not in entry.applicable_regions:
+                    continue
+
+            filtered_entries.append(entry)
+
+        return sorted(filtered_entries, key=lambda e: e.order)
 
     def _extract_search_terms(self, query: str) -> list[str]:
         """

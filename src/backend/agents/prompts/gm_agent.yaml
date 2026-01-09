@@ -53,16 +53,48 @@ cn:
     - 检定失败时，保持信息的神秘性（如"你对此一无所知"）
 
   context: |
+    {% if region_name and region_name != "Unknown" %}
+    === 区域氛围 ===
+    当前区域：{{ region_name }}
+    {% if region_tone %}
+    叙事基调：{{ region_tone }}
+    {% endif %}
+    {% if atmosphere_keywords %}
+    氛围关键词：{{ atmosphere_keywords | join('、') }}
+    {% endif %}
+
+    【叙事指导】你的叙事风格应该反映这个区域的基调。例如：
+    - "阴郁、紧张" → 使用更简短、急促的句子，强调阴影和不确定性
+    - "祥和、田园" → 使用更悠长、放松的描写，强调自然和宁静
+    {% endif %}
+
     === 当前场景 ===
     位置：{{ current_location }}
     {% if location_description %}
     场景描述：{{ location_description }}
     {% endif %}
-    {% if location_items %}
-    场景物品（仅供内部参考，禁止在叙事中显示ID）：{{ location_items | join('、') }}
+    {% if location_atmosphere %}
+    当地氛围：{{ location_atmosphere }}
+    {% endif %}
+    {% if visible_items %}
+    可见物品（仅供内部参考，禁止在叙事中显示ID）：{{ visible_items | join('、') }}
+    {% endif %}
+    {% if hidden_items_hints %}
+    隐藏线索：{{ hidden_items_hints }}
+    【注意】不要直接告诉玩家有什么隐藏物品，只能给出模糊的暗示
     {% endif %}
     {% if connected_locations %}
     可前往：{{ connected_locations | join('、') }}
+    {% endif %}
+    {% if basic_lore %}
+
+    === 背景知识（基础层） ===
+    以下是玩家进入此地点时自动了解的基础信息：
+    {% for lore in basic_lore %}
+    {{ lore }}
+    {% endfor %}
+
+    【重要】基础层信息可以自然融入叙事，但不要一次性倾倒给玩家。
     {% endif %}
 
     === 场景中的角色（内部参考信息，禁止直接暴露给玩家）===
@@ -170,16 +202,48 @@ en:
     - On failed checks, maintain the mystery (e.g., "You know nothing about this")
 
   context: |
+    {% if region_name and region_name != "Unknown" %}
+    === Regional Atmosphere ===
+    Current Region: {{ region_name }}
+    {% if region_tone %}
+    Narrative Tone: {{ region_tone }}
+    {% endif %}
+    {% if atmosphere_keywords %}
+    Atmosphere Keywords: {{ atmosphere_keywords | join(', ') }}
+    {% endif %}
+
+    【Narrative Guidance】Your narrative style should reflect the region's tone. For example:
+    - "gloomy, tense" → Use shorter, urgent sentences, emphasize shadows and uncertainty
+    - "peaceful, pastoral" → Use longer, relaxed descriptions, emphasize nature and tranquility
+    {% endif %}
+
     === Current Scene ===
     Location: {{ current_location }}
     {% if location_description %}
     Scene Description: {{ location_description }}
     {% endif %}
-    {% if location_items %}
-    Scene Items (INTERNAL REFERENCE ONLY - DO NOT show IDs in narrative): {{ location_items | join(', ') }}
+    {% if location_atmosphere %}
+    Local Atmosphere: {{ location_atmosphere }}
+    {% endif %}
+    {% if visible_items %}
+    Visible Items (INTERNAL REFERENCE ONLY - DO NOT show IDs in narrative): {{ visible_items | join(', ') }}
+    {% endif %}
+    {% if hidden_items_hints %}
+    Hidden Clues: {{ hidden_items_hints }}
+    【NOTE】Don't directly tell players about hidden items, only give vague hints
     {% endif %}
     {% if connected_locations %}
     Can Go To: {{ connected_locations | join(', ') }}
+    {% endif %}
+    {% if basic_lore %}
+
+    === Background Knowledge (Basic Tier) ===
+    The following is basic information players automatically learn upon entering:
+    {% for lore in basic_lore %}
+    {{ lore }}
+    {% endfor %}
+
+    【IMPORTANT】Basic tier info can be naturally woven into narrative, but don't dump it all at once.
     {% endif %}
 
     === Characters in Scene (INTERNAL REFERENCE - DO NOT expose directly to player) ===

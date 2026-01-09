@@ -20,6 +20,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.core.prompt_loader import get_prompt_loader
 from src.backend.models.game_state import GameState
+from src.backend.services.location_context import LocationContextService
 from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
 
@@ -193,19 +194,30 @@ class GMAgent(BaseAgent):
 
     def _get_scene_context(self, lang: str) -> dict[str, Any]:
         """
-        Get complete scene context from the world pack.
+        Get complete hierarchical scene context from the world pack.
+
+        Uses LocationContextService to build layered context with regions,
+        locations, and discovery tiers.
 
         Args:
             lang: Language code (cn/en)
 
         Returns:
-            Dict containing location description, items, NPCs, etc.
+            Dict containing region, location, lore, NPCs, etc.
         """
+        # Default empty context
         context = {
+            "region_name": "Unknown",
+            "region_tone": "",
+            "atmosphere_keywords": [],
             "location_description": None,
-            "location_items": [],
+            "location_atmosphere": "",
+            "visible_items": [],
+            "hidden_items_hints": "",
             "connected_locations": [],
             "active_npcs_details": [],
+            "basic_lore": [],
+            "atmosphere_guidance": "",
             "world_background": None,
         }
 
@@ -213,14 +225,39 @@ class GMAgent(BaseAgent):
             return context
 
         try:
+            # Use LocationContextService to get hierarchical context
+            context_service = LocationContextService(self.world_pack_loader)
+
+            hierarchical_context = context_service.get_context_for_location(
+                world_pack_id=self.game_state.world_pack_id,
+                location_id=self.game_state.current_location,
+                discovered_items=self.game_state.discovered_items,
+                lang=lang,
+            )
+
+            # Transform for prompt template
+            context.update(
+                {
+                    "region_name": hierarchical_context["region"]["name"],
+                    "region_tone": hierarchical_context["region"]["narrative_tone"],
+                    "atmosphere_keywords": hierarchical_context["region"]["atmosphere_keywords"],
+                    "location_description": hierarchical_context["location"]["description"],
+                    "location_atmosphere": hierarchical_context["location"]["atmosphere"],
+                    "visible_items": hierarchical_context["location"]["visible_items"],
+                    "hidden_items_hints": self._generate_hidden_item_hints(
+                        hierarchical_context["location"]["hidden_items_remaining"], lang
+                    ),
+                    "basic_lore": hierarchical_context["basic_lore"],
+                    "atmosphere_guidance": hierarchical_context["atmosphere_guidance"],
+                }
+            )
+
+            # Load world pack for additional data
             world_pack = self.world_pack_loader.load(self.game_state.world_pack_id)
 
-            # Get current location details
+            # Get current location for connected locations
             location = world_pack.get_location(self.game_state.current_location)
             if location:
-                context["location_description"] = location.description.get(lang)
-                context["location_items"] = location.items or []
-
                 # Get connected location names
                 connected = []
                 for loc_id in location.connected_locations or []:
@@ -236,7 +273,7 @@ class GMAgent(BaseAgent):
             for npc_id in self.game_state.active_npc_ids:
                 npc = world_pack.get_npc(npc_id)
                 if npc:
-                    # Get a brief description (first 50 chars of description)
+                    # Get a brief description (first 100 chars of description)
                     description = npc.soul.description.get(lang)
                     brief = description[:100] + "..." if len(description) > 100 else description
                     npcs_details.append(
@@ -260,10 +297,45 @@ class GMAgent(BaseAgent):
                     context["world_background"] = "\n".join(backgrounds)
 
         except Exception:
-            # If loading fails, return empty context
+            # If loading fails, return default context
             pass
 
         return context
+
+    def _generate_hidden_item_hints(self, hidden_items: list[str], lang: str) -> str:
+        """
+        Generate subtle hints for hidden items without revealing IDs.
+
+        Args:
+            hidden_items: List of hidden item IDs remaining to discover
+            lang: Language code
+
+        Returns:
+            Hint string (empty if no hidden items)
+        """
+        if not hidden_items:
+            return ""
+        if lang == "cn":
+            return "房间里似乎还有一些不易察觉的细节..."
+        else:
+            return "There seem to be some subtle details yet to notice..."
+
+    def _get_current_region_id(self) -> str | None:
+        """
+        Get the current region ID based on the player's location.
+
+        Returns:
+            Region ID or None if not found
+        """
+        if not self.world_pack_loader:
+            return None
+
+        try:
+            world_pack = self.world_pack_loader.load(self.game_state.world_pack_id)
+            region = world_pack.get_location_region(self.game_state.current_location)
+            return region.id if region else None
+        except Exception:
+            return None
 
     async def _parse_intent_and_plan(
         self,
@@ -293,14 +365,26 @@ class GMAgent(BaseAgent):
         # Get scene context from world pack
         scene_context = self._get_scene_context(lang)
 
-        # Prepare template variables
+        # Prepare template variables with hierarchical context
         template_vars = {
+            # Region context (NEW)
+            "region_name": scene_context.get("region_name"),
+            "region_tone": scene_context.get("region_tone"),
+            "atmosphere_keywords": scene_context.get("atmosphere_keywords", []),
+            # Location context
             "current_location": self.game_state.current_location,
             "location_description": scene_context.get("location_description"),
-            "location_items": scene_context.get("location_items", []),
+            "location_atmosphere": scene_context.get("location_atmosphere"),
+            "visible_items": scene_context.get("visible_items", []),
+            "hidden_items_hints": scene_context.get("hidden_items_hints"),
             "connected_locations": scene_context.get("connected_locations", []),
+            # Basic lore (NEW)
+            "basic_lore": scene_context.get("basic_lore", []),
+            "atmosphere_guidance": scene_context.get("atmosphere_guidance"),
+            # NPCs and world
             "active_npcs_details": scene_context.get("active_npcs_details", []),
             "world_background": scene_context.get("world_background"),
+            # Game state
             "game_phase": self.game_state.current_phase.value,
             "turn_count": self.game_state.turn_count,
             "player_input": player_input,
@@ -403,6 +487,8 @@ class GMAgent(BaseAgent):
         """
         Prepare context slice for Lore Agent.
 
+        Includes location filtering metadata for region/location-based lore.
+
         Args:
             player_input: Player's query or action
             lang: Language code
@@ -415,6 +501,10 @@ class GMAgent(BaseAgent):
             "context": f"Player is at {self.game_state.current_location}",
             "world_pack_id": self.game_state.world_pack_id,
             "lang": lang,
+            # NEW: Location filtering
+            "current_location": self.game_state.current_location,
+            "current_region": self._get_current_region_id(),
+            "discovered_items": list(self.game_state.discovered_items),
         }
 
     def _slice_context_for_npc(
@@ -461,6 +551,7 @@ class GMAgent(BaseAgent):
             "lang": lang,
             "context": {
                 "location": self.game_state.current_location,
+                "world_pack_id": self.game_state.world_pack_id,  # NEW: For location-based knowledge filtering
             },
             # Note: No access to other NPCs, other locations, etc.
         }

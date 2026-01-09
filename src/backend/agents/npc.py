@@ -18,7 +18,9 @@ from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.core.i18n import get_i18n
 from src.backend.core.prompt_loader import get_prompt_loader
 from src.backend.models.world_pack import NPCData
+from src.backend.services.location_context import LocationContextService
 from src.backend.services.vector_store import VectorStoreService
+from src.backend.services.world import WorldPackLoader
 
 
 class NPCAgent(BaseAgent):
@@ -40,18 +42,25 @@ class NPCAgent(BaseAgent):
         ... })
     """
 
-    def __init__(self, llm, vector_store: VectorStoreService | None = None):
+    def __init__(
+        self,
+        llm,
+        vector_store: VectorStoreService | None = None,
+        world_pack_loader: WorldPackLoader | None = None,
+    ):
         """
         Initialize NPC Agent.
 
         Args:
             llm: Language model instance
             vector_store: Optional VectorStoreService for semantic memory retrieval
+            world_pack_loader: Optional WorldPackLoader for location-based knowledge filtering
         """
         super().__init__(llm, "npc_agent")
         self.i18n = get_i18n()
         self.prompt_loader = get_prompt_loader()
         self.vector_store = vector_store
+        self.world_pack_loader = world_pack_loader
 
     async def process(self, input_data: dict[str, Any]) -> AgentResponse:
         """
@@ -235,8 +244,8 @@ class NPCAgent(BaseAgent):
         # Parse NPC data
         npc = NPCData(**npc_data)
 
-        # Build system prompt from NPC soul (with memory retrieval)
-        system_parts = self._build_system_prompt(npc, player_input, lang)
+        # Build system prompt from NPC soul (with memory retrieval and location-based knowledge)
+        system_parts = self._build_system_prompt(npc, player_input, context, lang)
 
         # Build user prompt with context and input
         user_parts = self._build_user_prompt(npc, player_input, context, lang)
@@ -246,13 +255,16 @@ class NPCAgent(BaseAgent):
             HumanMessage(content=user_parts),
         ]
 
-    def _build_system_prompt(self, npc: NPCData, player_input: str, lang: str) -> str:
+    def _build_system_prompt(
+        self, npc: NPCData, player_input: str, context: dict, lang: str
+    ) -> str:
         """
-        Build system prompt from NPC soul with relevant memories.
+        Build system prompt from NPC soul with relevant memories and location-based knowledge.
 
         Args:
             npc: NPC data
             player_input: Current player input (for memory retrieval)
+            context: Scene context including location and world_pack_id
             lang: Language code
 
         Returns:
@@ -312,6 +324,13 @@ class NPCAgent(BaseAgent):
                 recent_memories = list(body.memory.keys())[:3]
                 for event in recent_memories:
                     lines.append(f"- {event}")
+
+            # NEW: Add location-specific knowledge if applicable
+            location_lore = self._get_location_specific_lore(npc, context, lang)
+            if location_lore:
+                lines.append("")
+                lines.append("## 你知道的信息")
+                lines.append(location_lore)
 
             # Add response format
             lines.append("")
@@ -374,6 +393,13 @@ class NPCAgent(BaseAgent):
                 for event in recent_memories:
                     lines.append(f"- {event}")
 
+            # NEW: Add location-specific knowledge if applicable
+            location_lore = self._get_location_specific_lore(npc, context, lang)
+            if location_lore:
+                lines.append("")
+                lines.append("## What You Know")
+                lines.append(location_lore)
+
             lines.append("")
             lines.append("## Response Format")
             lines.append("Reply in JSON format:")
@@ -385,6 +411,78 @@ class NPCAgent(BaseAgent):
             lines.append("}")
 
         return "\n".join(lines)
+
+    def _get_location_specific_lore(
+        self, npc: NPCData, context: dict, lang: str
+    ) -> str:
+        """
+        Get location-specific lore that this NPC knows.
+
+        Checks NPCBody.location_knowledge for restrictions. If empty, NPC knows
+        everything (backward compatible). Otherwise, filters by allowed lore UIDs.
+
+        Args:
+            npc: NPC data
+            context: Scene context with location and world_pack_id
+            lang: Language code
+
+        Returns:
+            Formatted lore string or empty string if no lore/restrictions
+        """
+        # Check if we have required dependencies
+        if not self.world_pack_loader:
+            return ""
+
+        # Extract context info
+        location_id = context.get("location")
+        world_pack_id = context.get("world_pack_id")
+
+        if not location_id or not world_pack_id:
+            return ""
+
+        body = npc.body
+
+        # Check if NPC has location_knowledge restrictions
+        if not body.location_knowledge:
+            # No restrictions - NPC knows everything (backward compatible)
+            # Don't inject anything here to avoid bloating the prompt
+            return ""
+
+        # Get allowed lore UIDs for this location
+        allowed_uids = body.location_knowledge.get(location_id, [])
+
+        # If no UIDs for this location, NPC knows little here
+        if not allowed_uids:
+            if lang == "cn":
+                return "（你对当前位置的情况所知甚少）"
+            else:
+                return "(You know very little about the current location)"
+
+        # Use LocationContextService to get filtered lore
+        try:
+            context_service = LocationContextService(self.world_pack_loader)
+            lore_entries = context_service.filter_npc_lore(
+                npc_id=npc.id,
+                location_id=location_id,
+                world_pack_id=world_pack_id,
+                lang=lang,
+            )
+
+            if not lore_entries:
+                return ""
+
+            # Format lore entries
+            lore_parts = []
+            for entry in lore_entries:
+                content = entry.content.get(lang)
+                if content:
+                    lore_parts.append(content)
+
+            return "\n\n".join(lore_parts) if lore_parts else ""
+
+        except Exception:
+            # If filtering fails, return empty (graceful degradation)
+            return ""
 
     def _build_user_prompt(self, npc: NPCData, player_input: str, context: dict, lang: str) -> str:
         """Build user prompt with context and player input."""

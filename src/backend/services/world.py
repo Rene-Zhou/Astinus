@@ -11,7 +11,8 @@ from jsonschema import ValidationError as JsonSchemaValidationError
 from pydantic import ValidationError as PydanticValidationError
 
 from src.backend.core.schemas import validate_world_pack
-from src.backend.models.world_pack import WorldPack
+from src.backend.models.i18n import LocalizedString
+from src.backend.models.world_pack import RegionData, WorldPack
 from src.backend.services.vector_store import VectorStoreService
 
 
@@ -110,6 +111,9 @@ class WorldPackLoader:
                 f"  Details: {e}"
             ) from e
 
+        # NEW: Migrate old packs to hierarchical schema
+        self._migrate_pack_to_hierarchical(pack)
+
         # Index lore entries if vector indexing is enabled
         if self.enable_vector_indexing and self.vector_store is not None:
             self._index_lore_entries(pack_id, pack)
@@ -147,6 +151,10 @@ class WorldPackLoader:
                 "order": entry.order,
                 "lang": "cn",
                 "constant": entry.constant,
+                # NEW: Location filtering metadata
+                "visibility": entry.visibility,
+                "applicable_regions": ",".join(entry.applicable_regions),
+                "applicable_locations": ",".join(entry.applicable_locations),
             })
             ids.append(f"{pack_id}_lore_{entry.uid}_cn")
 
@@ -158,6 +166,10 @@ class WorldPackLoader:
                 "order": entry.order,
                 "lang": "en",
                 "constant": entry.constant,
+                # NEW: Location filtering metadata
+                "visibility": entry.visibility,
+                "applicable_regions": ",".join(entry.applicable_regions),
+                "applicable_locations": ",".join(entry.applicable_locations),
             })
             ids.append(f"{pack_id}_lore_{entry.uid}_en")
 
@@ -168,6 +180,41 @@ class WorldPackLoader:
             metadatas=metadatas,
             ids=ids,
         )
+
+    def _migrate_pack_to_hierarchical(self, pack: WorldPack) -> None:
+        """
+        Migrate old world packs to hierarchical schema.
+
+        Ensures backward compatibility by:
+        - Creating default global region if no regions exist
+        - Migrating 'items' to 'visible_items' in locations
+        - Setting default visibility='basic' for all lore entries
+
+        Args:
+            pack: WorldPack to migrate (modified in-place)
+        """
+        # Create global region if needed
+        if not pack.regions:
+            pack.regions["_global"] = RegionData(
+                id="_global",
+                name=LocalizedString(cn="全局区域", en="Global Region"),
+                description=pack.info.description,
+                narrative_tone=pack.info.setting.tone if pack.info.setting else None,
+                location_ids=list(pack.locations.keys()),
+            )
+
+        # Migrate locations
+        for location in pack.locations.values():
+            if not location.region_id:
+                location.region_id = "_global"
+
+            if not location.visible_items and location.items:
+                location.visible_items = location.items.copy()
+
+        # Ensure lore entries have visibility set
+        for entry in pack.entries.values():
+            if not hasattr(entry, "visibility"):
+                entry.visibility = "basic"
 
     def list_available(self) -> list[str]:
         """
