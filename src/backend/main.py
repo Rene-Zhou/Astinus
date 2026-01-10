@@ -22,6 +22,7 @@ from src.backend.core.llm_provider import LLMConfig, LLMProvider, get_llm
 from src.backend.models.character import PlayerCharacter, Trait
 from src.backend.models.game_state import GameState
 from src.backend.models.i18n import LocalizedString
+from src.backend.services.game_logger import init_game_logger
 from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
 
@@ -52,6 +53,9 @@ async def lifespan(app: FastAPI):
 
     # Startup
     print("🚀 Starting Astinus backend...")
+
+    init_game_logger(console_output=True, file_output=True)
+    print("✅ Debug logger initialized (logs/)")
 
     # Load settings from config file
     settings = get_settings()

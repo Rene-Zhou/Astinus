@@ -139,11 +139,12 @@ cn:
     - 如果玩家使用模糊指代（如"那个老人"、"守卫"、"那个人"等），请根据场景中的角色列表推断最匹配的 NPC，并调用对应的 `npc_{id}` Agent
     - 你不能直接扮演 NPC，必须通过调用 NPC Agent 来获取 NPC 的回应
 
-    **场景转移规则**（重要）：
-    - 当玩家意图是移动（move）时，你必须在 "target_location" 字段中指定目标位置的 ID
-    - 目标位置必须是 "可前往" 列表中的有效位置
-    - 如果玩家想去的地方不在可前往列表中，应该在叙事中解释为什么无法前往
-    - 场景转移时，叙事描述应该描写**前往目标位置途中和抵达时**的场景，而非当前位置
+    **场景转移规则**（极其重要 - 必须严格遵守）：
+    - 当玩家意图是移动（move）时，你必须在 "target_location" 字段中填写目标位置的 **精确 ID**
+    - **必须使用"可前往"列表中括号内显示的 ID**，例如看到 "庄园大门 (ID: manor_entrance)" 则填写 "manor_entrance"
+    - **严禁编造 ID**！只能从列表中复制粘贴 ID，不要自己猜测或创造
+    - 如果玩家想去的地方不在可前往列表中，设置 target_location 为 null，并在叙事中解释无法直接前往
+    - 场景转移时，叙事描述应该描写**前往目标位置途中和抵达时**的场景
 
     返回 JSON 格式：
     {
@@ -295,11 +296,12 @@ en:
     - If the player uses vague references (e.g., "the old man", "the guard", "that person"), infer the most matching NPC from the characters list and call the corresponding `npc_{id}` Agent
     - You CANNOT roleplay as NPCs directly - you must call NPC Agents to get their responses
 
-    **Scene Transition Rules** (Important):
-    - When the player intent is move, you MUST specify the target location ID in the "target_location" field
-    - Target location must be a valid location from the "Can Go To" list
-    - If the player wants to go somewhere not in the Can Go To list, explain in narrative why they cannot go there
-    - When transitioning scenes, the narrative should describe **the journey to and arrival at** the target location, NOT the current location
+    **Scene Transition Rules** (CRITICAL - MUST follow strictly):
+    - When the player intent is move, you MUST fill the **exact ID** in the "target_location" field
+    - **MUST use the ID shown in parentheses in the "Can Go To" list**, e.g., seeing "Manor Entrance (ID: manor_entrance)" means fill "manor_entrance"
+    - **NEVER invent IDs**! Only copy-paste IDs from the list, do not guess or create your own
+    - If the player wants to go somewhere not in the Can Go To list, set target_location to null and explain in narrative why they cannot go directly
+    - When transitioning scenes, the narrative should describe **the journey to and arrival at** the target location
 
     Return JSON format:
     {

@@ -20,6 +20,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.core.prompt_loader import get_prompt_loader
 from src.backend.models.game_state import GameState
+from src.backend.services.game_logger import get_game_logger
 from src.backend.services.location_context import LocationContextService
 from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
@@ -157,7 +158,9 @@ class GMAgent(BaseAgent):
         if target_location and agent_dispatch_plan.get("player_intent") == "move":
             self._handle_scene_transition(target_location)
 
-        # Update game state
+        logger = get_game_logger()
+        logger.log_player_input(self.game_state.turn_count, player_input)
+
         self.game_state.add_message(
             role="user",
             content=player_input,
@@ -170,7 +173,13 @@ class GMAgent(BaseAgent):
             metadata={"phase": "gm_response", "agents_called": agents_to_call},
         )
 
-        # Build response metadata
+        logger.log_gm_output(
+            self.game_state.turn_count,
+            narrative,
+            agent_dispatch_plan.get("player_intent"),
+            agents_to_call,
+        )
+
         response_metadata = {
             "agent": self.agent_name,
             "player_intent": agent_dispatch_plan["player_intent"],
@@ -260,17 +269,15 @@ class GMAgent(BaseAgent):
             # Load world pack for additional data
             world_pack = self.world_pack_loader.load(self.game_state.world_pack_id)
 
-            # Get current location for connected locations
             location = world_pack.get_location(self.game_state.current_location)
             if location:
-                # Get connected location names
                 connected = []
                 for loc_id in location.connected_locations or []:
                     connected_loc = world_pack.get_location(loc_id)
                     if connected_loc:
-                        connected.append(connected_loc.name.get(lang))
+                        connected.append(f"{connected_loc.name.get(lang)} (ID: {loc_id})")
                     else:
-                        connected.append(loc_id)
+                        connected.append(f"(ID: {loc_id})")
                 context["connected_locations"] = connected
 
             # Get NPC details for active NPCs
@@ -352,28 +359,46 @@ class GMAgent(BaseAgent):
         Returns:
             True if transition was successful
         """
+        logger = get_game_logger()
+        from_location = self.game_state.current_location
+
         if not self.world_pack_loader:
+            logger.log_scene_transition(from_location, target_location, False)
             return False
 
         try:
             world_pack = self.world_pack_loader.load(self.game_state.world_pack_id)
-            current_location = world_pack.get_location(self.game_state.current_location)
+            current_location = world_pack.get_location(from_location)
 
             if not current_location:
+                logger.log_error("scene_transition", f"Current location not found: {from_location}")
+                logger.log_scene_transition(from_location, target_location, False)
                 return False
 
             if target_location not in (current_location.connected_locations or []):
+                logger.log_error(
+                    "scene_transition",
+                    f"Target not connected: {target_location}",
+                    {"connected": current_location.connected_locations},
+                )
+                logger.log_scene_transition(from_location, target_location, False)
                 return False
 
             target_loc = world_pack.get_location(target_location)
             if not target_loc:
+                logger.log_error("scene_transition", f"Target location not found: {target_location}")
+                logger.log_scene_transition(from_location, target_location, False)
                 return False
 
             npc_ids = target_loc.present_npc_ids or []
             self.game_state.update_location(target_location, npc_ids)
+            logger.log_scene_transition(from_location, target_location, True, npc_ids)
+            logger.log_state_change("current_location", from_location, target_location, "scene_transition")
             return True
 
-        except Exception:
+        except Exception as e:
+            logger.log_error("scene_transition", str(e))
+            logger.log_scene_transition(from_location, target_location, False)
             return False
 
     async def _parse_intent_and_plan(
@@ -438,13 +463,25 @@ class GMAgent(BaseAgent):
             HumanMessage(content=user_message),
         ]
 
-        # Call LLM
         llm_response = await self._call_llm(messages)
 
-        # Parse JSON
+        logger = get_game_logger()
+        logger.log_llm_raw_response(
+            agent_name="gm_agent",
+            prompt_summary=f"Player: {player_input} | Location: {self.game_state.current_location}",
+            raw_response=llm_response,
+        )
+
         try:
             result = self._extract_json_from_response(llm_response)
+            logger.log_llm_raw_response(
+                agent_name="gm_agent",
+                prompt_summary="PARSED JSON",
+                raw_response=str(result),
+                parsed_json=result,
+            )
         except ValueError as exc:
+            logger.log_error("gm_parse_json", str(exc), {"raw": llm_response[:500]})
             return {
                 "success": False,
                 "error": f"Failed to parse GM dispatch plan: {exc}",
