@@ -611,3 +611,248 @@ class TestLoreAgentHybridSearch:
             assert result.success is True
             assert "暴风城" in result.content
             assert result.metadata["entries_found"] >= 1
+
+
+class TestLoreAgentLocationFiltering:
+    """Test suite for LoreAgent location-based filtering functionality."""
+
+    @pytest.fixture(autouse=True)
+    def reset_vector_store_singleton(self):
+        """Reset VectorStoreService singleton before each test."""
+        VectorStoreService.reset_instance()
+        yield
+        VectorStoreService.reset_instance()
+
+    @pytest.fixture
+    def mock_llm(self):
+        """Create mock LLM."""
+        return AsyncMock()
+
+    @pytest.fixture
+    def pack_with_location_filtering(self):
+        """Create a world pack with location-filtered lore entries."""
+        from src.backend.models.world_pack import LocationData, RegionData
+        return WorldPack(
+            info=WorldPackInfo(
+                name=LocalizedString(cn="测试包", en="Test Pack"),
+                description=LocalizedString(cn="位置过滤测试", en="Location filtering test"),
+            ),
+            entries={
+                "1": LoreEntry(
+                    uid=1,
+                    key=["全局"],
+                    content=LocalizedString(cn="全局内容", en="Global content"),
+                    order=1,
+                    visibility="basic",
+                ),
+                "2": LoreEntry(
+                    uid=2,
+                    key=["森林"],
+                    content=LocalizedString(cn="森林区域的内容", en="Forest area content"),
+                    order=2,
+                    visibility="basic",
+                    applicable_regions=["forest_region"],
+                ),
+                "3": LoreEntry(
+                    uid=3,
+                    key=["宝箱"],
+                    content=LocalizedString(cn="宝箱的秘密", en="Secret of the chest"),
+                    order=3,
+                    visibility="basic",
+                    applicable_locations=["treasure_room"],
+                ),
+                "4": LoreEntry(
+                    uid=4,
+                    key=["详细秘密"],
+                    content=LocalizedString(cn="需要调查才能知道的秘密", en="Secret that requires investigation"),
+                    order=4,
+                    visibility="detailed",
+                    applicable_locations=["treasure_room"],
+                ),
+                "100": LoreEntry(
+                    uid=100,
+                    key=["常量"],
+                    content=LocalizedString(cn="常量内容", en="Constant content"),
+                    order=0,
+                    constant=True,
+                ),
+            },
+            npcs={},
+            locations={
+                "village": LocationData(
+                    id="village",
+                    name=LocalizedString(cn="村庄", en="Village"),
+                    description=LocalizedString(cn="村庄描述", en="Village desc"),
+                    region_id="village_region",
+                ),
+                "treasure_room": LocationData(
+                    id="treasure_room",
+                    name=LocalizedString(cn="宝箱房", en="Treasure Room"),
+                    description=LocalizedString(cn="宝藏室描述", en="Treasure room desc"),
+                    region_id="forest_region",
+                ),
+            },
+            regions={
+                "village_region": RegionData(
+                    id="village_region",
+                    name=LocalizedString(cn="村庄区域", en="Village Region"),
+                    description=LocalizedString(cn="村庄描述", en="Village desc"),
+                    location_ids=["village"],
+                ),
+                "forest_region": RegionData(
+                    id="forest_region",
+                    name=LocalizedString(cn="森林区域", en="Forest Region"),
+                    description=LocalizedString(cn="森林描述", en="Forest desc"),
+                    location_ids=["treasure_room"],
+                ),
+            },
+        )
+
+    @pytest.fixture
+    def world_pack_loader(self, pack_with_location_filtering):
+        """Create WorldPackLoader with sample pack."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pack_dir = Path(tmpdir) / "packs"
+            pack_dir.mkdir()
+
+            pack_path = pack_dir / "test_pack.json"
+            pack_path.write_text(pack_with_location_filtering.model_dump_json(), encoding="utf-8")
+
+            loader = WorldPackLoader(pack_dir)
+            loader.load("test_pack")
+
+            yield loader, Path(tmpdir)
+
+    def test_filter_by_location_region(self, mock_llm, world_pack_loader):
+        """Test that lore is filtered by region."""
+        loader, _ = world_pack_loader
+        agent = LoreAgent(mock_llm, loader)
+
+        results = agent._search_lore(
+            loader.load("test_pack"),
+            query="区域",
+            context="",
+            current_location="treasure_room",
+            current_region="forest_region",
+        )
+
+        uids = [r.uid for r in results]
+        assert 2 in uids
+        assert 3 not in uids
+
+    def test_filter_by_location_specific(self, mock_llm, world_pack_loader):
+        """Test that location-specific entries are included."""
+        loader, _ = world_pack_loader
+        agent = LoreAgent(mock_llm, loader)
+
+        results = agent._search_lore(
+            loader.load("test_pack"),
+            query="宝箱",
+            context="",
+            current_location="treasure_room",
+            current_region="forest_region",
+        )
+
+        uids = [r.uid for r in results]
+        assert 3 in uids
+
+    def test_filter_excludes_other_location_entries(self, mock_llm, world_pack_loader):
+        """Test that entries for other locations are excluded."""
+        loader, _ = world_pack_loader
+        agent = LoreAgent(mock_llm, loader)
+
+        results = agent._search_lore(
+            loader.load("test_pack"),
+            query="宝箱",
+            context="",
+            current_location="village",
+            current_region="village_region",
+        )
+
+        uids = [r.uid for r in results]
+        assert 3 not in uids
+
+    def test_filter_by_visibility_basic(self, mock_llm, world_pack_loader):
+        """Test that only basic visibility entries are returned by default."""
+        loader, _ = world_pack_loader
+        agent = LoreAgent(mock_llm, loader)
+
+        results = agent._search_lore(
+            loader.load("test_pack"),
+            query="宝箱",
+            context="",
+            current_location="treasure_room",
+            current_region="forest_region",
+        )
+
+        uids = [r.uid for r in results]
+        assert 3 in uids
+        assert 4 not in uids
+
+    def test_constant_entries_always_included(self, mock_llm, world_pack_loader):
+        """Test that constant entries are always included regardless of location."""
+        loader, _ = world_pack_loader
+        agent = LoreAgent(mock_llm, loader)
+
+        results = agent._search_lore(
+            loader.load("test_pack"),
+            query="完全不相关的查询",
+            context="",
+            current_location="village",
+            current_region="village_region",
+        )
+
+        assert any(r.uid == 100 for r in results)
+
+    def test_keyword_only_search_with_location_filter(self, mock_llm, world_pack_loader):
+        """Test keyword-only search with location filtering."""
+        loader, _ = world_pack_loader
+        agent = LoreAgent(mock_llm, loader)
+
+        results = agent._keyword_only_search(
+            loader.load("test_pack"),
+            query="森林",
+            constant_entries=[],
+            current_location="treasure_room",
+            current_region="forest_region",
+        )
+
+        uids = [r.uid for r in results]
+        assert 2 in uids
+
+    def test_filter_by_location_none(self, mock_llm, world_pack_loader):
+        """Test filtering when location is None (should include global only)."""
+        loader, _ = world_pack_loader
+        agent = LoreAgent(mock_llm, loader)
+
+        results = agent._search_lore(
+            loader.load("test_pack"),
+            query="全局",
+            context="",
+            current_location=None,
+            current_region=None,
+        )
+
+        uids = [r.uid for r in results]
+        assert 1 in uids
+
+    def test_process_includes_location_in_context(self, mock_llm, world_pack_loader):
+        """Test that process() includes location filtering in context."""
+        loader, _ = world_pack_loader
+        agent = LoreAgent(mock_llm, loader)
+
+        import asyncio
+        result = asyncio.run(agent.process({
+            "query": "测试查询",
+            "context": "玩家在森林区域",
+            "world_pack_id": "test_pack",
+            "current_location": "treasure_room",
+            "current_region": "forest_region",
+            "discovered_items": [],
+        }))
+
+        assert result.success is True
+        assert "current_location" in result.metadata
+        assert result.metadata["current_location"] == "treasure_room"
+        assert "current_region" in result.metadata
+        assert result.metadata["current_region"] == "forest_region"

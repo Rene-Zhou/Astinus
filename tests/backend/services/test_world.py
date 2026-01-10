@@ -546,3 +546,224 @@ class TestWorldPackLoaderVectorIndexing:
 
                 # Count should be the same (not doubled)
                 assert first_count == second_count == 2
+
+
+class TestWorldPackMigration:
+    """Test suite for hierarchical schema migration."""
+
+    def test_migration_creates_global_region_for_old_pack(self):
+        """Test that old packs without regions get a default global region."""
+        import json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pack_path = Path(tmpdir) / "old_pack.json"
+            pack_path.write_text(
+                json.dumps({
+                    "info": {
+                        "name": {"cn": "旧包", "en": "Old Pack"},
+                        "description": {"cn": "描述", "en": "Description"},
+                    },
+                    "entries": {
+                        "1": {
+                            "uid": 1,
+                            "key": ["test"],
+                            "content": {"cn": "内容", "en": "Content"},
+                        }
+                    },
+                    "npcs": {},
+                    "locations": {
+                        "old_location": {
+                            "id": "old_location",
+                            "name": {"cn": "旧地点", "en": "Old Location"},
+                            "description": {"cn": "描述", "en": "Desc"},
+                        }
+                    },
+                }),
+                encoding="utf-8",
+            )
+
+            loader = WorldPackLoader(tmpdir)
+            pack = loader.load("old_pack")
+
+            assert len(pack.regions) == 1
+            assert "_global" in pack.regions
+            assert pack.regions["_global"].name.get("cn") == "全局区域"
+
+    def test_migration_sets_location_region_id(self):
+        """Test that migrated locations get region_id set to _global."""
+        import json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pack_path = Path(tmpdir) / "old_pack.json"
+            pack_path.write_text(
+                json.dumps({
+                    "info": {
+                        "name": {"cn": "旧包", "en": "Old Pack"},
+                        "description": {"cn": "描述", "en": "Description"},
+                    },
+                    "entries": {},
+                    "npcs": {},
+                    "locations": {
+                        "old_location": {
+                            "id": "old_location",
+                            "name": {"cn": "旧地点", "en": "Old Location"},
+                            "description": {"cn": "描述", "en": "Desc"},
+                        }
+                    },
+                }),
+                encoding="utf-8",
+            )
+
+            loader = WorldPackLoader(tmpdir)
+            pack = loader.load("old_pack")
+
+            location = pack.get_location("old_location")
+            assert location.region_id == "_global"
+
+    def test_migration_moves_items_to_visible_items(self):
+        """Test that items are migrated to visible_items."""
+        import json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pack_path = Path(tmpdir) / "old_pack.json"
+            pack_path.write_text(
+                json.dumps({
+                    "info": {
+                        "name": {"cn": "旧包", "en": "Old Pack"},
+                        "description": {"cn": "描述", "en": "Description"},
+                    },
+                    "entries": {},
+                    "npcs": {},
+                    "locations": {
+                        "old_location": {
+                            "id": "old_location",
+                            "name": {"cn": "旧地点", "en": "Old Location"},
+                            "description": {"cn": "描述", "en": "Desc"},
+                            "items": ["sword", "shield"],
+                        }
+                    },
+                }),
+                encoding="utf-8",
+            )
+
+            loader = WorldPackLoader(tmpdir)
+            pack = loader.load("old_pack")
+
+            location = pack.get_location("old_location")
+            assert location.visible_items == ["sword", "shield"]
+
+    def test_migration_preserves_existing_regions(self):
+        """Test that packs with regions are not migrated."""
+        import json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pack_path = Path(tmpdir) / "new_pack.json"
+            pack_path.write_text(
+                json.dumps({
+                    "info": {
+                        "name": {"cn": "新包", "en": "New Pack"},
+                        "description": {"cn": "描述", "en": "Description"},
+                    },
+                    "entries": {},
+                    "npcs": {},
+                    "locations": {
+                        "new_location": {
+                            "id": "new_location",
+                            "name": {"cn": "新地点", "en": "New Location"},
+                            "description": {"cn": "描述", "en": "Desc"},
+                            "region_id": "custom_region",
+                        }
+                    },
+                    "regions": {
+                        "custom_region": {
+                            "id": "custom_region",
+                            "name": {"cn": "自定义区域", "en": "Custom Region"},
+                            "description": {"cn": "描述", "en": "Desc"},
+                        }
+                    },
+                }),
+                encoding="utf-8",
+            )
+
+            loader = WorldPackLoader(tmpdir)
+            pack = loader.load("new_pack")
+
+            assert len(pack.regions) == 1
+            assert "custom_region" in pack.regions
+            assert "_global" not in pack.regions
+
+    def test_migration_sets_default_visibility(self):
+        """Test that lore entries get default visibility='basic'."""
+        import json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pack_path = Path(tmpdir) / "old_pack.json"
+            pack_path.write_text(
+                json.dumps({
+                    "info": {
+                        "name": {"cn": "旧包", "en": "Old Pack"},
+                        "description": {"cn": "描述", "en": "Description"},
+                    },
+                    "entries": {
+                        "1": {
+                            "uid": 1,
+                            "key": ["test"],
+                            "content": {"cn": "内容", "en": "Content"},
+                        }
+                    },
+                    "npcs": {},
+                    "locations": {},
+                }),
+                encoding="utf-8",
+            )
+
+            loader = WorldPackLoader(tmpdir)
+            pack = loader.load("old_pack")
+
+            entry = pack.get_entry(1)
+            assert entry.visibility == "basic"
+
+    def test_migration_vector_indexing_includes_new_metadata(self):
+        """Test that vector indexing includes new location filtering metadata."""
+        import json
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pack_path = Path(tmpdir) / "test_pack.json"
+            pack_path.write_text(
+                json.dumps({
+                    "info": {
+                        "name": {"cn": "测试包", "en": "Test Pack"},
+                        "description": {"cn": "描述", "en": "Description"},
+                    },
+                    "entries": {
+                        "1": {
+                            "uid": 1,
+                            "key": ["test"],
+                            "content": {"cn": "内容", "en": "Content"},
+                            "visibility": "basic",
+                            "applicable_regions": ["region1"],
+                            "applicable_locations": ["loc1"],
+                        }
+                    },
+                    "npcs": {},
+                    "locations": {},
+                }),
+                encoding="utf-8",
+            )
+
+            with tempfile.TemporaryDirectory() as db_dir:
+                vector_store = VectorStoreService(db_dir)
+                loader = WorldPackLoader(tmpdir, vector_store=vector_store)
+
+                loader.load("test_pack")
+
+                results = vector_store.search(
+                    collection_name="lore_entries_test_pack",
+                    query_text="test",
+                    n_results=2,
+                )
+
+                for metadata in results["metadatas"][0]:
+                    assert "visibility" in metadata
+                    assert "applicable_regions" in metadata
+                    assert "applicable_locations" in metadata

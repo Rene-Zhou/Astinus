@@ -739,3 +739,315 @@ class TestGMAgentConversationHistoryRetrieval:
 
         # Should return empty list
         assert result == []
+
+
+class TestGMAgentHierarchicalContext:
+    """Test suite for GMAgent hierarchical location context functionality."""
+
+    @pytest.fixture(autouse=True)
+    def reset_vector_store_singleton(self):
+        """Reset VectorStoreService singleton before each test."""
+        VectorStoreService.reset_instance()
+        yield
+        VectorStoreService.reset_instance()
+
+    @pytest.fixture
+    def mock_llm(self):
+        """Create mock LLM."""
+        return AsyncMock()
+
+    @pytest.fixture
+    def sample_game_state_with_location(self):
+        """Create sample game state with location context."""
+        from src.backend.models.character import PlayerCharacter, Trait
+        from src.backend.models.game_state import GameState
+        from src.backend.models.i18n import LocalizedString
+
+        character = PlayerCharacter(
+            name="张伟",
+            concept=LocalizedString(cn="探险家", en="Explorer"),
+            traits=[
+                Trait(
+                    name=LocalizedString(cn="勇敢", en="Brave"),
+                    description=LocalizedString(cn="勇敢的描述", en="Brave description"),
+                    positive_aspect=LocalizedString(cn="正面", en="Positive"),
+                    negative_aspect=LocalizedString(cn="负面", en="Negative"),
+                )
+            ],
+        )
+
+        return GameState(
+            session_id="test-session",
+            world_pack_id="demo_pack",
+            player=character,
+            current_location="temple_entrance",
+            active_npc_ids=["guardian"],
+            discovered_items=set(),
+        )
+
+    @pytest.fixture
+    def gm_agent_with_world_pack(self, mock_llm, sample_game_state_with_location):
+        """Create GM Agent with world pack loader."""
+        import tempfile
+        from pathlib import Path
+
+        from src.backend.models.world_pack import (
+            LocationData,
+            LoreEntry,
+            NPCBody,
+            NPCData,
+            NPCSoul,
+            RegionData,
+            WorldPack,
+            WorldPackInfo,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pack_dir = Path(tmpdir) / "packs"
+            pack_dir.mkdir()
+
+            pack = WorldPack(
+                info=WorldPackInfo(
+                    name=LocalizedString(cn="测试世界", en="Test World"),
+                    description=LocalizedString(cn="用于测试", en="For testing"),
+                ),
+                entries={
+                    "1": LoreEntry(
+                        uid=1,
+                        key=["神殿"],
+                        content=LocalizedString(cn="古老神殿的历史", en="Ancient temple history"),
+                        order=1,
+                        visibility="basic",
+                    ),
+                },
+                npcs={
+                    "guardian": NPCData(
+                        id="guardian",
+                        soul=NPCSoul(
+                            name="神殿守卫",
+                            description=LocalizedString(cn="无形的守卫", en="Invisible guardian"),
+                            personality=["警觉"],
+                            speech_style=LocalizedString(cn="严肃", en="Solemn"),
+                        ),
+                        body=NPCBody(
+                            location="temple_entrance",
+                            inventory=[],
+                            relations={},
+                            tags=[],
+                            memory={},
+                        ),
+                    ),
+                },
+                locations={
+                    "temple_entrance": LocationData(
+                        id="temple_entrance",
+                        name=LocalizedString(cn="神殿入口", en="Temple Entrance"),
+                        description=LocalizedString(cn="古老神殿的入口", en="Entrance to ancient temple"),
+                        atmosphere=LocalizedString(cn="庄严神秘", en="Solemn and mysterious"),
+                        region_id="temple_district",
+                        visible_items=["altar", "statue"],
+                        hidden_items=["secret_lever"],
+                    ),
+                },
+                regions={
+                    "temple_district": RegionData(
+                        id="temple_district",
+                        name=LocalizedString(cn="神殿区域", en="Temple District"),
+                        description=LocalizedString(cn="神圣区域", en="Sacred area"),
+                        narrative_tone=LocalizedString(cn="庄严神秘", en="Solemn and mysterious"),
+                        atmosphere_keywords=["holy", "ancient", "mysterious"],
+                        location_ids=["temple_entrance"],
+                    ),
+                },
+            )
+
+            pack_path = pack_dir / "demo_pack.json"
+            pack_path.write_text(pack.model_dump_json(), encoding="utf-8")
+
+            from src.backend.services.world import WorldPackLoader
+
+            loader = WorldPackLoader(pack_dir)
+
+            yield GMAgent(
+                llm=mock_llm,
+                sub_agents={},
+                game_state=sample_game_state_with_location,
+                world_pack_loader=loader,
+            )
+
+    def test_get_scene_context_includes_region(
+        self, gm_agent_with_world_pack, sample_game_state_with_location
+    ):
+        """Test that scene context includes region information."""
+        context = gm_agent_with_world_pack._get_scene_context("cn")
+
+        assert "region_name" in context
+        assert "region_tone" in context
+        assert "atmosphere_keywords" in context
+
+    def test_get_scene_context_includes_location_atmosphere(
+        self, gm_agent_with_world_pack, sample_game_state_with_location
+    ):
+        """Test that scene context includes location atmosphere."""
+        context = gm_agent_with_world_pack._get_scene_context("cn")
+
+        assert "location_atmosphere" in context
+        assert "庄严神秘" in context["location_atmosphere"] or context["location_atmosphere"] != ""
+
+    def test_get_scene_context_separates_visible_hidden_items(
+        self, gm_agent_with_world_pack, sample_game_state_with_location
+    ):
+        """Test that visible and hidden items are separated."""
+        context = gm_agent_with_world_pack._get_scene_context("cn")
+
+        assert "visible_items" in context
+        assert "hidden_items_hints" in context
+        assert "altar" in context["visible_items"]
+        assert "statue" in context["visible_items"]
+
+    def test_get_scene_context_generates_hidden_item_hints(
+        self, gm_agent_with_world_pack, sample_game_state_with_location
+    ):
+        """Test that hidden item hints are generated when items remain."""
+        context = gm_agent_with_world_pack._get_scene_context("cn")
+
+        assert context["hidden_items_hints"] != ""
+
+    def test_get_scene_context_includes_basic_lore(
+        self, gm_agent_with_world_pack, sample_game_state_with_location
+    ):
+        """Test that basic lore is included in context."""
+        context = gm_agent_with_world_pack._get_scene_context("cn")
+
+        assert "basic_lore" in context
+        assert len(context["basic_lore"]) >= 1
+
+    def test_get_scene_context_atmosphere_guidance(
+        self, gm_agent_with_world_pack, sample_game_state_with_location
+    ):
+        """Test that atmosphere guidance is included."""
+        context = gm_agent_with_world_pack._get_scene_context("cn")
+
+        assert "atmosphere_guidance" in context
+
+    def test_hidden_item_hints_empty_when_all_discovered(
+        self, mock_llm, sample_game_state_with_location
+    ):
+        """Test that hints are empty when all hidden items are discovered."""
+        import tempfile
+        from pathlib import Path
+
+        from src.backend.models.world_pack import (
+            LocationData,
+            LoreEntry,
+            NPCBody,
+            NPCData,
+            NPCSoul,
+            RegionData,
+            WorldPack,
+            WorldPackInfo,
+        )
+        from src.backend.services.world import WorldPackLoader
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pack_dir = Path(tmpdir) / "packs"
+            pack_dir.mkdir()
+
+            pack = WorldPack(
+                info=WorldPackInfo(
+                    name=LocalizedString(cn="测试世界", en="Test World"),
+                    description=LocalizedString(cn="测试", en="Test"),
+                ),
+                entries={},
+                npcs={},
+                locations={
+                    "temple_entrance": LocationData(
+                        id="temple_entrance",
+                        name=LocalizedString(cn="神殿入口", en="Temple Entrance"),
+                        description=LocalizedString(cn="描述", en="Desc"),
+                        hidden_items=["secret_lever"],
+                    ),
+                },
+            )
+
+            pack_path = pack_dir / "demo_pack.json"
+            pack_path.write_text(pack.model_dump_json(), encoding="utf-8")
+
+            loader = WorldPackLoader(pack_dir)
+
+            sample_game_state_with_location.discovered_items = {"secret_lever"}
+
+            agent = GMAgent(
+                llm=mock_llm,
+                sub_agents={},
+                game_state=sample_game_state_with_location,
+                world_pack_loader=loader,
+            )
+
+            context = agent._get_scene_context("cn")
+
+            assert context["hidden_items_hints"] == ""
+
+    def test_generate_hidden_item_hints_chinese(self):
+        """Test Chinese hidden item hints generation."""
+        gm_agent = GMAgent.__new__(GMAgent)
+        gm_agent.world_pack_loader = None
+        gm_agent.game_state = None
+
+        hints = gm_agent._generate_hidden_item_hints(["item1", "item2"], "cn")
+
+        assert "不易察觉" in hints or "细节" in hints
+
+    def test_generate_hidden_item_hints_english(self):
+        """Test English hidden item hints generation."""
+        gm_agent = GMAgent.__new__(GMAgent)
+        gm_agent.world_pack_loader = None
+        gm_agent.game_state = None
+
+        hints = gm_agent._generate_hidden_item_hints(["item1", "item2"], "en")
+
+        assert "subtle" in hints.lower() or "notice" in hints.lower()
+
+    def test_generate_hidden_item_hints_empty(self):
+        """Test that empty list returns empty hints."""
+        gm_agent = GMAgent.__new__(GMAgent)
+        gm_agent.world_pack_loader = None
+        gm_agent.game_state = None
+
+        hints = gm_agent._generate_hidden_item_hints([], "cn")
+
+        assert hints == ""
+
+    def test_get_current_region_id(self, gm_agent_with_world_pack, sample_game_state_with_location):
+        """Test getting current region ID from location."""
+        region_id = gm_agent_with_world_pack._get_current_region_id()
+
+        assert region_id == "temple_district"
+
+    def test_get_current_region_id_no_loader(self):
+        """Test that None is returned when no world pack loader."""
+        gm_agent = GMAgent.__new__(GMAgent)
+        gm_agent.world_pack_loader = None
+
+        region_id = gm_agent._get_current_region_id()
+
+        assert region_id is None
+
+    def test_slice_context_for_lore_includes_location(self, gm_agent_with_world_pack):
+        """Test that lore context slice includes location information."""
+        context = gm_agent_with_world_pack._slice_context_for_lore("测试查询", "cn")
+
+        assert "current_location" in context
+        assert "current_region" in context
+        assert "discovered_items" in context
+
+    def test_slice_context_for_npc_includes_world_pack_id(
+        self, gm_agent_with_world_pack, sample_game_state_with_location
+    ):
+        """Test that NPC context slice includes world_pack_id for location filtering."""
+        context = gm_agent_with_world_pack._slice_context_for_npc(
+            "guardian", "你好", "cn"
+        )
+
+        assert "context" in context
+        assert "world_pack_id" in context["context"]

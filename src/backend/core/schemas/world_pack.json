@@ -46,6 +46,16 @@
         "$ref": "#/definitions/PresetCharacter"
       },
       "default": []
+    },
+    "regions": {
+      "type": "object",
+      "description": "Hierarchical regions keyed by id",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "$ref": "#/definitions/RegionData"
+        }
+      },
+      "default": {}
     }
   },
   "additionalProperties": false,
@@ -183,6 +193,28 @@
           "description": "Insertion order (lower = earlier)",
           "default": 100,
           "minimum": 0
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Discovery tier: 'basic' (auto-revealed), 'detailed' (requires investigation)",
+          "enum": ["basic", "detailed"],
+          "default": "basic"
+        },
+        "applicable_regions": {
+          "type": "array",
+          "description": "If non-empty, only load in these regions (empty = global)",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "applicable_locations": {
+          "type": "array",
+          "description": "If non-empty, only load at these locations (empty = global)",
+          "items": {
+            "type": "string"
+          },
+          "default": []
         }
       },
       "additionalProperties": false
@@ -291,6 +323,19 @@
             }
           },
           "default": {}
+        },
+        "location_knowledge": {
+          "type": "object",
+          "description": "Location-based knowledge: {location_id: [lore_entry_uids]}",
+          "patternProperties": {
+            ".*": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          },
+          "default": {}
         }
       },
       "additionalProperties": false
@@ -370,6 +415,43 @@
             "type": "string"
           },
           "default": []
+        },
+        "region_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Parent region ID"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Parent region ID - if None, belongs to default global region",
+          "default": null
+        },
+        "visible_items": {
+          "type": "array",
+          "description": "Items immediately visible (auto-revealed on entry)",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "hidden_items": {
+          "type": "array",
+          "description": "Items requiring investigation/checks to discover",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "lore_tags": {
+          "type": "array",
+          "description": "Tags for filtering lore entries relevant to this location",
+          "items": {
+            "type": "string"
+          },
+          "default": []
         }
       },
       "additionalProperties": false
@@ -420,6 +502,56 @@
           },
           "minItems": 1,
           "maxItems": 4
+        }
+      },
+      "additionalProperties": false
+    },
+    "RegionData": {
+      "type": "object",
+      "description": "A hierarchical region containing multiple locations",
+      "required": ["id", "name", "description"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique region identifier (snake_case)",
+          "pattern": "^[a-z_]+$"
+        },
+        "name": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "description": {
+          "$ref": "#/definitions/LocalizedString"
+        },
+        "narrative_tone": {
+          "oneOf": [
+            { "$ref": "#/definitions/LocalizedString" },
+            { "type": "null" }
+          ],
+          "description": "GM narrative tone for this region"
+        },
+        "atmosphere_keywords": {
+          "type": "array",
+          "description": "Keywords for atmosphere",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "location_ids": {
+          "type": "array",
+          "description": "IDs of locations within this region",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "tags": {
+          "type": "array",
+          "description": "Region tags (wilderness, urban, supernatural, etc.)",
+          "items": {
+            "type": "string"
+          },
+          "default": []
         }
       },
       "additionalProperties": false
