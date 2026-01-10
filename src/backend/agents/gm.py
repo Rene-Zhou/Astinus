@@ -152,6 +152,11 @@ class GMAgent(BaseAgent):
                     dice_check = rule_result.metadata.get("dice_check")
                     break
 
+        # Handle scene transition if target_location is specified
+        target_location = agent_dispatch_plan.get("target_location")
+        if target_location and agent_dispatch_plan.get("player_intent") == "move":
+            self._handle_scene_transition(target_location)
+
         # Update game state
         self.game_state.add_message(
             role="user",
@@ -337,6 +342,40 @@ class GMAgent(BaseAgent):
         except Exception:
             return None
 
+    def _handle_scene_transition(self, target_location: str) -> bool:
+        """
+        Handle scene transition when player moves to a new location.
+
+        Args:
+            target_location: Target location ID from LLM response
+
+        Returns:
+            True if transition was successful
+        """
+        if not self.world_pack_loader:
+            return False
+
+        try:
+            world_pack = self.world_pack_loader.load(self.game_state.world_pack_id)
+            current_location = world_pack.get_location(self.game_state.current_location)
+
+            if not current_location:
+                return False
+
+            if target_location not in (current_location.connected_locations or []):
+                return False
+
+            target_loc = world_pack.get_location(target_location)
+            if not target_loc:
+                return False
+
+            npc_ids = target_loc.present_npc_ids or []
+            self.game_state.update_location(target_location, npc_ids)
+            return True
+
+        except Exception:
+            return False
+
     async def _parse_intent_and_plan(
         self,
         player_input: str,
@@ -415,6 +454,7 @@ class GMAgent(BaseAgent):
         player_intent = result.get("player_intent", "unknown")
         can_respond_directly = result.get("can_respond_directly", False)
         direct_response = result.get("direct_response", "")
+        target_location = result.get("target_location")
         agents_to_call = result.get("agents_to_call", [])
         context_slices = result.get("context_slices", {})
 
@@ -447,6 +487,7 @@ class GMAgent(BaseAgent):
             "player_intent": player_intent,
             "can_respond_directly": can_respond_directly,
             "direct_response": direct_response,
+            "target_location": target_location,
             "agents_to_call": agents_to_call,
             "context_slices": context_slices,
         }

@@ -139,11 +139,18 @@ cn:
     - 如果玩家使用模糊指代（如"那个老人"、"守卫"、"那个人"等），请根据场景中的角色列表推断最匹配的 NPC，并调用对应的 `npc_{id}` Agent
     - 你不能直接扮演 NPC，必须通过调用 NPC Agent 来获取 NPC 的回应
 
+    **场景转移规则**（重要）：
+    - 当玩家意图是移动（move）时，你必须在 "target_location" 字段中指定目标位置的 ID
+    - 目标位置必须是 "可前往" 列表中的有效位置
+    - 如果玩家想去的地方不在可前往列表中，应该在叙事中解释为什么无法前往
+    - 场景转移时，叙事描述应该描写**前往目标位置途中和抵达时**的场景，而非当前位置
+
     返回 JSON 格式：
     {
       "player_intent": "意图类型（observe/move/talk/act/examine 等）",
       "can_respond_directly": true/false,
       "direct_response": "（如果 can_respond_directly 为 true）你的叙事描述【确保不含ID、未知名字、无来源的背景信息】",
+      "target_location": "（如果 player_intent 为 move 且成功移动）目标位置的 ID，如 'mountain_path'、'manor_entrance' 等",
       "agents_to_call": ["rule", "npc_old_guard", "lore"],
       "context_slices": {
         "npc_old_guard": { "player_input": "玩家说的话", "interaction_type": "talk" }
@@ -288,11 +295,18 @@ en:
     - If the player uses vague references (e.g., "the old man", "the guard", "that person"), infer the most matching NPC from the characters list and call the corresponding `npc_{id}` Agent
     - You CANNOT roleplay as NPCs directly - you must call NPC Agents to get their responses
 
+    **Scene Transition Rules** (Important):
+    - When the player intent is move, you MUST specify the target location ID in the "target_location" field
+    - Target location must be a valid location from the "Can Go To" list
+    - If the player wants to go somewhere not in the Can Go To list, explain in narrative why they cannot go there
+    - When transitioning scenes, the narrative should describe **the journey to and arrival at** the target location, NOT the current location
+
     Return JSON format:
     {
       "player_intent": "intent type (observe/move/talk/act/examine, etc.)",
       "can_respond_directly": true/false,
       "direct_response": "(if can_respond_directly is true) your narrative description【ENSURE no IDs, unknown names, or unsourced background info】",
+      "target_location": "(if player_intent is move AND movement succeeds) target location ID, e.g., 'mountain_path', 'manor_entrance'",
       "agents_to_call": ["rule", "npc_old_guard", "lore"],
       "context_slices": {
         "npc_old_guard": { "player_input": "what the player said", "interaction_type": "talk" }
