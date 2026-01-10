@@ -5,13 +5,59 @@ Provides structured logging with timestamps for:
 - LLM raw responses (complete JSON from AI)
 - Game state changes (location transitions, NPC updates)
 - Player inputs and GM outputs
+
+Also provides unified logging configuration for the entire application,
+ensuring uvicorn, FastAPI, and game logs use the same timestamp format.
 """
 
 import json
+import logging
+import sys
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+
+LOG_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
+class UnifiedFormatter(logging.Formatter):
+    def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:
+        ct = datetime.fromtimestamp(record.created)
+        return ct.strftime("%Y-%m-%d %H:%M:%S") + f".{int(record.msecs):03d}"
+
+
+def setup_unified_logging(level: str = "INFO", log_file: str | None = None) -> None:
+    """
+    Configure all Python loggers (uvicorn, fastapi, etc.) to use GameLogger timestamp format.
+
+    Args:
+        level: DEBUG, INFO, WARNING, or ERROR
+        log_file: Optional file path for persistent logs
+    """
+    formatter = UnifiedFormatter(fmt=LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, level.upper(), logging.INFO))
+    root_logger.handlers.clear()
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+
+    if log_file:
+        log_path = Path(log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+
+    for logger_name in ["uvicorn", "uvicorn.access", "uvicorn.error"]:
+        uvicorn_logger = logging.getLogger(logger_name)
+        uvicorn_logger.handlers.clear()
+        uvicorn_logger.propagate = True
 
 
 class LogLevel(str, Enum):
