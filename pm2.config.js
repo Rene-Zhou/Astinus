@@ -24,8 +24,8 @@ module.exports = {
       watch: false,
       max_memory_restart: "1G",
       restart_delay: 2000,
-      out_file: "logs/pm2-backend-out.log",
-      error_file: "logs/pm2-backend-error.log",
+      out_file: "logs/backend.log",
+      error_file: "logs/backend.log",
     },
     {
       name: "astinus-frontend",
@@ -40,8 +40,8 @@ module.exports = {
       watch: false,
       max_memory_restart: "512M",
       restart_delay: 2000,
-      out_file: "logs/pm2-frontend-out.log",
-      error_file: "logs/pm2-frontend-error.log",
+      out_file: "logs/frontend.log",
+      error_file: "logs/frontend.log",
     },
   ],
 };

@@ -55,8 +55,8 @@ async def lifespan(app: FastAPI):
 
     print("🚀 Starting Astinus backend...")
 
-    init_game_logger(console_output=True, file_output=True)
-    print("✅ Debug logger initialized (logs/)")
+    init_game_logger(console_output=True, file_output=False)
+    print("✅ Debug logger initialized (console only, LLM raw logs → logs/llm_raw_*.jsonl)")
 
     # Load settings from config file
     settings = get_settings()
