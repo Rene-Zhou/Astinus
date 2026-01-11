@@ -1,0 +1,105 @@
+{
+  "app": {
+    "title": "Astinus",
+    "subtitle": "AI-Driven Narrative TTRPG Engine"
+  },
+  "menu": {
+    "selectWorld": "Select World",
+    "worldPack": "World Pack",
+    "enterWorld": "Enter World",
+    "version": "Version",
+    "author": "Author"
+  },
+  "nav": {
+    "menu": "Menu",
+    "character": "Character",
+    "game": "Game",
+    "settings": "Settings"
+  },
+  "game": {
+    "status": {
+      "disconnected": "Disconnected",
+      "connecting": "Connecting...",
+      "connected": "Connected",
+      "processing": "Processing",
+      "waitingInput": "Waiting for Input",
+      "narrating": "Narrating",
+      "diceCheck": "Dice Check",
+      "error": "Error"
+    },
+    "notStarted": "Game Not Started",
+    "startPrompt": "Please select a world pack from the menu to start.",
+    "inputPlaceholder": "Describe your action...",
+    "send": "Send",
+    "player": "Player",
+    "location": "Location",
+    "phase": "Phase",
+    "turn": "Turn",
+    "arriveAt": "You arrive at {{location}}.",
+    "npcIntro": "You notice someone here:",
+    "connectionIntro": "From here, you can go to:"
+  },
+  "world": {
+    "era": "Era",
+    "genre": "Genre",
+    "tone": "Tone"
+  },
+  "dice": {
+    "panelTitle": "Dice Panel",
+    "hint": "Hint",
+    "target": "Target",
+    "factors": "Influencing Factors",
+    "formula": "Formula",
+    "roll": "Roll",
+    "result": "Result",
+    "total": "Total",
+    "kept": "Kept",
+    "outcome": {
+      "critical": "Critical Success",
+      "success": "Success",
+      "partial": "Partial Success",
+      "failure": "Failure"
+    }
+  },
+  "character": {
+    "name": "Name",
+    "concept": "Concept",
+    "traits": "Traits",
+    "positive": "Positive",
+    "negative": "Negative",
+    "fatePoints": "Fate Points",
+    "status": "Status"
+  },
+  "settings": {
+    "title": "Settings",
+    "theme": "Theme",
+    "language": "Language",
+    "animationSpeed": "Animation Speed",
+    "providers": "AI Providers",
+    "agents": "AI Agents",
+    "save": "Save Settings",
+    "reset": "Reset Changes",
+    "testConnection": "Test Connection",
+    "addProvider": "Add Provider",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure you want to delete provider \"{{id}}\"?",
+    "provider": "Provider",
+    "selectProvider": "Select a provider",
+    "noProviders": "No providers available. Please add one first.",
+    "model": "Model",
+    "temperature": "Temperature",
+    "maxTokens": "Max Tokens",
+    "precise": "Precise",
+    "creative": "Creative",
+    "connected": "Connected",
+    "failed": "Failed"
+  },
+  "common": {
+    "loading": "Loading...",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "success": "Success",
+    "error": "Error"
+  }
+}

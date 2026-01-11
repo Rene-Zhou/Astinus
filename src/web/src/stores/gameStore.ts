@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
+import i18n from "../utils/i18n";
 import {
   type DiceCheckRequest,
   type DiceResult,
@@ -89,6 +90,7 @@ function generateIntroductionMessage(
   startingScene: StartingScene,
   lang: Language = "cn",
 ): string {
+  const t = i18n.getFixedT(lang);
   const parts: string[] = [];
 
   // World title (just the name, no spoiler description)
@@ -99,8 +101,8 @@ function generateIntroductionMessage(
   if (worldInfo.setting) {
     const era = getLocalizedValue(worldInfo.setting.era, lang);
     const genre = getLocalizedValue(worldInfo.setting.genre, lang);
-    parts.push(lang === "cn" ? `时代：${era}` : `Era: ${era}`);
-    parts.push(lang === "cn" ? `类型：${genre}` : `Genre: ${genre}`);
+    parts.push(`${t("world.era", "Era")}: ${era}`);
+    parts.push(`${t("world.genre", "Genre")}: ${genre}`);
   }
   parts.push("");
 
@@ -122,17 +124,14 @@ function generateIntroductionMessage(
   const locationName = getLocalizedValue(startingScene.location_name, lang);
   const locationDesc = getLocalizedValue(startingScene.description, lang);
   parts.push(
-    lang === "cn"
-      ? `你来到了${locationName}。`
-      : `You arrive at ${locationName}.`,
+    t("game.arriveAt", { location: locationName, defaultValue: `You arrive at {{location}}.` })
   );
   parts.push(locationDesc);
 
   // NPCs in scene - describe by appearance only, NO NAMES
   if (startingScene.npcs && startingScene.npcs.length > 0) {
     parts.push("");
-    const npcIntro =
-      lang === "cn" ? "你注意到这里有人：" : "You notice someone here:";
+    const npcIntro = t("game.npcIntro", "You notice someone here:");
     parts.push(npcIntro);
     for (const npc of startingScene.npcs) {
       // Use appearance, not name - player hasn't learned names yet
@@ -147,8 +146,7 @@ function generateIntroductionMessage(
     startingScene.connected_locations.length > 0
   ) {
     parts.push("");
-    const connectionIntro =
-      lang === "cn" ? "从这里，你可以前往：" : "From here, you can go to:";
+    const connectionIntro = t("game.connectionIntro", "From here, you can go to:");
     parts.push(connectionIntro);
     const locations = startingScene.connected_locations
       .map((loc) => getLocalizedValue(loc.name, lang))

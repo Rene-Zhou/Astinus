@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import type { Message } from "../../api/types";
 import Button from "../common/Button";
 
@@ -26,31 +27,33 @@ interface ChatInputProps {
   disabled?: boolean;
 }
 
-const roleLabel: Record<Message["role"], string> = {
-  user: "玩家",
-  assistant: "GM",
-};
-
 const roleColor: Record<Message["role"], string> = {
-  user: "text-primary",
-  assistant: "text-amber-700",
+  user: "text-primary dark:text-primary-400",
+  assistant: "text-amber-700 dark:text-amber-500",
 };
 
 function ChatMessage({ message, isStreaming }: ChatMessageProps) {
+  const { t } = useTranslation();
+  
+  const roleLabel: Record<Message["role"], string> = {
+    user: t("game.player", "Player"),
+    assistant: "GM",
+  };
+
   return (
     <div className="space-y-1">
       <div className={`text-xs font-semibold ${roleColor[message.role]}`}>
         {roleLabel[message.role]} · Turn {message.turn}
       </div>
       <div
-        className={`whitespace-pre-wrap rounded-lg border border-gray-200 bg-white/80 px-3 py-2 text-sm text-gray-900 ${
+        className={`whitespace-pre-wrap rounded-lg border border-gray-200 bg-white/80 px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-100 ${
           isStreaming ? "animate-pulse" : ""
         }`}
       >
         {message.content}
       </div>
       {message.metadata?.phase && (
-        <div className="text-[11px] text-gray-500">
+        <div className="text-[11px] text-gray-500 dark:text-gray-400">
           Phase: {message.metadata.phase}
         </div>
       )}
@@ -59,6 +62,7 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
 }
 
 function ChatInput({ onSend, disabled = false }: ChatInputProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [_historyIndex, setHistoryIndex] = useState<number | null>(null);
@@ -104,23 +108,23 @@ function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   );
 
   return (
-    <div className="space-y-2 rounded-lg border border-gray-200 bg-white/70 p-3 shadow-sm">
+    <div className="space-y-2 rounded-lg border border-gray-200 bg-white/70 p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800/70">
       <textarea
         ref={textareaRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         rows={3}
-        className="w-full resize-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
-        placeholder="描述你的行动，Shift+Enter 换行"
+        className="w-full resize-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        placeholder={t("game.inputPlaceholder")}
         disabled={disabled}
       />
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">
-          Enter 发送 · Shift+Enter 换行 · ↑↓ 浏览历史
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Enter {t("game.send")} · Shift+Enter New Line · ↑↓ History
         </p>
         <Button size="sm" onClick={send} disabled={disabled} loading={false}>
-          发送
+          {t("game.send")}
         </Button>
       </div>
     </div>
@@ -134,6 +138,7 @@ export function ChatBox({
   streamingContent,
   disabled,
 }: ChatBoxProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const combinedMessages = useMemo(() => {
@@ -158,11 +163,11 @@ export function ChatBox({
     <div className="flex h-full flex-col gap-3">
       <div
         ref={containerRef}
-        className="flex-1 space-y-3 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-4"
+        className="flex-1 space-y-3 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900"
       >
         {combinedMessages.length === 0 ? (
-          <div className="text-center text-sm text-gray-500">
-            暂无消息，开始你的冒险吧！
+          <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+            {t("game.startPrompt")}
           </div>
         ) : (
           combinedMessages.map((msg, idx) => (

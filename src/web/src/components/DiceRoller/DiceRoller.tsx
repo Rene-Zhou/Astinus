@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   DiceCheckRequest,
   DiceOutcome,
@@ -115,21 +116,24 @@ const DiceIcon: React.FC<{ className?: string }> = ({ className }) => (
 /**
  * Idle state component when no dice check is pending
  */
-const IdleState: React.FC = () => (
-  <div className="flex h-full flex-col items-center justify-center py-8 text-center">
-    <DiceIcon className="mb-4 h-16 w-16 text-gray-300" />
-    <h3 className="text-lg font-medium text-gray-600">骰子面板</h3>
-    <p className="mt-2 max-w-xs text-sm text-gray-400">
-      当你的行动需要进行检定时，骰子检定将在这里显示。
-    </p>
-    <div className="mt-6 rounded-lg bg-gray-50 p-4">
-      <p className="text-xs text-gray-500">
-        <span className="font-semibold">提示：</span>
-        某些行动（如攀爬、说服、战斗等）可能需要掷骰子来决定结果。
+const IdleState: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex h-full flex-col items-center justify-center py-8 text-center">
+      <DiceIcon className="mb-4 h-16 w-16 text-gray-300 dark:text-gray-600" />
+      <h3 className="text-lg font-medium text-gray-600 dark:text-gray-300">{t("dice.panelTitle")}</h3>
+      <p className="mt-2 max-w-xs text-sm text-gray-400 dark:text-gray-500">
+        When your action requires a check, it will appear here.
       </p>
+      <div className="mt-6 rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="font-semibold">{t("dice.hint")}: </span>
+          Some actions (like climbing, persuading, combat) may require a dice roll.
+        </p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const DiceRoller: React.FC<DiceRollerProps> = ({
   visible,
@@ -137,6 +141,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
   onRoll,
   onCancel,
 }) => {
+  const { t, i18n } = useTranslation();
   const [result, setResult] = useState<DiceResult | null>(null);
   const [rolling, setRolling] = useState(false);
 
@@ -161,25 +166,25 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
     onCancel();
   }, [onCancel]);
 
+  const outcomeLabels: Record<DiceOutcome, string> = useMemo(() => ({
+    critical: t("dice.outcome.critical"),
+    success: t("dice.outcome.success"),
+    partial: t("dice.outcome.partial"),
+    failure: t("dice.outcome.failure"),
+  }), [t]);
+
   const summary = useMemo(() => {
     if (!result) return "";
-    return `总值 ${result.total} （${result.all_rolls.join(
+    return `${t("dice.total")} ${result.total} (${result.all_rolls.join(
       ", ",
-    )}${result.kept_rolls.length !== result.all_rolls.length ? ` → 保留 ${result.kept_rolls.join(", ")}` : ""}），结果：${result.outcome}`;
-  }, [result]);
+    )}${result.kept_rolls.length !== result.all_rolls.length ? ` → ${t("dice.kept")} ${result.kept_rolls.join(", ")}` : ""}), ${t("dice.result")}: ${outcomeLabels[result.outcome]}`;
+  }, [result, t, outcomeLabels]);
 
   const outcomeStyles: Record<DiceOutcome, string> = {
-    critical: "bg-yellow-100 text-yellow-800 border-yellow-300",
-    success: "bg-green-100 text-green-800 border-green-300",
-    partial: "bg-blue-100 text-blue-800 border-blue-300",
-    failure: "bg-red-100 text-red-800 border-red-300",
-  };
-
-  const outcomeLabels: Record<DiceOutcome, string> = {
-    critical: "大成功！",
-    success: "成功",
-    partial: "部分成功",
-    failure: "失败",
+    critical: "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-700",
+    success: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-200 dark:border-green-700",
+    partial: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700",
+    failure: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-200 dark:border-red-700",
   };
 
   // Always render the container for consistent layout
@@ -188,9 +193,9 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
   }
 
   return (
-    <Card className="flex h-full flex-col">
-      <div className="border-b border-gray-100 pb-3">
-        <h2 className="text-lg font-semibold text-gray-900">🎲 骰子检定</h2>
+    <Card className="flex h-full flex-col dark:bg-gray-800 dark:border-gray-700">
+      <div className="border-b border-gray-100 pb-3 dark:border-gray-700">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">🎲 {t("dice.panelTitle")}</h2>
       </div>
 
       {!checkRequest ? (
@@ -201,38 +206,38 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
         <div className="flex flex-1 flex-col space-y-4 pt-3">
           {/* Check intention/description */}
           <div className="space-y-1">
-            <p className="text-sm font-medium text-gray-700">检定目标</p>
-            <p className="rounded-md bg-primary/5 px-3 py-2 text-sm text-gray-800">
-              {checkRequest.intention || "进行一次检定"}
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("dice.target")}</p>
+            <p className="rounded-md bg-primary/5 px-3 py-2 text-sm text-gray-800 dark:bg-primary/10 dark:text-gray-200">
+              {checkRequest.intention || t("dice.roll")}
             </p>
           </div>
 
           {/* Formula and factors */}
-          <div className="space-y-3 rounded-md bg-gray-50 p-3">
+          <div className="space-y-3 rounded-md bg-gray-50 p-3 dark:bg-gray-750">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">公式</span>
-              <span className="rounded bg-white px-2 py-1 font-mono text-sm font-semibold text-primary shadow-sm">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("dice.formula")}</span>
+              <span className="rounded bg-white px-2 py-1 font-mono text-sm font-semibold text-primary shadow-sm dark:bg-gray-700 dark:text-primary-300">
                 {formula}
               </span>
             </div>
 
             <div>
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                影响因素
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                {t("dice.factors")}
               </p>
               {(() => {
                 const factors = flattenInfluencingFactors(
                   checkRequest.influencing_factors,
                 );
                 if (factors.length === 0) {
-                  return <p className="text-sm text-gray-400">无</p>;
+                  return <p className="text-sm text-gray-400 dark:text-gray-500">None</p>;
                 }
                 return (
                   <div className="flex flex-wrap gap-1.5">
                     {factors.map((factor) => (
                       <span
                         key={factor}
-                        className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-gray-700 shadow-sm"
+                        className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-gray-700 shadow-sm dark:bg-gray-700 dark:text-gray-200"
                       >
                         {factor}
                       </span>
@@ -243,12 +248,12 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
             </div>
 
             <div>
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                说明
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Instructions
               </p>
-              <p className="text-sm text-gray-700">
-                {getInstructionsText(checkRequest.instructions) ||
-                  "请掷骰并提交结果。"}
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                {getInstructionsText(checkRequest.instructions, i18n.language as "cn" | "en") ||
+                  "Please roll the dice."}
               </p>
             </div>
           </div>
@@ -272,7 +277,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
           <div className="mt-auto flex flex-col gap-2 pt-2">
             <div className="grid grid-cols-2 gap-2">
               <Button onClick={handleRoll} loading={rolling} size="md">
-                🎲 掷骰
+                🎲 {t("dice.roll")}
               </Button>
               <Button
                 variant="secondary"
@@ -280,12 +285,12 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                 disabled={!result}
                 size="md"
               >
-                ✓ 提交
+                ✓ {t("common.confirm")}
               </Button>
             </div>
             <div>
               <Button variant="ghost" onClick={handleCancel} size="sm">
-                取消检定
+                {t("common.cancel")}
               </Button>
             </div>
           </div>

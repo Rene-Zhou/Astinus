@@ -1,3 +1,4 @@
+import i18n from "./i18n";
 import type {
   DiceOutcome,
   DiceResult,
@@ -115,9 +116,17 @@ export function rollDice(
  * Format a roll result into a human-readable summary.
  */
 export function formatDiceResult(result: DiceResult): string {
+  const t = i18n.t;
+  const outcomeLabels: Record<DiceOutcome, string> = {
+    critical: t("dice.outcome.critical"),
+    success: t("dice.outcome.success"),
+    partial: t("dice.outcome.partial"),
+    failure: t("dice.outcome.failure"),
+  };
+
   const keptNote =
     result.kept_rolls.length !== result.all_rolls.length
-      ? ` → 保留 ${result.kept_rolls.join(", ")}`
+      ? ` → ${t("dice.kept")} ${result.kept_rolls.join(", ")}`
       : "";
-  return `总值 ${result.total} （${result.all_rolls.join(", ")}${keptNote}），结果：${result.outcome}`;
+  return `${t("dice.total")} ${result.total} （${result.all_rolls.join(", ")}${keptNote}），${t("dice.result")}：${outcomeLabels[result.outcome]}`;
 }

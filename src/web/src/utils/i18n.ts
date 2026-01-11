@@ -1,5 +1,48 @@
-import type { Language, LocalizedString } from "../api/types";
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+import LanguageDetector from "i18next-browser-languagedetector";
 
+import enJSON from "../locales/en.json";
+import cnJSON from "../locales/cn.json";
+
+import { useUIStore } from "../stores/uiStore";
+
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    resources: {
+      en: { translation: enJSON },
+      cn: { translation: cnJSON },
+    },
+    fallbackLng: "cn",
+    interpolation: {
+      escapeValue: false,
+    },
+    detection: {
+      order: ["localStorage", "navigator"],
+      caches: ["localStorage"],
+    },
+  });
+
+i18n.on("languageChanged", (lng) => {
+  const normalizedLang = lng.startsWith("zh") || lng === "cn" ? "cn" : "en";
+  if (useUIStore.getState().language !== normalizedLang) {
+    useUIStore.getState().setLanguage(normalizedLang);
+  }
+});
+
+useUIStore.subscribe((state) => {
+  if (state.language !== i18n.language) {
+    i18n.changeLanguage(state.language);
+  }
+});
+export interface LocalizedString {
+  cn: string;
+  en: string;
+}
+
+export type Language = "cn" | "en";
 export const DEFAULT_LANGUAGE: Language = "cn";
 export const FALLBACK_LANGUAGE: Language = "cn";
 
@@ -61,13 +104,4 @@ export function withDefault<T>(value: T | null | undefined, defaultValue: T): T 
   return value === null || value === undefined ? defaultValue : value;
 }
 
-export default {
-  DEFAULT_LANGUAGE,
-  FALLBACK_LANGUAGE,
-  getLocalized,
-  makeTranslator,
-  mergeLocalized,
-  isLanguage,
-  normalizeLanguage,
-  withDefault,
-};
+export default i18n;

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { MobilePanelType } from "../../stores/uiStore";
 
 export interface MobileToolbarProps {
@@ -20,8 +21,10 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
   activePanel,
   hasPendingDice,
 }) => {
+  const { t } = useTranslation();
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
+    <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/95">
       <div className="flex items-center justify-around py-2">
         {/* Menu Button */}
         <button
@@ -29,8 +32,8 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
           className={[
             "flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors",
             activePanel === "menu"
-              ? "bg-indigo-100 text-indigo-700"
-              : "text-gray-600 hover:bg-gray-100",
+              ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+              : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700",
           ].join(" ")}
         >
           <svg
@@ -46,7 +49,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
               d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
             />
           </svg>
-          <span className="text-xs font-medium">菜单</span>
+          <span className="text-xs font-medium">{t("nav.menu")}</span>
         </button>
 
         {/* Character Button */}
@@ -55,8 +58,8 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
           className={[
             "flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors",
             activePanel === "character"
-              ? "bg-indigo-100 text-indigo-700"
-              : "text-gray-600 hover:bg-gray-100",
+              ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+              : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700",
           ].join(" ")}
         >
           <svg
@@ -72,7 +75,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
               d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
             />
           </svg>
-          <span className="text-xs font-medium">角色</span>
+          <span className="text-xs font-medium">{t("nav.character")}</span>
         </button>
 
         {/* Dice Button */}
@@ -81,8 +84,8 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
           className={[
             "relative flex flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors",
             activePanel === "dice"
-              ? "bg-indigo-100 text-indigo-700"
-              : "text-gray-600 hover:bg-gray-100",
+              ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+              : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700",
           ].join(" ")}
         >
           {/* Notification dot */}
@@ -102,7 +105,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
               d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"
             />
           </svg>
-          <span className="text-xs font-medium">骰子</span>
+          <span className="text-xs font-medium">{t("dice.roll")}</span>
         </button>
       </div>
     </div>

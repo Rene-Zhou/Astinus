@@ -1,11 +1,24 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout/Header";
 import MenuPage from "./pages/MenuPage";
 import GamePage from "./pages/GamePage";
 import CharacterPage, { NotFoundPage } from "./pages/CharacterPage";
 import SettingsPage from "./pages/SettingsPage";
+import { useUIStore } from "./stores/uiStore";
 
 function App() {
+  const theme = useUIStore((state) => state.theme);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [theme]);
+
   return (
     <BrowserRouter>
       <Layout>

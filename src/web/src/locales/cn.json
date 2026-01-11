@@ -1,0 +1,105 @@
+{
+  "app": {
+    "title": "Astinus",
+    "subtitle": "AI 驱动的叙事 TTRPG 引擎"
+  },
+  "menu": {
+    "selectWorld": "选择世界",
+    "worldPack": "世界包",
+    "enterWorld": "进入世界",
+    "version": "版本",
+    "author": "作者"
+  },
+  "nav": {
+    "menu": "菜单",
+    "character": "角色",
+    "game": "游戏",
+    "settings": "设置"
+  },
+  "game": {
+    "status": {
+      "disconnected": "未连接",
+      "connecting": "连接中...",
+      "connected": "已连接",
+      "processing": "处理中",
+      "waitingInput": "等待输入",
+      "narrating": "叙述中",
+      "diceCheck": "掷骰检定",
+      "error": "错误"
+    },
+    "notStarted": "尚未开始游戏",
+    "startPrompt": "请从菜单页面选择一个世界包开始游戏。",
+    "inputPlaceholder": "描述你的行动...",
+    "send": "发送",
+    "player": "玩家",
+    "location": "当前位置",
+    "phase": "阶段",
+    "turn": "回合",
+    "arriveAt": "你来到了{{location}}。",
+    "npcIntro": "你注意到这里有人：",
+    "connectionIntro": "从这里，你可以前往："
+  },
+  "world": {
+    "era": "时代",
+    "genre": "类型",
+    "tone": "氛围"
+  },
+  "dice": {
+    "panelTitle": "骰子面板",
+    "hint": "提示",
+    "target": "检定目标",
+    "factors": "影响因素",
+    "formula": "骰子公式",
+    "roll": "掷骰",
+    "result": "结果",
+    "total": "总值",
+    "kept": "保留",
+    "outcome": {
+      "critical": "大成功",
+      "success": "成功",
+      "partial": "部分成功",
+      "failure": "失败"
+    }
+  },
+  "character": {
+    "name": "姓名",
+    "concept": "概念",
+    "traits": "特质",
+    "positive": "正面",
+    "negative": "负面",
+    "fatePoints": "命运点",
+    "status": "状态"
+  },
+  "settings": {
+    "title": "设置",
+    "theme": "主题",
+    "language": "语言",
+    "animationSpeed": "动画速度",
+    "providers": "AI 提供商",
+    "agents": "AI 代理",
+    "save": "保存设置",
+    "reset": "重置更改",
+    "testConnection": "测试连接",
+    "addProvider": "添加提供商",
+    "edit": "编辑",
+    "delete": "删除",
+    "deleteConfirm": "确定要删除提供商 \"{{id}}\" 吗？",
+    "provider": "提供商",
+    "selectProvider": "选择提供商",
+    "noProviders": "暂无可用提供商。请先添加一个。",
+    "model": "模型",
+    "temperature": "温度 (Temperature)",
+    "maxTokens": "最大 Token 数",
+    "precise": "精确",
+    "creative": "创意",
+    "connected": "已连接",
+    "failed": "失败"
+  },
+  "common": {
+    "loading": "加载中...",
+    "confirm": "确认",
+    "cancel": "取消",
+    "success": "成功",
+    "error": "错误"
+  }
+}

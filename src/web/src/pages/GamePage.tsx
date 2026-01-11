@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import ChatBox from "../components/ChatBox/ChatBox";
 import StatBlock from "../components/StatBlock/StatBlock";
 import DiceRoller from "../components/DiceRoller/DiceRoller";
@@ -14,6 +15,7 @@ import { useGameActions } from "../hooks/useGameActions";
 import { useIsMobile } from "../hooks/useMediaQuery";
 
 const GamePage: React.FC = () => {
+  const { t } = useTranslation();
   const {
     sessionId,
     playerName,
@@ -92,21 +94,21 @@ const GamePage: React.FC = () => {
   const handleDiceCancel = () => setPendingDiceCheck(null);
 
   const headerStatus = useMemo(() => {
-    if (!sessionId) return "未连接";
-    if (isStreaming) return "处理中…";
-    return "就绪";
-  }, [sessionId, isStreaming]);
+    if (!sessionId) return t("game.status.disconnected");
+    if (isStreaming) return t("game.status.processing");
+    return t("game.status.connected");
+  }, [sessionId, isStreaming, t]);
 
   if (!sessionId) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-10">
-        <Card title="尚未开始游戏">
-          <p className="text-sm text-gray-700">
-            请先在菜单页创建新会话，然后返回此处继续游戏。
+        <Card title={t("game.notStarted")}>
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            {t("game.startPrompt")}
           </p>
           <div className="mt-4">
             <Link to="/">
-              <Button variant="primary">返回菜单</Button>
+              <Button variant="primary">{t("nav.menu")}</Button>
             </Link>
           </div>
         </Card>
@@ -135,12 +137,12 @@ const GamePage: React.FC = () => {
   // Mobile layout - rendered via Portal to bypass Layout's Header/Footer
   if (isMobile) {
     const mobileContent = (
-      <div className="fixed inset-0 z-40 flex h-dvh flex-col overflow-hidden bg-gray-50">
+      <div className="fixed inset-0 z-40 flex h-dvh flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
         {/* Main Content - Full screen ChatBox */}
         <main className="flex flex-1 flex-col overflow-hidden px-2 pb-20 pt-2">
           {!player ? (
             <div className="flex h-full items-center justify-center">
-              <Loading text="正在加载角色信息..." />
+              <Loading text={t("common.loading")} />
             </div>
           ) : (
             <div className="flex-1 overflow-hidden">
@@ -168,27 +170,27 @@ const GamePage: React.FC = () => {
         <BottomSheet
           isOpen={mobileActivePanel === "menu"}
           onClose={closeMobilePanel}
-          title="导航"
+          title={t("nav.menu")}
           maxHeight="50vh"
         >
           <nav className="flex flex-col gap-2">
             <button
               onClick={() => handleNavigate("/")}
-              className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-gray-700 hover:bg-gray-100"
+              className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
               </svg>
-              <span className="font-medium">菜单</span>
+              <span className="font-medium">{t("nav.menu")}</span>
             </button>
             <button
               onClick={() => handleNavigate("/character")}
-              className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-gray-700 hover:bg-gray-100"
+              className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
               </svg>
-              <span className="font-medium">角色创建</span>
+              <span className="font-medium">{t("nav.character")}</span>
             </button>
           </nav>
         </BottomSheet>
@@ -197,7 +199,7 @@ const GamePage: React.FC = () => {
         <BottomSheet
           isOpen={mobileActivePanel === "character"}
           onClose={closeMobilePanel}
-          title="角色状态"
+          title={t("character.status")}
           maxHeight="75vh"
         >
           {player && (
@@ -220,7 +222,7 @@ const GamePage: React.FC = () => {
         <BottomSheet
           isOpen={mobileActivePanel === "dice"}
           onClose={closeMobilePanel}
-          title="骰子检定"
+          title={t("dice.panelTitle")}
           maxHeight="80vh"
         >
           <DiceRoller
@@ -241,13 +243,13 @@ const GamePage: React.FC = () => {
   return (
     <div className="flex h-[calc(100vh-106px)] flex-col overflow-hidden">
       {/* Status Bar */}
-      <div className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-2">
+      <div className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-700 dark:bg-gray-800">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-3 text-sm text-gray-600">
-            <span className="rounded-full bg-green-100 px-2 py-1 text-green-700">
+          <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+            <span className="rounded-full bg-green-100 px-2 py-1 text-green-700 dark:bg-green-900/30 dark:text-green-300">
               {headerStatus}
             </span>
-            <span className="text-gray-500">Session: {sessionId}</span>
+            <span className="text-gray-500 dark:text-gray-400">Session: {sessionId}</span>
           </div>
         </div>
       </div>
@@ -256,7 +258,7 @@ const GamePage: React.FC = () => {
       <main className="flex-1 overflow-hidden">
         {!player ? (
           <div className="flex h-full items-center justify-center">
-            <Loading text="正在加载角色信息..." />
+            <Loading text={t("common.loading")} />
           </div>
         ) : (
           <div className="mx-auto grid h-full max-w-7xl grid-cols-4 gap-4 p-4">
