@@ -215,6 +215,7 @@ class TestVectorRetrievalIntegration:
         prompt = npc_agent._build_system_prompt(
             npc=npc,
             player_input="关于书籍的问题",
+            context={},
             lang="cn",
         )
 

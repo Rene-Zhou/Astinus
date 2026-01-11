@@ -730,7 +730,7 @@ class TestLoreAgentLocationFiltering:
 
         results = agent._search_lore(
             loader.load("test_pack"),
-            query="区域",
+            query="森林",
             context="",
             current_location="treasure_room",
             current_region="forest_region",
