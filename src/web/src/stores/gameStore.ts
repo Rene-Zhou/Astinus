@@ -95,7 +95,7 @@ function generateIntroductionMessage(
 
   // World title (just the name, no spoiler description)
   const worldName = getLocalizedValue(worldInfo.name, lang);
-  parts.push(`【${worldName}】`);
+  parts.push(worldName);
 
   // World setting (era, genre, tone) - establishes context without spoilers
   if (worldInfo.setting) {
@@ -183,7 +183,7 @@ const initialState = (): Omit<
   startingScene: null,
   selectedWorldPackId: "demo_pack",
   presetCharacters: [],
-  playerName: "玩家",
+  playerName: "Player",
   player: null,
   currentLocation: "",
   currentPhase: "waiting_input",
@@ -237,7 +237,7 @@ export const useGameStore = create<GameStoreState>()(
       console.log("[gameStore] Calling apiClient.createNewGame");
       const res = await apiClient.createNewGame({
         world_pack_id: worldPackId ?? "demo_pack",
-        player_name: playerName ?? "玩家",
+        player_name: playerName ?? "Player",
         preset_character_id: presetCharacterId,
       });
       console.log("[gameStore] apiClient.createNewGame response:", res);

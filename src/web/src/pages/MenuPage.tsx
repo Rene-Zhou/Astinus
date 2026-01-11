@@ -46,7 +46,7 @@ const MenuPage: React.FC = () => {
               onChange={(e) => setWorldPackId(e.target.value)}
               disabled={loading}
             >
-              <option value="demo_pack">幽暗庄园 (Demo)</option>
+              <option value="demo_pack">{t("menu.darkManorDemo")}</option>
             </select>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               The Demo version only contains one world pack.

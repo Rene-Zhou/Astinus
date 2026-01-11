@@ -192,7 +192,7 @@ const CharacterSelectionMode: React.FC = () => {
       <Card>
         <div className="space-y-3">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            【{getLocalizedValue(worldInfo.name, language)}】
+            {getLocalizedValue(worldInfo.name, language)}
           </h1>
 
           {worldInfo.setting && (
@@ -420,17 +420,6 @@ const CharacterViewMode: React.FC = () => {
 // ============================================================================
 // Main CharacterPage Component
 // ============================================================================
-
-const CharacterPage: React.FC = () => {
-  const { sessionId } = useGameStore();
-
-  // If we have a session, show view mode; otherwise show selection mode
-  if (sessionId) {
-    return <CharacterViewMode />;
-  }
-
-  return <CharacterSelectionMode />;
-};
 
 const CharacterPage: React.FC = () => {
   const { sessionId } = useGameStore();

@@ -8,7 +8,9 @@
     "worldPack": "World Pack",
     "enterWorld": "Enter World",
     "version": "Version",
-    "author": "Author"
+    "author": "Author",
+    "darkManorDemo": "Dark Manor (Demo)",
+    "footerText": "See docs/WEB_FRONTEND_PLAN.md for roadmap"
   },
   "nav": {
     "menu": "Menu",
@@ -31,10 +33,12 @@
     "startPrompt": "Please select a world pack from the menu to start.",
     "inputPlaceholder": "Describe your action...",
     "send": "Send",
+    "turn": "Turn",
+    "newLine": "New Line",
+    "history": "History",
     "player": "Player",
     "location": "Location",
     "phase": "Phase",
-    "turn": "Turn",
     "arriveAt": "You arrive at {{location}}.",
     "npcIntro": "You notice someone here:",
     "connectionIntro": "From here, you can go to:"
@@ -68,7 +72,8 @@
     "positive": "Positive",
     "negative": "Negative",
     "fatePoints": "Fate Points",
-    "status": "Status"
+    "status": "Status",
+    "clickForDetails": "Click to see details"
   },
   "settings": {
     "title": "Settings",

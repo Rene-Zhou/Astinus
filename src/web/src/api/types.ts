@@ -185,9 +185,9 @@ export type DiceOutcome = "critical" | "success" | "partial" | "failure";
 // --- POST /api/v1/game/new ---
 
 export interface NewGameRequest {
-  world_pack_id?: string; // Default: "demo_pack"
-  player_name?: string; // Default: "玩家" - PL (user) name
-  preset_character_id?: string; // Selected preset character ID
+  world_pack_id?: string;
+  player_name?: string;
+  preset_character_id?: string;
 }
 
 /**

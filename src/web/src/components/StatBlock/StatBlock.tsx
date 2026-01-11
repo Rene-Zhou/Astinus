@@ -64,6 +64,7 @@ interface TraitPillProps {
 }
 
 const TraitPill: React.FC<TraitPillProps> = ({ trait, language, isOpen, onToggle }) => {
+  const { t } = useTranslation();
   const name = getLocalizedValue(trait.name, language);
 
   return (
@@ -75,7 +76,7 @@ const TraitPill: React.FC<TraitPillProps> = ({ trait, language, isOpen, onToggle
           : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50",
       ].join(" ")}
       onClick={onToggle}
-      title={language === "cn" ? "点击查看详情" : "Click to see details"}
+      title={t("character.clickForDetails")}
     >
       {name}
     </button>

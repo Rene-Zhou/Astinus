@@ -43,7 +43,7 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   return (
     <div className="space-y-1">
       <div className={`text-xs font-semibold ${roleColor[message.role]}`}>
-        {roleLabel[message.role]} · Turn {message.turn}
+        {roleLabel[message.role]} · {t("game.turn")} {message.turn}
       </div>
       <div
         className={`whitespace-pre-wrap rounded-lg border border-gray-200 bg-white/80 px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-100 ${
@@ -121,7 +121,7 @@ function ChatInput({ onSend, disabled = false }: ChatInputProps) {
       />
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Enter {t("game.send")} · Shift+Enter New Line · ↑↓ History
+          Enter {t("game.send")} · Shift+Enter {t("game.newLine")} · ↑↓ {t("game.history")}
         </p>
         <Button size="sm" onClick={send} disabled={disabled} loading={false}>
           {t("game.send")}

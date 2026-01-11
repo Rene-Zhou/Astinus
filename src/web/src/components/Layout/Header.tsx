@@ -62,13 +62,15 @@ export interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({
   leftText,
-  rightText = "参见 docs/WEB_FRONTEND_PLAN.md 获取路线图",
+  rightText,
 }) => {
+  const { t } = useTranslation();
+  
   return (
     <footer className="border-t border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 text-sm text-gray-500 dark:text-gray-400 sm:flex-row sm:items-center sm:justify-between">
         <span>{leftText || "Astinus Web Frontend"}</span>
-        <span className="text-xs sm:text-sm">{rightText}</span>
+        <span className="text-xs sm:text-sm">{rightText || t("menu.footerText")}</span>
       </div>
     </footer>
   );
