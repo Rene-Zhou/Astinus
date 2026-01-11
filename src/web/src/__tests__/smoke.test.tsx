@@ -5,6 +5,6 @@ import App from "../App";
 describe("App smoke test", () => {
   it("renders menu page call-to-action", () => {
     render(<App />);
-    expect(screen.getByText(/开始新的冒险/i)).toBeInTheDocument();
+    expect(screen.getByText(/选择一个世界包/i)).toBeInTheDocument();
   });
 });

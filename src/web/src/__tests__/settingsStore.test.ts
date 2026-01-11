@@ -12,12 +12,7 @@ vi.mock("../api/client", () => ({
 
 import { apiClient } from "../api/client";
 
-const mockApiClient = apiClient as {
-  getSettings: ReturnType<typeof vi.fn>;
-  getProviderTypes: ReturnType<typeof vi.fn>;
-  updateSettings: ReturnType<typeof vi.fn>;
-  testProviderConnection: ReturnType<typeof vi.fn>;
-};
+const mockApiClient = vi.mocked(apiClient);
 
 const mockSettingsResponse = {
   providers: [
@@ -60,7 +55,7 @@ describe("settingsStore", () => {
 
   describe("fetchSettings", () => {
     it("loads settings from API", async () => {
-      mockApiClient.getSettings.mockResolvedValue({ data: mockSettingsResponse, error: null });
+      mockApiClient.getSettings.mockResolvedValue({ data: mockSettingsResponse, error: null, status: 200 });
 
       await useSettingsStore.getState().fetchSettings();
 
@@ -72,7 +67,7 @@ describe("settingsStore", () => {
     });
 
     it("handles API error", async () => {
-      mockApiClient.getSettings.mockResolvedValue({ data: null, error: "Network error" });
+      mockApiClient.getSettings.mockResolvedValue({ data: null, error: "Network error", status: 500 });
 
       await useSettingsStore.getState().fetchSettings();
 
@@ -84,7 +79,7 @@ describe("settingsStore", () => {
 
   describe("provider management", () => {
     beforeEach(async () => {
-      mockApiClient.getSettings.mockResolvedValue({ data: mockSettingsResponse, error: null });
+      mockApiClient.getSettings.mockResolvedValue({ data: mockSettingsResponse, error: null, status: 200 });
       await useSettingsStore.getState().fetchSettings();
     });
 
@@ -139,7 +134,7 @@ describe("settingsStore", () => {
 
   describe("agent config", () => {
     beforeEach(async () => {
-      mockApiClient.getSettings.mockResolvedValue({ data: mockSettingsResponse, error: null });
+      mockApiClient.getSettings.mockResolvedValue({ data: mockSettingsResponse, error: null, status: 200 });
       await useSettingsStore.getState().fetchSettings();
     });
 
@@ -154,12 +149,12 @@ describe("settingsStore", () => {
 
   describe("saveSettings", () => {
     beforeEach(async () => {
-      mockApiClient.getSettings.mockResolvedValue({ data: mockSettingsResponse, error: null });
+      mockApiClient.getSettings.mockResolvedValue({ data: mockSettingsResponse, error: null, status: 200 });
       await useSettingsStore.getState().fetchSettings();
     });
 
     it("saves settings to API", async () => {
-      mockApiClient.updateSettings.mockResolvedValue({ data: mockSettingsResponse, error: null });
+      mockApiClient.updateSettings.mockResolvedValue({ data: mockSettingsResponse, error: null, status: 200 });
 
       useSettingsStore.getState().updateAgentConfig("gm", { temperature: 0.9 });
       const success = await useSettingsStore.getState().saveSettings();
@@ -170,7 +165,7 @@ describe("settingsStore", () => {
     });
 
     it("handles save error", async () => {
-      mockApiClient.updateSettings.mockResolvedValue({ data: null, error: "Save failed" });
+      mockApiClient.updateSettings.mockResolvedValue({ data: null, error: "Save failed", status: 500 });
 
       const success = await useSettingsStore.getState().saveSettings();
 
@@ -181,7 +176,7 @@ describe("settingsStore", () => {
 
   describe("resetChanges", () => {
     it("restores original state", async () => {
-      mockApiClient.getSettings.mockResolvedValue({ data: mockSettingsResponse, error: null });
+      mockApiClient.getSettings.mockResolvedValue({ data: mockSettingsResponse, error: null, status: 200 });
       await useSettingsStore.getState().fetchSettings();
 
       useSettingsStore.getState().updateAgentConfig("gm", { temperature: 0.9 });
@@ -199,6 +194,7 @@ describe("settingsStore", () => {
       mockApiClient.testProviderConnection.mockResolvedValue({
         data: { success: true, provider_id: "test-provider", message: "OK", latency_ms: 150 },
         error: null,
+        status: 200,
       });
 
       await useSettingsStore.getState().testProviderConnection("test-provider");
