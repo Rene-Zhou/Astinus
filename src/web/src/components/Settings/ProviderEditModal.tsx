@@ -11,6 +11,13 @@ interface ProviderEditModalProps {
   onSave: (provider: ProviderConfig) => void;
 }
 
+const FALLBACK_PROVIDER_TYPES = [
+  { type: "openai", name: "OpenAI" },
+  { type: "anthropic", name: "Anthropic" },
+  { type: "google", name: "Google AI" },
+  { type: "ollama", name: "Ollama (Local)" },
+];
+
 const ProviderEditModal: React.FC<ProviderEditModalProps> = ({
   isOpen,
   onClose,
@@ -155,7 +162,7 @@ const ProviderEditModal: React.FC<ProviderEditModalProps> = ({
             }
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border"
           >
-            {providerTypes.map((type) => (
+            {(providerTypes.length > 0 ? providerTypes : FALLBACK_PROVIDER_TYPES).map((type) => (
               <option key={type.type} value={type.type}>
                 {type.name}
               </option>

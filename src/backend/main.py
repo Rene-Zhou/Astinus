@@ -84,6 +84,7 @@ async def lifespan(app: FastAPI):
         print(f"❌ Failed to initialize world pack loader: {exc}")
         raise
 
+    llm = None
     try:
         llm = create_llm_from_settings("gm")
         if settings.is_new_format() and settings.agents:
@@ -92,16 +93,19 @@ async def lifespan(app: FastAPI):
             provider_info = f"{settings.llm.provider}/{settings.llm.models.gm}"
         print(f"✅ LLM initialized: {provider_info}")
     except Exception as exc:
-        print(f"❌ Failed to initialize LLM: {exc}")
-        raise
+        print(f"⚠️ LLM not configured yet: {exc}")
+        print("   → Settings API is available at /api/v1/settings")
+        print("   → Configure providers via the web UI, then restart the server")
 
     # Load default world pack and get starting location
+    default_pack_id = "demo_pack"
+    world_pack = None
+    starting_location_id: str = "unknown"
+    active_npc_ids: list[str] = []
     try:
-        default_pack_id = "demo_pack"
         world_pack = world_pack_loader.load(default_pack_id)
 
         # Find starting location (look for "starting_area" tag or use first location)
-        starting_location_id = None
         starting_location = None
         for loc_id, loc in world_pack.locations.items():
             if "starting_area" in loc.tags:
@@ -110,14 +114,11 @@ async def lifespan(app: FastAPI):
                 break
 
         # Fallback to first location if no starting_area tag found
-        if starting_location_id is None and world_pack.locations:
+        if starting_location_id == "unknown" and world_pack.locations:
             starting_location_id = next(iter(world_pack.locations.keys()))
             starting_location = world_pack.locations[starting_location_id]
 
-        if starting_location is None:
-            starting_location_id = "unknown"
-            active_npc_ids = []
-        else:
+        if starting_location is not None:
             active_npc_ids = starting_location.present_npc_ids or []
 
         print(f"✅ World pack loaded: {default_pack_id}")
@@ -126,77 +127,80 @@ async def lifespan(app: FastAPI):
 
     except Exception as exc:
         print(f"⚠️ Failed to load default world pack: {exc}")
-        starting_location_id = "unknown"
-        active_npc_ids = []
 
-    # Initialize agents
-    try:
-        default_character = PlayerCharacter(
-            name="玩家",
-            concept=LocalizedString(
-                cn="冒险者",
-                en="Adventurer",
-            ),
-            traits=[
-                Trait(
-                    name=LocalizedString(cn="勇敢", en="Brave"),
-                    description=LocalizedString(
-                        cn="面对困难不退缩",
-                        en="Faces difficulties without retreat",
-                    ),
-                    positive_aspect=LocalizedString(cn="勇敢", en="Brave"),
-                    negative_aspect=LocalizedString(cn="鲁莽", en="Rash"),
-                )
-            ],
-            tags=[],
-        )
+    # Initialize agents (only if LLM is available)
+    if llm is not None:
+        try:
+            default_character = PlayerCharacter(
+                name="玩家",
+                concept=LocalizedString(
+                    cn="冒险者",
+                    en="Adventurer",
+                ),
+                traits=[
+                    Trait(
+                        name=LocalizedString(cn="勇敢", en="Brave"),
+                        description=LocalizedString(
+                            cn="面对困难不退缩",
+                            en="Faces difficulties without retreat",
+                        ),
+                        positive_aspect=LocalizedString(cn="勇敢", en="Brave"),
+                        negative_aspect=LocalizedString(cn="鲁莽", en="Rash"),
+                    )
+                ],
+                tags=[],
+            )
 
-        game_state = GameState(
-            session_id="default-session",
-            world_pack_id=default_pack_id,
-            player=default_character,
-            current_location=starting_location_id,
-            active_npc_ids=active_npc_ids,
-        )
+            game_state = GameState(
+                session_id="default-session",
+                world_pack_id=default_pack_id,
+                player=default_character,
+                current_location=starting_location_id,
+                active_npc_ids=active_npc_ids,
+            )
 
-        # Create sub-agents
-        rule_agent = RuleAgent(llm)
-        lore_agent = LoreAgent(
-            llm=llm,
-            world_pack_loader=world_pack_loader,
-            vector_store=vector_store,
-        )
+            # Create sub-agents
+            rule_agent = RuleAgent(llm)
+            lore_agent = LoreAgent(
+                llm=llm,
+                world_pack_loader=world_pack_loader,
+                vector_store=vector_store,
+            )
 
-        # Build sub_agents dictionary with rule and lore
-        sub_agents: dict = {
-            "rule": rule_agent,
-            "lore": lore_agent,
-        }
+            # Build sub_agents dictionary with rule and lore
+            sub_agents: dict = {
+                "rule": rule_agent,
+                "lore": lore_agent,
+            }
 
-        # Register NPC Agents for active NPCs in the scene
-        for npc_id in active_npc_ids:
-            npc_data = world_pack.get_npc(npc_id)
-            if npc_data:
-                npc_agent = NPCAgent(llm=llm, vector_store=vector_store)
-                # Register with format npc_{npc_id} (e.g., npc_old_guard)
-                agent_key = f"npc_{npc_id}"
-                sub_agents[agent_key] = npc_agent
-                print(f"   Registered NPC agent: {agent_key} ({npc_data.soul.name})")
+            # Register NPC Agents for active NPCs in the scene
+            if world_pack is not None:
+                for npc_id in active_npc_ids:
+                    npc_data = world_pack.get_npc(npc_id)
+                    if npc_data:
+                        npc_agent = NPCAgent(llm=llm, vector_store=vector_store)
+                        # Register with format npc_{npc_id} (e.g., npc_old_guard)
+                        agent_key = f"npc_{npc_id}"
+                        sub_agents[agent_key] = npc_agent
+                        print(f"   Registered NPC agent: {agent_key} ({npc_data.soul.name})")
 
-        # Create GM Agent (central orchestrator)
-        gm_agent = GMAgent(
-            llm=llm,
-            sub_agents=sub_agents,
-            game_state=game_state,
-            world_pack_loader=world_pack_loader,
-            vector_store=vector_store,
-        )
+            # Create GM Agent (central orchestrator)
+            gm_agent = GMAgent(
+                llm=llm,
+                sub_agents=sub_agents,
+                game_state=game_state,
+                world_pack_loader=world_pack_loader,
+                vector_store=vector_store,
+            )
 
-        print("✅ Agents initialized")
-        print(f"   Sub-agents: {list(gm_agent.sub_agents.keys())}")
-    except Exception as exc:
-        print(f"❌ Failed to initialize agents: {exc}")
-        raise
+            print("✅ Agents initialized")
+            print(f"   Sub-agents: {list(gm_agent.sub_agents.keys())}")
+        except Exception as exc:
+            print(f"❌ Failed to initialize agents: {exc}")
+            raise
+    else:
+        print("⚠️ Agents not initialized (LLM not configured)")
+        print("   → Game endpoints will return errors until LLM is configured")
 
     print("✅ Astinus backend started successfully")
     print("📝 API documentation: http://localhost:8000/docs")
