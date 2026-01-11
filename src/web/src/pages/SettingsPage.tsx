@@ -39,7 +39,7 @@ const SettingsPage: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<ProviderConfig | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -66,7 +66,12 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteClick = (id: string) => {
-    if (window.confirm(t("settings.deleteConfirm", { id }) || `Are you sure you want to delete provider "${id}"?`)) {
+    if (
+      window.confirm(
+        t("settings.deleteConfirm", { id }) ||
+          `Are you sure you want to delete provider "${id}"?`,
+      )
+    ) {
       removeProvider(id);
     }
   };
@@ -186,7 +191,9 @@ const SettingsPage: React.FC = () => {
               <select
                 value={animationSpeed}
                 onChange={(e) =>
-                  setAnimationSpeed(e.target.value as "slow" | "normal" | "fast")
+                  setAnimationSpeed(
+                    e.target.value as "slow" | "normal" | "fast",
+                  )
                 }
                 className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               >
