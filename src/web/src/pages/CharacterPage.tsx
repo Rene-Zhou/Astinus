@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { Card, Loading } from "../components/common/Card";
 import Button from "../components/common/Button";
 import { useGameStore } from "../stores/gameStore";
-import { useUIStore } from "../stores/uiStore";
 import { getLocalizedValue, type PresetCharacter, type Trait } from "../api/types";
 
 // ============================================================================
@@ -416,6 +415,31 @@ const CharacterViewMode: React.FC = () => {
       </div>
     </div>
   );
+};
+
+// ============================================================================
+// Main CharacterPage Component
+// ============================================================================
+
+const CharacterPage: React.FC = () => {
+  const { sessionId } = useGameStore();
+
+  // If we have a session, show view mode; otherwise show selection mode
+  if (sessionId) {
+    return <CharacterViewMode />;
+  }
+
+  return <CharacterSelectionMode />;
+};
+
+const CharacterPage: React.FC = () => {
+  const { sessionId } = useGameStore();
+
+  if (sessionId) {
+    return <CharacterViewMode />;
+  }
+
+  return <CharacterSelectionMode />;
 };
 
 export const NotFoundPage: React.FC = () => {

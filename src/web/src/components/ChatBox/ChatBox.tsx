@@ -65,7 +65,7 @@ function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   const { t } = useTranslation();
   const [value, setValue] = useState("");
   const [history, setHistory] = useState<string[]>([]);
-  const [_historyIndex, setHistoryIndex] = useState<number | null>(null);
+  const [, setHistoryIndex] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const send = useCallback(() => {
