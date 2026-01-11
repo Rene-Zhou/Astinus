@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
     try:
         vector_store_path = Path("data/vector_store/chroma_db")
         vector_store_path.parent.mkdir(parents=True, exist_ok=True)
-        vector_store = VectorStoreService(persist_directory=str(vector_store_path))
+        vector_store = VectorStoreService(db_path=vector_store_path)
         print("✅ Vector store initialized")
     except Exception as exc:
         print(f"⚠️ Vector store initialization failed (continuing without): {exc}")
