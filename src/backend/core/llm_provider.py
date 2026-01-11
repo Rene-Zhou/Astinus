@@ -173,13 +173,56 @@ def get_llm(config: LLMConfig | None = None) -> BaseChatModel:
 
 
 def get_default_llm() -> BaseChatModel:
-    """
-    Get default LLM instance (OpenAI gpt-4o-mini).
-
-    Returns:
-        Default LLM instance
-
-    Examples:
-        >>> llm = get_default_llm()
-    """
+    """Get default LLM instance (OpenAI gpt-4o-mini)."""
     return get_llm(LLMConfig())
+
+
+def create_llm_from_settings(agent_name: str) -> BaseChatModel:
+    """Create LLM for an agent using current settings (new format)."""
+    from src.backend.core.config import get_settings
+
+    settings = get_settings()
+
+    if not settings.is_new_format():
+        api_key = None
+        if settings.llm.provider == "openai":
+            api_key = settings.llm.api_keys.openai or None
+        elif settings.llm.provider == "anthropic":
+            api_key = settings.llm.api_keys.anthropic or None
+        elif settings.llm.provider == "google":
+            api_key = settings.llm.api_keys.google or None
+
+        model = getattr(settings.llm.models, agent_name, "gpt-4o-mini")
+        return get_llm(
+            LLMConfig(
+                provider=LLMProvider(settings.llm.provider),
+                model=model,
+                temperature=settings.llm.temperature,
+                max_tokens=settings.llm.max_tokens,
+                api_key=api_key,
+            )
+        )
+
+    if settings.agents is None:
+        raise ValueError("No agents configuration found")
+
+    agent_config = getattr(settings.agents, agent_name, None)
+    if agent_config is None:
+        raise ValueError(f"Agent '{agent_name}' not found in configuration")
+
+    provider = settings.get_provider(agent_config.provider_id)
+    if provider is None:
+        raise ValueError(
+            f"Provider '{agent_config.provider_id}' not found for agent '{agent_name}'"
+        )
+
+    return get_llm(
+        LLMConfig(
+            provider=LLMProvider(provider.type.value),
+            model=agent_config.model,
+            temperature=agent_config.temperature,
+            max_tokens=agent_config.max_tokens,
+            api_key=provider.api_key,
+            base_url=provider.base_url,
+        )
+    )

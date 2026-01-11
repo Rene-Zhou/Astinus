@@ -16,9 +16,9 @@ from src.backend.agents.lore import LoreAgent
 from src.backend.agents.npc import NPCAgent
 from src.backend.agents.rule import RuleAgent
 from src.backend.api import websockets
-from src.backend.api.v1 import game
+from src.backend.api.v1 import game, settings
 from src.backend.core.config import get_settings
-from src.backend.core.llm_provider import LLMConfig, LLMProvider, get_llm
+from src.backend.core.llm_provider import create_llm_from_settings
 from src.backend.models.character import PlayerCharacter, Trait
 from src.backend.models.game_state import GameState
 from src.backend.models.i18n import LocalizedString
@@ -84,26 +84,13 @@ async def lifespan(app: FastAPI):
         print(f"❌ Failed to initialize world pack loader: {exc}")
         raise
 
-    # Initialize LLM using settings
     try:
-        # Get API key for the configured provider
-        api_key = None
-        if settings.llm.provider == "openai":
-            api_key = settings.llm.api_keys.openai or None
-        elif settings.llm.provider == "anthropic":
-            api_key = settings.llm.api_keys.anthropic or None
-        elif settings.llm.provider == "google":
-            api_key = settings.llm.api_keys.google or None
-
-        llm_config = LLMConfig(
-            provider=LLMProvider(settings.llm.provider),
-            model=settings.llm.models.gm,
-            temperature=settings.llm.temperature,
-            max_tokens=settings.llm.max_tokens,
-            api_key=api_key,
-        )
-        llm = get_llm(llm_config)
-        print(f"✅ LLM initialized: {settings.llm.provider}/{llm_config.model}")
+        llm = create_llm_from_settings("gm")
+        if settings.is_new_format() and settings.agents:
+            provider_info = f"{settings.agents.gm.provider_id}/{settings.agents.gm.model}"
+        else:
+            provider_info = f"{settings.llm.provider}/{settings.llm.models.gm}"
+        print(f"✅ LLM initialized: {provider_info}")
     except Exception as exc:
         print(f"❌ Failed to initialize LLM: {exc}")
         raise
@@ -243,6 +230,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(game.router)
+app.include_router(settings.router)
 app.include_router(websockets.router)
 
 

@@ -405,3 +405,107 @@ export interface APIError {
 export function getLocalizedValue(str: LocalizedString, lang: Language): string {
   return str[lang] || str.cn || str.en;
 }
+
+// ============================================================================
+// Settings API Types
+// ============================================================================
+
+// --- Provider Types ---
+
+export type ProviderType = 'openai' | 'anthropic' | 'google' | 'ollama';
+
+export interface ProviderConfig {
+  id: string;
+  name: string;
+  type: ProviderType;
+  api_key: string;
+  base_url: string | null;
+}
+
+export interface AgentConfig {
+  provider_id: string;
+  model: string;
+  temperature: number;
+  max_tokens: number;
+}
+
+export type AgentName = 'gm' | 'npc' | 'rule' | 'lore';
+
+export interface AgentsConfig {
+  gm: AgentConfig;
+  npc: AgentConfig;
+  rule: AgentConfig;
+  lore: AgentConfig;
+}
+
+export interface GameSettings {
+  default_language: Language;
+  dice: {
+    use_advantage_system: boolean;
+    show_roll_details: boolean;
+  };
+}
+
+// --- GET /api/v1/settings ---
+
+export interface SettingsResponse {
+  providers: ProviderConfig[];
+  agents: AgentsConfig | null;
+  game: GameSettings;
+}
+
+// --- PUT /api/v1/settings ---
+
+export interface ProviderInput {
+  id: string;
+  name: string;
+  type: ProviderType;
+  api_key: string;
+  base_url: string | null;
+}
+
+export interface AgentInput {
+  provider_id: string;
+  model: string;
+  temperature: number;
+  max_tokens: number;
+}
+
+export interface AgentsInput {
+  gm?: AgentInput;
+  npc?: AgentInput;
+  rule?: AgentInput;
+  lore?: AgentInput;
+}
+
+export interface UpdateSettingsRequest {
+  providers?: ProviderInput[];
+  agents?: AgentsInput;
+}
+
+// --- POST /api/v1/settings/test ---
+
+export interface TestConnectionRequest {
+  provider_id: string;
+}
+
+export interface TestConnectionResponse {
+  success: boolean;
+  provider_id: string;
+  message: string;
+  latency_ms: number | null;
+}
+
+// --- GET /api/v1/settings/provider-types ---
+
+export interface ProviderTypeInfo {
+  type: ProviderType;
+  name: string;
+  requires_api_key: boolean;
+  default_base_url: string | null;
+  placeholder_models: string[];
+}
+
+export interface ProviderTypesResponse {
+  types: ProviderTypeInfo[];
+}

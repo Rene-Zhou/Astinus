@@ -384,6 +384,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 - ~~🟡 **测试覆盖率不足** - 当前覆盖率 68%，目标 70%+~~ ✅ 已达到 70%（849测试）
 
 ### 中优先级
+- 🟡 **配置系统混乱** - settings.yaml 结构需重构，支持多 Provider → Phase 8 处理中
 - Story Pack 格式与迁移脚本未落地
 - ~~配置与密钥管理策略需文档（区分本地/生产）~~ ✅ 已完成（DEPLOYMENT.md）
 - ~~缺失单元测试与 CI 流水线~~ ✅ 已完成（849测试，GitHub Actions CI）
@@ -393,6 +394,7 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 - 文档国际化规划（中英双语）有待评估
 - 开发者体验提升（预构建 Makefile / uv 脚本）待执行
 - ~~Director Agent 未实现（游戏节奏管理）~~ ✅ 已完成
+- Token 验证（访问控制）- 当前纯本地使用，未来支持局域网访问时需要
 
 ### 已解决
 - ~~`pyproject.toml` 缺少核心依赖~~ ✅ 已完成
@@ -464,11 +466,39 @@ Astinus 是一个 AI 驱动的叙事向单人 TTRPG 引擎，采用多 Agent 协
 
 **实际工期**: 5 天（超预期完成）
 
-### 长期目标（Phase 8 - 后续）
+### Phase 8: Settings 系统重构 🔄 进行中
+
+> **详细计划**: 参见 `docs/SETTINGS_SYSTEM_PLAN.md`
+
+**目标**: 前端设置页面 + 灵活的 Provider/Agent 配置
+
+| 任务 | 优先级 | 状态 | 说明 |
+|------|--------|------|------|
+| 8.1.1 重构配置结构 | 🔴 Critical | ⏳ 待开始 | 支持多 Provider + 独立 Agent 配置 |
+| 8.1.2 Settings API | 🔴 Critical | ⏳ 待开始 | GET/PUT /api/v1/settings |
+| 8.1.3 连通性测试 API | 🔴 Critical | ⏳ 待开始 | POST /api/v1/settings/test |
+| 8.1.4 LLM Provider 重构 | 🔴 Critical | ⏳ 待开始 | 支持动态 Provider 加载 |
+| 8.2.1 Settings 类型定义 | 🔴 Critical | ⏳ 待开始 | 前端 TypeScript 类型 |
+| 8.2.2 SettingsPage 页面 | 🔴 Critical | ⏳ 待开始 | Provider 管理 + Agent 配置 |
+| 8.2.3 ProviderEditModal | 🟡 High | ⏳ 待开始 | Provider 编辑弹窗 |
+| 8.2.4 前端测试 | 🟡 High | ⏳ 待开始 | Vitest 单元测试 |
+| 8.3.1 迁移脚本 | 🟢 Medium | ⏳ 待开始 | 旧配置 → 新配置格式 |
+| 8.3.2 文档更新 | 🟢 Medium | ⏳ 待开始 | API_TYPES.ts, PROGRESS.md |
+
+**核心特性**:
+- 用户可自定义多个 Provider（支持自定义 base_url）
+- 每个 Agent 独立选择 Provider + Model + 参数
+- API 密钥掩码处理，前端永不持久化密钥
+- 一键测试 API 连通性
+
+**预计工期**: 4-5 天
+
+### 长期目标（Phase 9+）
 - 打磨 UX、错误处理与加载指示器
 - Story Pack 格式与迁移脚本
 - 前端文案国际化（提取到 locale 文件）
 - 多场景管理与剧情节点图
+- Token 验证（访问控制，支持局域网访问）
 
 ### 开发顺序建议
 ```
@@ -528,6 +558,7 @@ Week 4: UI 与测试 (6.3 + 6.5)
 ## 参考文档
 - `docs/GUIDE.md`
 - `docs/ARCHITECTURE.md`
+- `docs/SETTINGS_SYSTEM_PLAN.md`
 - `CLAUDE.md`
 
 ---

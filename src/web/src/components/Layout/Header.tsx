@@ -9,6 +9,7 @@ const navLinks = [
   { to: "/", label: "菜单" },
   { to: "/character", label: "角色" },
   { to: "/game", label: "游戏" },
+  { to: "/settings", label: "设置" },
 ];
 
 export const Header: React.FC<HeaderProps> = ({ rightSlot }) => {

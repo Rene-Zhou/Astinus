@@ -6,6 +6,7 @@
 - docs/ARCHITECTURE.md
 - docs/PROGRESS.md
 - docs/WEB_FRONTEND_PLAN.md
+- docs/SETTINGS_SYSTEM_PLAN.md
 - docs/API_TYPES.ts
 
 ## Python Package Management

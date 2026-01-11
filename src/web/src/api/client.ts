@@ -8,8 +8,13 @@ import type {
   HealthResponse,
   NewGameRequest,
   NewGameResponse,
+  ProviderTypesResponse,
   ResetResponse,
   RootResponse,
+  SettingsResponse,
+  TestConnectionRequest,
+  TestConnectionResponse,
+  UpdateSettingsRequest,
   WorldPackDetailResponse,
 } from "./types";
 
@@ -18,7 +23,7 @@ import type {
  * Uses fetch with JSON helpers and returns typed responses.
  */
 
-type HttpMethod = "GET" | "POST";
+type HttpMethod = "GET" | "POST" | "PUT";
 type HeadersInit = Record<string, string>;
 
 export interface RequestOptions<TBody = unknown> {
@@ -170,12 +175,46 @@ export const apiClient = {
     });
   },
 
-  /**
-   * Get world pack details including preset characters
-   */
   async getWorldPackDetail(packId: string, signal?: AbortSignal) {
     return request<WorldPackDetailResponse>({
       path: `/api/v1/game/world-pack/${encodeURIComponent(packId)}`,
+      method: "GET",
+      signal,
+    });
+  },
+
+  async getSettings(signal?: AbortSignal) {
+    return request<SettingsResponse>({
+      path: "/api/v1/settings",
+      method: "GET",
+      signal,
+    });
+  },
+
+  async updateSettings(body: UpdateSettingsRequest, signal?: AbortSignal) {
+    return request<SettingsResponse>({
+      path: "/api/v1/settings",
+      method: "PUT",
+      body,
+      signal,
+    });
+  },
+
+  async testProviderConnection(
+    body: TestConnectionRequest,
+    signal?: AbortSignal,
+  ) {
+    return request<TestConnectionResponse>({
+      path: "/api/v1/settings/test",
+      method: "POST",
+      body,
+      signal,
+    });
+  },
+
+  async getProviderTypes(signal?: AbortSignal) {
+    return request<ProviderTypesResponse>({
+      path: "/api/v1/settings/provider-types",
       method: "GET",
       signal,
     });
