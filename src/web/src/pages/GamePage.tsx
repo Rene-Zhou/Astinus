@@ -208,6 +208,7 @@ const GamePage: React.FC = () => {
               traits={traits}
               tags={tags}
               language={language}
+              isStreaming={isStreaming}
             />
           )}
         </BottomSheet>
@@ -256,6 +257,7 @@ const GamePage: React.FC = () => {
                 traits={traits}
                 tags={tags}
                 language={language}
+                isStreaming={isStreaming}
                 className="h-full"
               />
             </aside>

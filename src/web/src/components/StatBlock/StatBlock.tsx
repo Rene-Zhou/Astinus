@@ -15,6 +15,7 @@ export interface StatBlockProps {
   tags: string[];
   language?: "cn" | "en";
   className?: string;
+  isStreaming?: boolean;
 }
 
 interface TraitDetailProps {
@@ -133,11 +134,29 @@ export const StatBlock: React.FC<StatBlockProps> = ({
   tags,
   language: propLanguage,
   className = "",
+  isStreaming = false,
 }) => {
   const { t, i18n } = useTranslation();
   const language = (propLanguage || (i18n.language === "en" ? "en" : "cn")) as "cn" | "en";
 
   const conceptText = getLocalizedValue(concept, language);
+  
+  const isAIWorking = isStreaming || ["processing", "narrating", "npc_response"].includes(phase);
+  
+  const getActiveAgent = (currentPhase: GamePhase): string | null => {
+    switch (currentPhase) {
+      case "processing":
+        return t("settings.agentTitles.gm");
+      case "narrating":
+        return t("settings.agentTitles.gm");
+      case "npc_response":
+        return t("settings.agentTitles.npc");
+      default:
+        return null;
+    }
+  };
+  
+  const activeAgent = getActiveAgent(phase);
   
   const phaseLabel: Record<GamePhase, string> = {
     waiting_input: t("game.status.waitingInput"),
@@ -217,10 +236,24 @@ export const StatBlock: React.FC<StatBlockProps> = ({
           <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
             {t("game.phase", "Phase")}
           </p>
-          <p className="inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-            <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden />
-            {phaseText}
-          </p>
+          <div className="inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+            {isAIWorking ? (
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600 dark:border-amber-700 dark:border-t-amber-400"
+                aria-hidden
+              />
+            ) : (
+              <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden />
+            )}
+            <span className="flex flex-col">
+              <span>{phaseText}</span>
+              {isAIWorking && activeAgent && (
+                <span className="text-xs text-amber-600 dark:text-amber-300">
+                  {activeAgent}
+                </span>
+              )}
+            </span>
+          </div>
         </div>
       </div>
 

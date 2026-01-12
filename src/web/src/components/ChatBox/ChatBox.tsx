@@ -52,11 +52,7 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
       >
         {message.content}
       </div>
-      {message.metadata?.phase && (
-        <div className="text-[11px] text-gray-500 dark:text-gray-400">
-          Phase: {message.metadata.phase}
-        </div>
-      )}
+
     </div>
   );
 }
