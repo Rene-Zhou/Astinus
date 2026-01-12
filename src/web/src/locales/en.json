@@ -10,7 +10,11 @@
     "version": "Version",
     "author": "Author",
     "darkManorDemo": "Dark Manor (Demo)",
-    "footerText": "See docs/WEB_FRONTEND_PLAN.md for roadmap"
+    "footerText": "See docs/WEB_FRONTEND_PLAN.md for roadmap",
+    "demoInfo": "The Demo version only contains one world pack.",
+    "instructions": "Instructions",
+    "instructionText": "After selecting a world pack, you will enter the character selection screen to learn about the world background and choose your character.",
+    "readyText": "Ready to start your adventure?"
   },
   "nav": {
     "menu": "Menu",
@@ -41,7 +45,8 @@
     "phase": "Phase",
     "arriveAt": "You arrive at {{location}}.",
     "npcIntro": "You notice someone here:",
-    "connectionIntro": "From here, you can go to:"
+    "connectionIntro": "From here, you can go to:",
+    "session": "Session"
   },
   "world": {
     "era": "Era",
@@ -73,10 +78,24 @@
     "negative": "Negative",
     "fatePoints": "Fate Points",
     "status": "Status",
-    "clickForDetails": "Click to see details"
+    "clickForDetails": "Click to see details",
+    "startError": "Failed to start game",
+    "selectWorldFirst": "Please select a world",
+    "selectWorldPrompt": "Please select a world pack from the menu first, then return here to select a character.",
+    "selectError": "Please select a character",
+    "yourName": "Your Name",
+    "nameHint": "This is your name as a player, distinct from your character's name.",
+    "enterName": "Enter your name",
+    "selectCharacter": "Select Your Character",
+    "startAdventure": "Start Adventure",
+    "creatingGame": "Creating game...",
+    "noInfo": "No character info",
+    "createSessionFirst": "Please create a new session from the menu first, then return here to view character details.",
+    "backToGame": "Back to Game"
   },
   "settings": {
     "title": "Settings",
+    "description": "Configure application preferences and AI settings",
     "theme": "Theme",
     "language": "Language",
     "animationSpeed": "Animation Speed",
@@ -98,7 +117,37 @@
     "precise": "Precise",
     "creative": "Creative",
     "connected": "Connected",
-    "failed": "Failed"
+    "failed": "Failed",
+    "general": "General",
+    "light": "Light",
+    "dark": "Dark",
+    "slow": "Slow",
+    "normal": "Normal",
+    "fast": "Fast",
+    "providerId": "Provider ID",
+    "displayName": "Display Name",
+    "type": "Type",
+    "apiKey": "API Key",
+    "baseUrl": "Base URL",
+    "enterApiKey": "Enter API Key",
+    "optional": "Optional",
+    "idHint": "Unique ID for internal reference. Lowercase letters, numbers, and hyphens only.",
+    "errorProviderId": "Provider ID is required",
+    "errorProviderIdFormat": "ID must consist of lowercase alphanumeric characters or hyphens, and cannot start or end with a hyphen.",
+    "errorDisplayName": "Display Name is required",
+    "editProvider": "Edit Provider",
+    "agentTitles": {
+      "gm": "GM Agent",
+      "npc": "NPC Agent",
+      "rule": "Rule Agent",
+      "lore": "Lore Agent"
+    },
+    "agentDescs": {
+      "gm": "Core Narrative Engine. Handles story progression, scene description, and overall coordination.",
+      "npc": "Roleplay Engine. Controls NPC dialogue, emotions, and interactions.",
+      "rule": "Rules Judge. Handles dice checks, mechanics, and game logic.",
+      "lore": "Knowledge Base. Retrieves world information and context."
+    }
   },
   "common": {
     "loading": "Loading...",

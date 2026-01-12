@@ -159,8 +159,8 @@ const CharacterSelectionMode: React.FC = () => {
         presetCharacterId: selectedCharacterId,
       });
       navigate("/game");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start game");
+    } catch {
+      setError(t("character.startError", "Failed to start game"));
     } finally {
       setLoading(false);
     }

@@ -10,7 +10,11 @@
     "version": "版本",
     "author": "作者",
     "darkManorDemo": "幽暗庄园 (Demo)",
-    "footerText": "参见 docs/WEB_FRONTEND_PLAN.md 获取路线图"
+    "footerText": "参见 docs/WEB_FRONTEND_PLAN.md 获取路线图",
+    "demoInfo": "Demo 版本仅包含一个世界包。",
+    "instructions": "说明",
+    "instructionText": "选择一个世界包后，你将进入角色选择界面，了解世界背景并选择你的角色。",
+    "readyText": "准备好开始你的冒险了吗？"
   },
   "nav": {
     "menu": "菜单",
@@ -41,7 +45,8 @@
     "phase": "阶段",
     "arriveAt": "你来到了{{location}}。",
     "npcIntro": "你注意到这里有人：",
-    "connectionIntro": "从这里，你可以前往："
+    "connectionIntro": "从这里，你可以前往：",
+    "session": "会话"
   },
   "world": {
     "era": "时代",
@@ -73,10 +78,24 @@
     "negative": "负面",
     "fatePoints": "命运点",
     "status": "状态",
-    "clickForDetails": "点击查看详情"
+    "clickForDetails": "点击查看详情",
+    "startError": "启动游戏失败",
+    "selectWorldFirst": "请先选择世界",
+    "selectWorldPrompt": "请先在菜单页选择一个世界包，然后返回此处选择角色。",
+    "selectError": "请选择一个角色",
+    "yourName": "你的名字",
+    "nameHint": "这是你作为玩家的名字，与角色名字不同。",
+    "enterName": "输入你的名字",
+    "selectCharacter": "选择你的角色",
+    "startAdventure": "开始冒险",
+    "creatingGame": "创建游戏中...",
+    "noInfo": "暂无角色信息",
+    "createSessionFirst": "请先在菜单页创建新会话，然后返回此处查看角色详情。",
+    "backToGame": "返回游戏"
   },
   "settings": {
     "title": "设置",
+    "description": "配置应用程序首选项和 AI 设置",
     "theme": "主题",
     "language": "语言",
     "animationSpeed": "动画速度",
@@ -98,7 +117,37 @@
     "precise": "精确",
     "creative": "创意",
     "connected": "已连接",
-    "failed": "失败"
+    "failed": "失败",
+    "general": "常规",
+    "light": "浅色",
+    "dark": "深色",
+    "slow": "慢",
+    "normal": "正常",
+    "fast": "快",
+    "providerId": "提供商 ID",
+    "displayName": "显示名称",
+    "type": "类型",
+    "apiKey": "API 密钥",
+    "baseUrl": "基础 URL",
+    "enterApiKey": "输入 API 密钥",
+    "optional": "可选",
+    "idHint": "用于内部引用的唯一 ID。仅限小写字母、数字和连字符。",
+    "errorProviderId": "提供商 ID 为必填项",
+    "errorProviderIdFormat": "ID 必须由小写字母数字或连字符组成，且不能以连字符开头或结尾。",
+    "errorDisplayName": "显示名称为必填项",
+    "editProvider": "编辑提供商",
+    "agentTitles": {
+      "gm": "GM 代理",
+      "npc": "NPC 代理",
+      "rule": "规则代理",
+      "lore": "知识代理"
+    },
+    "agentDescs": {
+      "gm": "核心叙事引擎。处理故事推进、场景描述和整体协调。",
+      "npc": "角色扮演引擎。控制 NPC 对话、情绪和互动。",
+      "rule": "规则裁判。处理骰子检定、机制和游戏逻辑。",
+      "lore": "知识库。检索世界信息和背景。"
+    }
   },
   "common": {
     "loading": "加载中...",

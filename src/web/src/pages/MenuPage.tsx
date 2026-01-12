@@ -49,7 +49,7 @@ const MenuPage: React.FC = () => {
               <option value="demo_pack">{t("menu.darkManorDemo")}</option>
             </select>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              The Demo version only contains one world pack.
+              {t("menu.demoInfo", "The Demo version only contains one world pack.")}
             </p>
           </div>
 
@@ -71,12 +71,12 @@ const MenuPage: React.FC = () => {
         </div>
       </Card>
 
-      <Card title="Instructions" className="text-sm text-gray-700 dark:text-gray-300">
+      <Card title={t("menu.instructions", "Instructions")} className="text-sm text-gray-700 dark:text-gray-300">
         <p className="mb-2">
-          After selecting a world pack, you will enter the character selection screen to learn about the world background and choose your character.
+          {t("menu.instructionText", "After selecting a world pack, you will enter the character selection screen to learn about the world background and choose your character.")}
         </p>
         <p className="text-gray-500 dark:text-gray-400">
-          Ready to start your adventure?
+          {t("menu.readyText", "Ready to start your adventure?")}
         </p>
       </Card>
 

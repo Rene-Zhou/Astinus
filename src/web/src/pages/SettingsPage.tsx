@@ -92,7 +92,7 @@ const SettingsPage: React.FC = () => {
             {t("settings.title")}
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Configure application preferences and AI settings
+            {t("settings.description", "Configure application preferences and AI settings")}
           </p>
         </div>
         <div className="flex gap-3">
@@ -153,7 +153,7 @@ const SettingsPage: React.FC = () => {
       <div className="space-y-10">
         <section className="rounded-lg bg-white p-6 shadow dark:bg-gray-800">
           <h2 className="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">
-            General
+            {t("settings.general", "General")}
           </h2>
           <div className="grid gap-6 sm:grid-cols-3">
             <div>
@@ -165,8 +165,8 @@ const SettingsPage: React.FC = () => {
                 onChange={(e) => setTheme(e.target.value as "light" | "dark")}
                 className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
+                <option value="light">{t("settings.light", "Light")}</option>
+                <option value="dark">{t("settings.dark", "Dark")}</option>
               </select>
             </div>
 
@@ -197,9 +197,9 @@ const SettingsPage: React.FC = () => {
                 }
                 className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               >
-                <option value="slow">Slow</option>
-                <option value="normal">Normal</option>
-                <option value="fast">Fast</option>
+                <option value="slow">{t("settings.slow", "Slow")}</option>
+                <option value="normal">{t("settings.normal", "Normal")}</option>
+                <option value="fast">{t("settings.fast", "Fast")}</option>
               </select>
             </div>
           </div>
@@ -218,10 +218,10 @@ const SettingsPage: React.FC = () => {
           {providers.length === 0 ? (
             <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center dark:border-gray-700">
               <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                No providers
+                {t("settings.noProviders", "No providers")}
               </h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Get started by adding a new AI provider.
+                {t("settings.noProviders", "Get started by adding a new AI provider.")}
               </p>
               <div className="mt-6">
                 <Button onClick={handleAddProvider} size="sm">
@@ -252,26 +252,26 @@ const SettingsPage: React.FC = () => {
               <AgentConfigCard
                 agentType="gm"
                 config={agents.gm}
-                title="GM Agent"
-                description="Core Narrative Engine. Handles story progression, scene description, and overall coordination."
+                title={t("settings.agentTitles.gm", "GM Agent")}
+                description={t("settings.agentDescs.gm", "Core Narrative Engine. Handles story progression, scene description, and overall coordination.")}
               />
               <AgentConfigCard
                 agentType="npc"
                 config={agents.npc}
-                title="NPC Agent"
-                description="Roleplay Engine. Controls NPC dialogue, emotions, and interactions."
+                title={t("settings.agentTitles.npc", "NPC Agent")}
+                description={t("settings.agentDescs.npc", "Roleplay Engine. Controls NPC dialogue, emotions, and interactions.")}
               />
               <AgentConfigCard
                 agentType="rule"
                 config={agents.rule}
-                title="Rule Agent"
-                description="Rules Judge. Handles dice checks, mechanics, and game logic."
+                title={t("settings.agentTitles.rule", "Rule Agent")}
+                description={t("settings.agentDescs.rule", "Rules Judge. Handles dice checks, mechanics, and game logic.")}
               />
               <AgentConfigCard
                 agentType="lore"
                 config={agents.lore}
-                title="Lore Agent"
-                description="Knowledge Base. Retrieves world information and context."
+                title={t("settings.agentTitles.lore", "Lore Agent")}
+                description={t("settings.agentDescs.lore", "Knowledge Base. Retrieves world information and context.")}
               />
             </div>
           </section>

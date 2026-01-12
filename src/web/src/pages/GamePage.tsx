@@ -249,7 +249,7 @@ const GamePage: React.FC = () => {
             <span className="rounded-full bg-green-100 px-2 py-1 text-green-700 dark:bg-green-900/30 dark:text-green-300">
               {headerStatus}
             </span>
-            <span className="text-gray-500 dark:text-gray-400">Session: {sessionId}</span>
+            <span className="text-gray-500 dark:text-gray-400">{t("game.session", "Session")}: {sessionId}</span>
           </div>
         </div>
       </div>
