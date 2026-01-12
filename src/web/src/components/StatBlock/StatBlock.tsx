@@ -172,7 +172,17 @@ export const StatBlock: React.FC<StatBlockProps> = ({
     narrating: t("game.status.narrating"),
   };
   
-  const phaseText = phaseLabel[phase];
+  const getDisplayPhase = (): string => {
+    if (isProcessing && phase === "waiting_input") {
+      return t("game.status.processing");
+    }
+    if (isStreaming && phase === "waiting_input") {
+      return t("game.status.narrating");
+    }
+    return phaseLabel[phase];
+  };
+  
+  const phaseText = getDisplayPhase();
 
   return (
     <div
