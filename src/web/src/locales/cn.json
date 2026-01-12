@@ -62,8 +62,10 @@
     "roll": "掷骰",
     "result": "结果",
     "total": "总值",
-    "kept": "保留",
-    "outcome": {
+      "kept": "保留",
+      "waitingForCheck": "当你的行动需要检定时，它会出现在这里。",
+      "hintText": "某些行动（如攀爬、说服、战斗）可能需要掷骰检定。",
+      "outcome": {
       "critical": "大成功",
       "success": "成功",
       "partial": "部分成功",

@@ -62,8 +62,10 @@
     "roll": "Roll",
     "result": "Result",
     "total": "Total",
-    "kept": "Kept",
-    "outcome": {
+      "kept": "Kept",
+      "waitingForCheck": "When your action requires a check, it will appear here.",
+      "hintText": "Some actions (like climbing, persuading, combat) may require a dice roll.",
+      "outcome": {
       "critical": "Critical Success",
       "success": "Success",
       "partial": "Partial Success",

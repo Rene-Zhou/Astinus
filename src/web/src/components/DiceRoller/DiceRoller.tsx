@@ -123,12 +123,12 @@ const IdleState: React.FC = () => {
       <DiceIcon className="mb-4 h-16 w-16 text-gray-300 dark:text-gray-600" />
       <h3 className="text-lg font-medium text-gray-600 dark:text-gray-300">{t("dice.panelTitle")}</h3>
       <p className="mt-2 max-w-xs text-sm text-gray-400 dark:text-gray-500">
-        When your action requires a check, it will appear here.
+        {t("dice.waitingForCheck")}
       </p>
       <div className="mt-6 rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
         <p className="text-xs text-gray-500 dark:text-gray-400">
           <span className="font-semibold">{t("dice.hint")}: </span>
-          Some actions (like climbing, persuading, combat) may require a dice roll.
+          {t("dice.hintText")}
         </p>
       </div>
     </div>
