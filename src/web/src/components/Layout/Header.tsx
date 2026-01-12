@@ -114,10 +114,19 @@ export interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, headerSlot }) => {
+  const location = useLocation();
+  const isGamePage = location.pathname === "/game";
+
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <div
+      className={`flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 ${
+        isGamePage ? "h-screen overflow-hidden" : "min-h-screen"
+      }`}
+    >
       <Header rightSlot={headerSlot} />
-      <main className="flex-1">{children}</main>
+      <main className={`flex-1 ${isGamePage ? "overflow-hidden" : ""}`}>
+        {children}
+      </main>
     </div>
   );
 };

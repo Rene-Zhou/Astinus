@@ -233,9 +233,8 @@ const GamePage: React.FC = () => {
   }
 
   // Desktop layout - Three Column Layout
-  // Calculate height: 100vh - global header (~57px)
   return (
-    <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Main Content - Three Column Layout */}
       <main className="flex-1 overflow-hidden">
         {!player ? (
