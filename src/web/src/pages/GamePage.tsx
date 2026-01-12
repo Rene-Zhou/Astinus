@@ -26,6 +26,9 @@ const GamePage: React.FC = () => {
     messages,
     streamingContent,
     isStreaming,
+    isProcessing,
+    processingStatus,
+    processingAgent,
     pendingDiceCheck,
     submitDiceResult,
     sendPlayerInput,
@@ -209,6 +212,9 @@ const GamePage: React.FC = () => {
               tags={tags}
               language={language}
               isStreaming={isStreaming}
+              isProcessing={isProcessing}
+              processingStatus={processingStatus}
+              processingAgent={processingAgent}
             />
           )}
         </BottomSheet>
@@ -258,6 +264,9 @@ const GamePage: React.FC = () => {
                 tags={tags}
                 language={language}
                 isStreaming={isStreaming}
+                isProcessing={isProcessing}
+                processingStatus={processingStatus}
+                processingAgent={processingAgent}
                 className="h-full"
               />
             </aside>
