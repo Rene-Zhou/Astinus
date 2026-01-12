@@ -36,7 +36,7 @@ export const Button: React.FC<ButtonProps> = ({
     secondary:
       "bg-secondary text-white hover:brightness-110 focus:ring-secondary border border-transparent",
     ghost:
-      "bg-transparent text-gray-900 hover:bg-gray-100 focus:ring-gray-300 border border-gray-300",
+      "bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-300 border border-gray-300 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-800 dark:focus:ring-gray-600",
   };
   const sizeClass: Record<ButtonSize, string> = {
     sm: "px-3 py-1.5 text-sm",
