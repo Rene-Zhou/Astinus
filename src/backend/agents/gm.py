@@ -13,11 +13,13 @@ Ported from weave's Orchestrator, adapted for:
 - Multi-agent coordination
 """
 
-from typing import Any
+from typing import Any, Callable, Awaitable
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.backend.agents.base import AgentResponse, BaseAgent
+
+StatusCallback = Callable[[str, str | None], Awaitable[None]]
 from src.backend.core.prompt_loader import get_prompt_loader
 from src.backend.models.game_state import GameState
 from src.backend.services.game_logger import get_game_logger
@@ -66,6 +68,7 @@ class GMAgent(BaseAgent):
         self.world_pack_loader = world_pack_loader
         self.vector_store = vector_store
         self.prompt_loader = get_prompt_loader()
+        self.status_callback: StatusCallback | None = None
 
     async def process(self, input_data: dict[str, Any]) -> AgentResponse:
         """
@@ -91,7 +94,9 @@ class GMAgent(BaseAgent):
                 metadata={"agent": self.agent_name},
             )
 
-        # Parse intent and plan agent dispatch
+        if self.status_callback:
+            await self.status_callback("gm", None)
+
         agent_dispatch_plan = await self._parse_intent_and_plan(player_input, lang)
 
         if not agent_dispatch_plan["success"]:
@@ -115,6 +120,8 @@ class GMAgent(BaseAgent):
             agent_results = []
             for agent_name in agents_to_call:
                 if agent_name in self.sub_agents:
+                    if self.status_callback:
+                        await self.status_callback(agent_name, None)
                     agent = self.sub_agents[agent_name]
                     context = context_slices.get(agent_name, {})
 

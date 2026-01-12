@@ -16,6 +16,9 @@ export interface StatBlockProps {
   language?: "cn" | "en";
   className?: string;
   isStreaming?: boolean;
+  isProcessing?: boolean;
+  processingStatus?: string | null;
+  processingAgent?: string | null;
 }
 
 interface TraitDetailProps {
@@ -135,28 +138,31 @@ export const StatBlock: React.FC<StatBlockProps> = ({
   language: propLanguage,
   className = "",
   isStreaming = false,
+  isProcessing = false,
+  processingStatus = null,
+  processingAgent = null,
 }) => {
   const { t, i18n } = useTranslation();
   const language = (propLanguage || (i18n.language === "en" ? "en" : "cn")) as "cn" | "en";
 
   const conceptText = getLocalizedValue(concept, language);
   
-  const isAIWorking = isStreaming || ["processing", "narrating", "npc_response"].includes(phase);
+  const isAIWorking = isProcessing || isStreaming || ["processing", "narrating", "npc_response"].includes(phase);
   
-  const getActiveAgent = (currentPhase: GamePhase): string | null => {
-    switch (currentPhase) {
-      case "processing":
-        return t("settings.agentTitles.gm");
-      case "narrating":
-        return t("settings.agentTitles.gm");
-      case "npc_response":
-        return t("settings.agentTitles.npc");
-      default:
-        return null;
-    }
+  const getAgentLabel = (agent: string | null): string | null => {
+    if (!agent) return null;
+    if (agent === "gm") return t("settings.agentTitles.gm");
+    if (agent === "rule") return t("settings.agentTitles.rule");
+    if (agent === "lore") return t("settings.agentTitles.lore");
+    if (agent.startsWith("npc")) return t("settings.agentTitles.npc");
+    return agent;
   };
   
-  const activeAgent = getActiveAgent(phase);
+  const activeAgentLabel = processingAgent 
+    ? getAgentLabel(processingAgent)
+    : null;
+  
+  const statusText = processingStatus || (isAIWorking ? activeAgentLabel : null);
   
   const phaseLabel: Record<GamePhase, string> = {
     waiting_input: t("game.status.waitingInput"),
@@ -221,39 +227,37 @@ export const StatBlock: React.FC<StatBlockProps> = ({
         )}
       </div>
 
-      {/* Location and Phase */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            {t("game.location", "Location")}
-          </p>
-          <p className="rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-900 dark:bg-gray-700 dark:text-gray-200">
-            {location || t("common.unknown", "Unknown")}
-          </p>
-        </div>
+      {/* Location */}
+      <div className="space-y-1">
+        <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          {t("game.location", "Location")}
+        </p>
+        <p className="rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-900 dark:bg-gray-700 dark:text-gray-200">
+          {location || t("common.unknown", "Unknown")}
+        </p>
+      </div>
 
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            {t("game.phase", "Phase")}
-          </p>
-          <div className="inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+      {/* Phase */}
+      <div className="space-y-1">
+        <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          {t("game.phase", "Phase")}
+        </p>
+        <div className="inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+          <span className="flex h-4 w-4 items-center justify-center" aria-hidden>
             {isAIWorking ? (
-              <span
-                className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600 dark:border-amber-700 dark:border-t-amber-400"
-                aria-hidden
-              />
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600 dark:border-amber-700 dark:border-t-amber-400" />
             ) : (
-              <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden />
+              <span className="h-2 w-2 rounded-full bg-amber-400" />
             )}
-            <span className="flex flex-col">
-              <span>{phaseText}</span>
-              {isAIWorking && activeAgent && (
-                <span className="text-xs text-amber-600 dark:text-amber-300">
-                  {activeAgent}
-                </span>
-              )}
-            </span>
-          </div>
+          </span>
+          <span className="flex flex-col leading-tight">
+            <span>{phaseText}</span>
+            {isAIWorking && statusText && (
+              <span className="text-xs text-amber-600 dark:text-amber-300">
+                {statusText}
+              </span>
+            )}
+          </span>
         </div>
       </div>
 

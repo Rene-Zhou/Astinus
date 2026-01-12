@@ -413,6 +413,7 @@ export interface WSStatusMessage extends WSMessage<"status"> {
   data: {
     phase: string;
     message: string;
+    agent?: string; // Which agent is currently processing (gm, rule, npc_xxx, lore)
   };
 }
 

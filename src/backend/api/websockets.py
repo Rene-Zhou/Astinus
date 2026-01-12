@@ -60,13 +60,22 @@ class ConnectionManager:
             websocket = self.active_connections[session_id]
             await websocket.send_json(message.model_dump())
 
-    async def send_status(self, session_id: str, phase: str, message: str | None = None):
+    async def send_status(
+        self,
+        session_id: str,
+        phase: str,
+        message: str | None = None,
+        agent: str | None = None,
+    ):
         """Send a status update."""
+        data: dict[str, Any] = {"phase": phase, "message": message or ""}
+        if agent:
+            data["agent"] = agent
         await self.send_message(
             session_id,
             StreamMessage(
                 type=MessageType.STATUS,
-                data={"phase": phase, "message": message or ""},
+                data=data,
             ),
         )
 
@@ -267,14 +276,34 @@ async def _handle_player_input(
         await manager.send_error(session_id, "player_input/content is required")
         return
 
-    # Send processing status
+    agent_labels = {
+        "gm": "GM Agent" if lang == "en" else "GM 代理",
+        "rule": "Rule Agent" if lang == "en" else "规则代理",
+        "npc": "NPC Agent" if lang == "en" else "NPC 代理",
+        "lore": "Lore Agent" if lang == "en" else "知识代理",
+    }
+
+    async def status_callback(agent: str, message: str | None) -> None:
+        agent_label = agent_labels.get(agent, agent)
+        if agent.startswith("npc_"):
+            agent_label = agent_labels.get("npc", "NPC Agent")
+        status_msg = message or agent_label
+        await manager.send_status(
+            session_id,
+            phase="processing",
+            message=status_msg,
+            agent=agent,
+        )
+
     await manager.send_status(
         session_id,
         phase="processing",
         message="Analyzing your action..." if lang == "en" else "正在分析你的行动...",
+        agent="gm",
     )
 
-    # Process through GM Agent
+    gm_agent.status_callback = status_callback
+
     try:
         result = await gm_agent.process(
             {
@@ -285,6 +314,8 @@ async def _handle_player_input(
     except Exception as exc:
         await manager.send_error(session_id, f"Processing failed: {exc}")
         return
+    finally:
+        gm_agent.status_callback = None
 
     # Send phase update
     phase = gm_agent.game_state.current_phase.value

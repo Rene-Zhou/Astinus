@@ -54,6 +54,9 @@ export interface GameStoreState {
   // Connection
   wsClient: GameWebSocketClient | null;
   isStreaming: boolean;
+  isProcessing: boolean;
+  processingStatus: string | null;
+  processingAgent: string | null;
 
   // Actions
   loadWorldPackDetail: (packId: string) => Promise<WorldPackDetailResponse | null>;
@@ -195,6 +198,9 @@ const initialState = (): Omit<
   lastDiceResult: null,
   wsClient: null,
   isStreaming: false,
+  isProcessing: false,
+  processingStatus: null,
+  processingAgent: null,
 });
 
 export const useGameStore = create<GameStoreState>()(
@@ -317,6 +323,9 @@ export const useGameStore = create<GameStoreState>()(
           onComplete: (msg) =>
             set((state) => {
               state.isStreaming = false;
+              state.isProcessing = false;
+              state.processingStatus = null;
+              state.processingAgent = null;
               state.streamingContent = "";
               state.messages.push({
                 role: "assistant",
@@ -326,9 +335,12 @@ export const useGameStore = create<GameStoreState>()(
                 metadata: msg.data.metadata as Message["metadata"],
               });
             }),
-          onStatus: () => {
-            /* noop UI can listen to connection store */
-          },
+          onStatus: (msg) =>
+            set((state) => {
+              state.isProcessing = true;
+              state.processingStatus = msg.data.message || null;
+              state.processingAgent = msg.data.agent || null;
+            }),
           onPhase: (msg) =>
             set((state) => {
               state.currentPhase = msg.data.phase;
@@ -340,6 +352,9 @@ export const useGameStore = create<GameStoreState>()(
           onServerError: (msg) =>
             set((state) => {
               state.isStreaming = false;
+              state.isProcessing = false;
+              state.processingStatus = null;
+              state.processingAgent = null;
               state.streamingContent = "";
               connection.setStatus("error");
               connection.setError(msg.data.error);
@@ -365,6 +380,10 @@ export const useGameStore = create<GameStoreState>()(
     sendPlayerInput: (content, lang = "cn") => {
       const ws = get().wsClient;
       if (ws) {
+        set((state) => {
+          state.isProcessing = true;
+          state.processingStatus = null;
+        });
         ws.sendPlayerInput(content, lang);
       }
     },
@@ -429,6 +448,9 @@ export const useGameStore = create<GameStoreState>()(
         state.pendingDiceCheck = null;
         state.lastDiceResult = null;
         state.streamingContent = "";
+        state.isProcessing = false;
+        state.processingStatus = null;
+        state.processingAgent = null;
       }),
 
     reset: () => {
