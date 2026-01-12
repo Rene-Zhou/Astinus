@@ -113,12 +113,11 @@ export interface LayoutProps {
   footerSlot?: React.ReactNode;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, headerSlot, footerSlot }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, headerSlot }) => {
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       <Header rightSlot={headerSlot} />
       <main className="flex-1">{children}</main>
-      <Footer rightText={typeof footerSlot === "string" ? footerSlot : undefined} />
     </div>
   );
 };

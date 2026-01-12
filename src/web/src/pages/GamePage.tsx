@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -92,12 +92,6 @@ const GamePage: React.FC = () => {
   };
 
   const handleDiceCancel = () => setPendingDiceCheck(null);
-
-  const headerStatus = useMemo(() => {
-    if (!sessionId) return t("game.status.disconnected");
-    if (isStreaming) return t("game.status.processing");
-    return t("game.status.connected");
-  }, [sessionId, isStreaming, t]);
 
   if (!sessionId) {
     return (
@@ -239,21 +233,9 @@ const GamePage: React.FC = () => {
   }
 
   // Desktop layout - Three Column Layout
-  // Calculate height: 100vh - global header (~57px) - global footer (~49px)
+  // Calculate height: 100vh - global header (~57px)
   return (
-    <div className="flex h-[calc(100vh-106px)] flex-col overflow-hidden">
-      {/* Status Bar */}
-      <div className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-700 dark:bg-gray-800">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-            <span className="rounded-full bg-green-100 px-2 py-1 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-              {headerStatus}
-            </span>
-            <span className="text-gray-500 dark:text-gray-400">{t("game.session", "Session")}: {sessionId}</span>
-          </div>
-        </div>
-      </div>
-
+    <div className="flex h-[calc(100vh-57px)] flex-col overflow-hidden">
       {/* Main Content - Three Column Layout */}
       <main className="flex-1 overflow-hidden">
         {!player ? (
