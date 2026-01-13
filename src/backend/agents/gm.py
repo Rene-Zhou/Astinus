@@ -928,9 +928,53 @@ class GMAgent(BaseAgent):
             context["npc_data"] = npc_data
 
         if dice_result:
-            context["dice_result"] = dice_result
+            # Don't pass dice_result to NPC - only pass roleplay direction
+            context["roleplay_direction"] = self._generate_roleplay_direction(dice_result, lang)
 
         return context
+
+    def _generate_roleplay_direction(
+        self,
+        dice_result: dict[str, Any],
+        lang: str,
+    ) -> str:
+        """
+        Generate roleplay direction for NPC based on dice check outcome.
+
+        NPC doesn't need to know the dice result or game rules,
+        only the direction for how to roleplay the response.
+
+        Args:
+            dice_result: Dice check result with 'outcome' field
+            lang: Language code
+
+        Returns:
+            Roleplay direction string for NPC prompt, or empty if no outcome
+        """
+        outcome = dice_result.get("outcome", "")
+
+        if not outcome:
+            return ""
+
+        directions = {
+            "cn": {
+                "critical_success": "NPC 应该非常积极地回应，态度明显软化甚至热情，愿意主动提供帮助或重要信息。",
+                "success": "NPC 应该积极回应，态度有所软化，愿意提供帮助或信息。",
+                "partial": "NPC 的态度应有所松动，但仍保持一定警惕，可能只透露有限信息、给出警告、或提出额外条件。",
+                "failure": "NPC 应该拒绝请求，态度可能更加冷淡或警惕。",
+                "critical_failure": "NPC 应该强烈拒绝，态度恶化，可能产生敌意或采取对抗行动。",
+            },
+            "en": {
+                "critical_success": "The NPC should respond very positively, with a notably softened or even warm attitude, willing to proactively offer help or important information.",
+                "success": "The NPC should respond positively, with a softened attitude, willing to provide help or information.",
+                "partial": "The NPC's attitude should soften somewhat, but remain guarded, perhaps only revealing limited information, giving a warning, or requesting additional conditions.",
+                "failure": "The NPC should refuse the request, with a colder or more guarded attitude.",
+                "critical_failure": "The NPC should strongly refuse, with worsened attitude, possibly showing hostility or taking confrontational action.",
+            }
+        }
+
+        lang_directions = directions.get(lang, directions["en"])
+        return lang_directions.get(outcome, "")
 
     def _determine_npc_narrative_style(
         self,

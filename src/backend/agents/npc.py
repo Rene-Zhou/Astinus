@@ -83,6 +83,7 @@ class NPCAgent(BaseAgent):
         context = input_data.get("context", {})
         lang = input_data.get("lang", "cn")
         narrative_style = input_data.get("narrative_style", "detailed")
+        roleplay_direction = input_data.get("roleplay_direction")
 
         # Validate required fields
         if not npc_data_dict:
@@ -121,6 +122,7 @@ class NPCAgent(BaseAgent):
             context=context,
             lang=lang,
             narrative_style=narrative_style,
+            roleplay_direction=roleplay_direction,
         )
 
         # Call LLM
@@ -229,10 +231,14 @@ class NPCAgent(BaseAgent):
         context: dict,
         lang: str = "cn",
         narrative_style: str = "detailed",
+        roleplay_direction: str | None = None,
     ) -> list[BaseMessage]:
         npc = NPCData(**npc_data)
 
-        system_parts = self._build_system_prompt(npc, player_input, context, lang, narrative_style)
+        system_parts = self._build_system_prompt(
+            npc, player_input, context, lang, narrative_style,
+            roleplay_direction=roleplay_direction,
+        )
         user_parts = self._build_user_prompt(npc, player_input, context, lang)
 
         return [
@@ -247,6 +253,7 @@ class NPCAgent(BaseAgent):
         context: dict,
         lang: str,
         narrative_style: str = "detailed",
+        roleplay_direction: str | None = None,
     ) -> str:
         soul = npc.soul
         body = npc.body
@@ -320,6 +327,12 @@ class NPCAgent(BaseAgent):
                 lines.append("这是对话开始或间隔较久后的交互，请丰富动作描写：")
                 lines.append("- action 字段写出有画面感的动作、神态、小动作")
                 lines.append("- 体现角色性格特征和当前情绪状态")
+
+            # Add roleplay direction if present
+            if roleplay_direction:
+                lines.append("")
+                lines.append("## 扮演方向指示（重要）")
+                lines.append(roleplay_direction)
 
             lines.append("")
             lines.append("## 响应格式")
@@ -398,6 +411,12 @@ class NPCAgent(BaseAgent):
                 lines.append("This is a new interaction or after a gap, enrich the action description:")
                 lines.append("- Write vivid actions, expressions, and subtle movements in action field")
                 lines.append("- Reflect character personality and current emotional state")
+
+            # Add roleplay direction if present
+            if roleplay_direction:
+                lines.append("")
+                lines.append("## Roleplay Direction (IMPORTANT)")
+                lines.append(roleplay_direction)
 
             lines.append("")
             lines.append("## Response Format")
