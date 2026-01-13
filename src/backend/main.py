@@ -173,16 +173,14 @@ async def lifespan(app: FastAPI):
                 "lore": lore_agent,
             }
 
-            # Register NPC Agents for active NPCs in the scene
-            if world_pack is not None:
-                for npc_id in active_npc_ids:
-                    npc_data = world_pack.get_npc(npc_id)
-                    if npc_data:
-                        npc_agent = NPCAgent(llm=llm, vector_store=vector_store)
-                        # Register with format npc_{npc_id} (e.g., npc_old_guard)
-                        agent_key = f"npc_{npc_id}"
-                        sub_agents[agent_key] = npc_agent
-                        print(f"   Registered NPC agent: {agent_key} ({npc_data.soul.name})")
+            # Register a single NPC Agent (handles all NPCs via npc_id parameter)
+            npc_agent = NPCAgent(
+                llm=llm,
+                vector_store=vector_store,
+                world_pack_loader=world_pack_loader,
+            )
+            sub_agents["npc"] = npc_agent
+            print("   Registered NPC agent: npc")
 
             # Create GM Agent (central orchestrator)
             gm_agent = GMAgent(
