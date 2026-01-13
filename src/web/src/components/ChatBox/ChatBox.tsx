@@ -43,7 +43,7 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   return (
     <div className="space-y-1">
       <div className={`text-xs font-semibold ${roleColor[message.role]}`}>
-        {roleLabel[message.role]} · {t("game.turn")} {message.turn}
+        {roleLabel[message.role]}
       </div>
       <div
         className={`whitespace-pre-wrap rounded-lg border border-gray-200 bg-white/80 px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-100 ${

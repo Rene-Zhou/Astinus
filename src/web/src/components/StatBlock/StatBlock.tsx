@@ -271,14 +271,6 @@ export const StatBlock: React.FC<StatBlockProps> = ({
         </div>
       </div>
 
-      {/* Turn */}
-      <div className="space-y-1">
-        <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          {t("game.turn", "Turn")}
-        </p>
-        <p className="text-sm text-gray-900 dark:text-gray-200">{turnCount}</p>
-      </div>
-
       {/* Tags */}
       <div className="space-y-2">
         <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
