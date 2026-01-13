@@ -131,7 +131,7 @@ export const StatBlock: React.FC<StatBlockProps> = ({
   concept,
   location,
   phase,
-  turnCount,
+  turnCount: _turnCount,
   fatePoints,
   traits,
   tags,
@@ -142,6 +142,7 @@ export const StatBlock: React.FC<StatBlockProps> = ({
   processingStatus = null,
   processingAgent = null,
 }) => {
+  void _turnCount; // Reserved for future use
   const { t, i18n } = useTranslation();
   const language = (propLanguage || (i18n.language === "en" ? "en" : "cn")) as "cn" | "en";
 

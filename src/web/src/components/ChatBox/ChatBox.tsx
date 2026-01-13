@@ -122,11 +122,15 @@ function ChatInput({ onSend, disabled = false, isMobile = false, mobileToolbar }
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    // Reset height to auto to get the correct scrollHeight
-    textarea.style.height = "auto";
-    // Set to scrollHeight, but cap at max height (4 lines ~= 96px)
+    // Reset height to measure content
+    textarea.style.height = "0";
+    // Get the scroll height and set it, capped at max (4 lines ~= 96px)
     const maxHeight = 96;
-    textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+    const minHeight = 36;
+    const newHeight = Math.max(minHeight, Math.min(textarea.scrollHeight, maxHeight));
+    textarea.style.height = `${newHeight}px`;
+    // Show scrollbar only when content exceeds max height
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
   }, []);
 
   // Adjust height when value changes (mobile only)
@@ -178,7 +182,7 @@ function ChatInput({ onSend, disabled = false, isMobile = false, mobileToolbar }
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            className="min-h-[36px] max-h-24 flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm leading-5 text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            className="min-h-[36px] max-h-24 flex-1 resize-none overflow-hidden rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm leading-5 text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
             placeholder={t("game.inputPlaceholder")}
             disabled={disabled}
           />
