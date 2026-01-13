@@ -112,6 +112,9 @@ class GMAgent(BaseAgent):
             )
 
         # Check if GM can respond directly
+        needs_check = False
+        dice_check = None
+
         if agent_dispatch_plan.get("can_respond_directly", False):
             narrative = agent_dispatch_plan.get("direct_response", "")
             agents_to_call = []
@@ -122,6 +125,7 @@ class GMAgent(BaseAgent):
             context_slices = agent_dispatch_plan.get("context_slices", {})
 
             agent_results = []
+
             for agent_name in agents_to_call:
                 if agent_name in self.sub_agents:
                     if self.status_callback:
@@ -129,7 +133,6 @@ class GMAgent(BaseAgent):
                     agent = self.sub_agents[agent_name]
                     context = context_slices.get(agent_name, {})
 
-                    # Call sub-agent
                     result = await agent.ainvoke(context)
                     agent_results.append(
                         {
@@ -137,6 +140,11 @@ class GMAgent(BaseAgent):
                             "result": result,
                         }
                     )
+
+                    if agent_name == "rule" and result.metadata.get("needs_check"):
+                        needs_check = True
+                        dice_check = result.metadata.get("dice_check")
+                        break
                 else:
                     agent_results.append(
                         {
@@ -152,17 +160,6 @@ class GMAgent(BaseAgent):
                 agent_results,
                 lang,
             )
-
-        # Extract dice check info from Rule Agent if present
-        needs_check = False
-        dice_check = None
-        for agent_result in agent_results:
-            if agent_result.get("agent") == "rule" and "result" in agent_result:
-                rule_result = agent_result["result"]
-                if rule_result.metadata.get("needs_check"):
-                    needs_check = True
-                    dice_check = rule_result.metadata.get("dice_check")
-                    break
 
         # Handle scene transition if target_location is specified
         target_location = agent_dispatch_plan.get("target_location")
