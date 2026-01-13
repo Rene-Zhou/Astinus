@@ -22,8 +22,12 @@ cn:
     玩家行动：{{ action }}
     {% if argument %}玩家论证：{{ argument }}{% endif %}
 
+    【思维链原则】：
+    必须先写出推理过程（reasoning），再根据推理结果判定是否需要检定以及如何应用修正。
+
     请以 JSON 格式返回判定结果：
     {
+      "reasoning": "你的推理过程：分析行动难度、评估风险、检查负面标签影响、判断是否合理论证、最终结论",
       "needs_check": true/false,
       "check_request": {
         "intention": "行动意图的简短描述",
@@ -36,8 +40,7 @@ cn:
           "cn": "为什么有这些修正",
           "en": "Why these modifiers apply"
         }
-      },
-      "reasoning": "你的推理过程"
+      }
     }
 
 en:
@@ -61,8 +64,12 @@ en:
     Player action: {{ action }}
     {% if argument %}Player argument: {{ argument }}{% endif %}
 
+    【Chain of Thought Principle】:
+    You MUST write your reasoning process FIRST, then determine if a check is needed based on that reasoning.
+
     Return judgment as JSON:
     {
+      "reasoning": "Your reasoning: analyze action difficulty, evaluate risk, check negative tags impact, judge if argument is reasonable, final conclusion",
       "needs_check": true/false,
       "check_request": {
         "intention": "Brief description of action intent",
@@ -75,6 +82,5 @@ en:
           "cn": "为什么有这些修正",
           "en": "Why these modifiers apply"
         }
-      },
-      "reasoning": "Your reasoning process"
+      }
     }

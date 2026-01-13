@@ -120,7 +120,12 @@ cn:
     2. 是否需要调用 Agent 获取更多信息？
     3. 叙事中是否包含 ID 或未知名字？
     4. NPC 已经在本次循环中回应过了吗？如果是，不要再调用 Rule Agent！
-    
+
+    **思维链原则（重要）**：
+    - 必须先写出推理过程（reasoning），再根据推理结果决定行动或生成叙事
+    - Reasoning 字段应该出现在 JSON 的第一位，用于指导后续决策
+    - 推理过程应该包含：对玩家意图的分析、当前信息是否充分、为什么选择这个行动
+
     **NPC 调用规则**：
     - NPC Agent 名称格式为 `npc_{id}`
     - 你不能直接扮演 NPC，必须通过 CALL_AGENT 获取回应
@@ -134,20 +139,20 @@ cn:
     如果直接输出叙事：
     {
       "action": "RESPOND",
+      "reasoning": "你的推理过程：分析玩家意图、评估信息充分性、说明为什么可以直接输出",
       "narrative": "你的叙事描述",
-      "target_location": "如果是移动，填写目标位置ID，否则为null",
-      "reasoning": "为什么可以直接输出"
+      "target_location": "如果是移动，填写目标位置ID，否则为null"
     }
 
     如果需要调用子Agent：
     {
       "action": "CALL_AGENT",
+      "reasoning": "你的推理过程：分析玩家意图、说明为什么需要调用这个agent、需要获取什么信息",
       "agent_name": "rule 或 npc_{id} 或 lore",
       "agent_context": {
         "player_input": "传递给agent的玩家输入",
         "interaction_type": "talk/act/query 等"
-      },
-      "reasoning": "为什么需要调用这个agent"
+      }
     }
 
     【关于需要骰子检定的判断】
@@ -271,7 +276,12 @@ en:
     2. Do I need to call an Agent for more info?
     3. Does narrative contain IDs or unknown names?
     4. Has NPC already responded in this cycle? If yes, do NOT call Rule Agent again!
-    
+
+    **Chain of Thought Principle (IMPORTANT)**:
+    - You MUST write your reasoning process FIRST, then decide on action or generate narrative based on that reasoning
+    - The reasoning field should appear FIRST in the JSON, guiding subsequent decisions
+    - Your reasoning should include: analysis of player intent, evaluation of information sufficiency, and why this action was chosen
+
     **NPC Invocation Rules**:
     - NPC Agent names follow format `npc_{id}`
     - You CANNOT roleplay NPCs, must use CALL_AGENT
@@ -285,20 +295,20 @@ en:
     If outputting narrative directly:
     {
       "action": "RESPOND",
+      "reasoning": "Your reasoning: analyze player intent, evaluate information sufficiency, explain why you can output directly",
       "narrative": "your narrative description",
-      "target_location": "target location ID if moving, else null",
-      "reasoning": "why you can output directly"
+      "target_location": "target location ID if moving, else null"
     }
 
     If calling sub-agent:
     {
       "action": "CALL_AGENT",
+      "reasoning": "Your reasoning: analyze player intent, explain why you need this agent, what information you need to obtain",
       "agent_name": "rule or npc_{id} or lore",
       "agent_context": {
         "player_input": "input to pass to agent",
         "interaction_type": "talk/act/query etc"
-      },
-      "reasoning": "why you need this agent"
+      }
     }
 
     【About Dice Check Determination】
