@@ -608,30 +608,15 @@ class TestDiceCheckIntegration:
         assert display_en["explanation"] == "Standard search check"
 
     @pytest.mark.asyncio
-    async def test_dice_result_processing_with_rule_agent(self):
-        """Test that dice result is processed through Rule Agent for narrative."""
-        from src.backend.api.websockets import _generate_fallback_narrative, _handle_dice_result
+    async def test_dice_result_processing_with_gm_resume(self):
+        """Test that dice result is processed through GM resume_after_dice."""
+        from src.backend.api.websockets import _handle_dice_result
 
-        # Create mock GM agent with Rule Agent
-        mock_rule_agent = AsyncMock()
-        mock_rule_agent.process_result = AsyncMock(
-            return_value=AgentResponse(
-                content="你迅速地翻越障碍物，成功逃出了房间。门在身后砰然关上。",
-                metadata={
-                    "agent": "rule_agent",
-                    "narrative": "你迅速地翻越障碍物，成功逃出了房间。",
-                    "outcome_type": "success",
-                    "consequences": [],
-                    "suggested_tags": [],
-                },
-                success=True,
-            )
-        )
-
-        # Create mock game state (no need for real PlayerCharacter)
+        # Create mock game state
         mock_game_state = MagicMock()
         mock_game_state.current_location = "test_room"
         mock_game_state.active_npc_ids = []
+        mock_game_state.language = "cn"
         mock_game_state.temp_context = {
             "pending_dice_check": {
                 "intention": "逃离房间",
@@ -640,12 +625,23 @@ class TestDiceCheckIntegration:
             }
         }
         mock_game_state.set_phase = MagicMock()
-        mock_game_state.add_message = MagicMock()
+        mock_game_state.current_phase = MagicMock()
+        mock_game_state.current_phase.value = "waiting_input"
+        mock_game_state.last_check_result = None
 
-        # Create mock GM agent
+        # Create mock GM agent with resume_after_dice
         mock_gm_agent = MagicMock()
         mock_gm_agent.game_state = mock_game_state
-        mock_gm_agent.sub_agents = {"rule": mock_rule_agent}
+        mock_gm_agent.resume_after_dice = AsyncMock(
+            return_value=AgentResponse(
+                content="你迅速地翻越障碍物，成功逃出了房间。门在身后砰然关上。",
+                metadata={
+                    "agent": "gm_agent",
+                    "needs_check": False,
+                },
+                success=True,
+            )
+        )
 
         # Create mock connection manager
         with patch("src.backend.api.websockets.manager") as mock_manager:
@@ -664,15 +660,15 @@ class TestDiceCheckIntegration:
 
             await _handle_dice_result("test-session", dice_data, mock_gm_agent)
 
-            # Verify Rule Agent was called
-            mock_rule_agent.process_result.assert_called_once()
-            call_args = mock_rule_agent.process_result.call_args
+            # Verify GM resume_after_dice was called
+            mock_gm_agent.resume_after_dice.assert_called_once()
+            call_kwargs = mock_gm_agent.resume_after_dice.call_args.kwargs
 
-            # Verify result_data was passed correctly
-            result_data = call_args.kwargs.get("result_data") or call_args[1].get("result_data")
-            assert result_data["intention"] == "逃离房间"
-            assert result_data["total"] == 8
-            assert result_data["success"] is True
+            # Verify dice_result was passed correctly
+            dice_result = call_kwargs["dice_result"]
+            assert dice_result["intention"] == "逃离房间"
+            assert dice_result["total"] == 8
+            assert dice_result["success"] is True
 
             # Verify complete message was sent with narrative
             mock_manager.send_complete.assert_called_once()

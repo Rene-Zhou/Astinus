@@ -174,6 +174,9 @@ class GameConfig(BaseModel):
     conversation_history_length: int = Field(
         default=5, ge=0, le=20, description="Number of recent messages to include in GM context"
     )
+    gm_max_iterations: int = Field(
+        default=5, ge=1, le=10, description="Maximum ReAct loop iterations for GM Agent"
+    )
 
 
 class FrontendConfig(BaseModel):

@@ -123,12 +123,12 @@ class TestAgentPipeline:
             game_state=sample_game_state,
         )
 
-        # Mock GM LLM response
+        # Mock GM LLM response - ReAct loop calls rule agent
         mock_llm.ainvoke.return_value = AIMessage(
             content="""{
-                "player_intent": "search",
-                "agents_to_call": ["rule"],
-                "context_slices": {},
+                "action": "CALL_AGENT",
+                "agent_name": "rule",
+                "agent_context": {},
                 "reasoning": "翻找需要规则判定"
             }"""
         )
@@ -174,19 +174,23 @@ class TestAgentPipeline:
         )
 
         # Mock GM LLM responses:
-        # 1st call: _parse_intent_and_plan
-        # 2nd call: _synthesize_response
+        # 1st call: ReAct decides to call NPC agent
+        # 2nd call: ReAct RESPOND with narrative after NPC result
         mock_llm.ainvoke.side_effect = [
             AIMessage(
                 content="""{
-                    "player_intent": "talk",
-                    "agents_to_call": ["npc_chen_ling"],
-                    "context_slices": {},
+                    "action": "CALL_AGENT",
+                    "agent_name": "npc_chen_ling",
+                    "agent_context": {},
                     "reasoning": "玩家想和陈玲对话"
                 }"""
             ),
             AIMessage(
-                content='你走向陈玲，礼貌地打了个招呼。她推了推眼镜，略显害羞地回应道："你...你好。需要找什么书吗？"'
+                content="""{
+                    "action": "RESPOND",
+                    "narrative": "你走向陈玲，礼貌地打了个招呼。她推了推眼镜，略显害羞地回应道：\\"你...你好。需要找什么书吗？\\"",
+                    "reasoning": "整合NPC响应完成"
+                }"""
             ),
         ]
 
@@ -230,19 +234,32 @@ class TestAgentPipeline:
         )
 
         # Mock GM LLM responses:
-        # 1st call: _parse_intent_and_plan
-        # 2nd call: _synthesize_response
+        # 1st call: ReAct decides to call Rule Agent
+        # 2nd call: ReAct decides to call NPC Agent
+        # 3rd call: ReAct RESPOND with narrative
         mock_llm.ainvoke.side_effect = [
             AIMessage(
                 content="""{
-                    "player_intent": "ask",
-                    "agents_to_call": ["rule", "npc_chen_ling"],
-                    "context_slices": {},
-                    "reasoning": "询问NPC，需要规则判断和NPC回应"
+                    "action": "CALL_AGENT",
+                    "agent_name": "rule",
+                    "agent_context": {},
+                    "reasoning": "询问NPC先检查规则"
                 }"""
             ),
             AIMessage(
-                content='你礼貌地询问古籍区的位置。陈玲微笑着指向楼梯，说道："古籍区在二楼..."'
+                content="""{
+                    "action": "CALL_AGENT",
+                    "agent_name": "npc_chen_ling",
+                    "agent_context": {},
+                    "reasoning": "继续调用NPC Agent"
+                }"""
+            ),
+            AIMessage(
+                content="""{
+                    "action": "RESPOND",
+                    "narrative": "你礼貌地询问古籍区的位置。陈玲微笑着指向楼梯，说道：\\"古籍区在二楼...\\"",
+                    "reasoning": "整合所有响应完成"
+                }"""
             ),
         ]
 
@@ -275,15 +292,24 @@ class TestAgentPipeline:
             game_state=sample_game_state,
         )
 
-        # Mock GM LLM response
-        mock_llm.ainvoke.return_value = AIMessage(
-            content="""{
-                "player_intent": "act",
-                "agents_to_call": ["rule"],
-                "context_slices": {},
-                "reasoning": "需要规则判定"
-            }"""
-        )
+        # Mock GM LLM response - ReAct calls rule agent then responds
+        mock_llm.ainvoke.side_effect = [
+            AIMessage(
+                content="""{
+                    "action": "CALL_AGENT",
+                    "agent_name": "rule",
+                    "agent_context": {},
+                    "reasoning": "需要规则判定"
+                }"""
+            ),
+            AIMessage(
+                content="""{
+                    "action": "RESPOND",
+                    "narrative": "你尝试做某事。",
+                    "reasoning": "规则代理失败后的回退"
+                }"""
+            ),
+        ]
 
         result = await gm_agent.process(
             {
@@ -294,9 +320,8 @@ class TestAgentPipeline:
 
         # GM should still succeed even if sub-agent fails
         assert result.success is True
-        # Agent results should show failure
-        agent_results = result.metadata["agent_results"]
-        assert any(not r["success"] for r in agent_results)
+        # GM still calls rule agent even if it fails
+        assert "rule" in result.metadata.get("agents_called", [])
 
     @pytest.mark.asyncio
     async def test_context_isolation_between_npcs(
@@ -339,9 +364,17 @@ class TestAgentPipeline:
         assert "li_ming" not in str(chen_ling_context.get("npc_data", {}))
 
     @pytest.mark.asyncio
-    async def test_game_state_message_history(self, mock_llm, sample_game_state):
+    async def test_game_state_message_history(self, mock_llm, sample_character):
         """Test that game state correctly tracks message history."""
-        initial_message_count = len(sample_game_state.messages)
+        # Create fresh game state to avoid test pollution
+        fresh_game_state = GameState(
+            session_id="test-session-msg-history",
+            world_pack_id="demo_pack",
+            player=sample_character,
+            current_location="library_main_hall",
+            active_npc_ids=["chen_ling"],
+        )
+        initial_message_count = len(fresh_game_state.messages)
 
         # Create simple mock agent
         mock_agent = AsyncMock()
@@ -353,15 +386,14 @@ class TestAgentPipeline:
         gm_agent = GMAgent(
             llm=mock_llm,
             sub_agents={"rule": mock_agent},
-            game_state=sample_game_state,
+            game_state=fresh_game_state,
         )
 
-        # Mock GM LLM response
+        # Mock GM LLM response - ReAct RESPOND directly
         mock_llm.ainvoke.return_value = AIMessage(
             content="""{
-                "player_intent": "act",
-                "agents_to_call": [],
-                "context_slices": {},
+                "action": "RESPOND",
+                "narrative": "你的动作完成了。",
                 "reasoning": "简单动作"
             }"""
         )
@@ -381,10 +413,10 @@ class TestAgentPipeline:
         )
 
         # Should have added 4 messages (2 player + 2 assistant)
-        assert len(sample_game_state.messages) == initial_message_count + 4
+        assert len(fresh_game_state.messages) == initial_message_count + 4
 
         # Verify message content
-        messages = sample_game_state.messages
+        messages = fresh_game_state.messages
         assert "第一个动作" in messages[-4]["content"]
         assert "第二个动作" in messages[-2]["content"]
 
@@ -401,9 +433,9 @@ class TestAgentPipeline:
 
         mock_llm.ainvoke.return_value = AIMessage(
             content="""{
-                "player_intent": "act",
-                "agents_to_call": [],
-                "context_slices": {}
+                "action": "RESPOND",
+                "narrative": "你的动作完成了。",
+                "reasoning": "简单动作"
             }"""
         )
 

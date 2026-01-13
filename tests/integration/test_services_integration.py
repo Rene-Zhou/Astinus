@@ -79,6 +79,17 @@ class TestWebSocketHandlers:
                 success=True,
             )
         )
+        agent.resume_after_dice = AsyncMock(
+            return_value=AgentResponse(
+                content="检定成功，你完成了行动。",
+                metadata={
+                    "agent": "gm_agent",
+                    "phase": "narrating",
+                    "needs_check": False,
+                },
+                success=True,
+            )
+        )
         return agent
 
     @pytest.fixture
@@ -238,6 +249,9 @@ class TestWebSocketHandlers:
             assert mock_gm_agent.game_state.last_check_result["total"] == 10
             assert mock_gm_agent.game_state.last_check_result["outcome"] == "success"
 
+            # Verify resume_after_dice was called
+            mock_gm_agent.resume_after_dice.assert_called_once()
+
             # Verify phase change and complete messages sent
             calls = mock_websocket.send_json.call_args_list
             phase_sent = any(call[0][0].get("type") == "phase" for call in calls)
@@ -269,11 +283,16 @@ class TestWebSocketHandlers:
 
             await _handle_dice_result(session_id, data, mock_gm_agent)
 
-            # Verify critical narrative was generated
+            # Verify resume_after_dice was called with correct dice_result
+            mock_gm_agent.resume_after_dice.assert_called_once()
+            call_kwargs = mock_gm_agent.resume_after_dice.call_args.kwargs
+            assert call_kwargs["dice_result"]["total"] == 12
+            assert call_kwargs["dice_result"]["outcome"] == "critical"
+
+            # Verify complete message was sent
             calls = mock_websocket.send_json.call_args_list
-            complete_call = next(call for call in calls if call[0][0].get("type") == "complete")
-            content = complete_call[0][0]["data"]["content"]
-            assert "大成功" in content or "12" in content
+            complete_sent = any(call[0][0].get("type") == "complete" for call in calls)
+            assert complete_sent
         finally:
             manager.active_connections = original_active
 
@@ -299,11 +318,16 @@ class TestWebSocketHandlers:
 
             await _handle_dice_result(session_id, data, mock_gm_agent)
 
-            # Verify failure narrative was generated
+            # Verify resume_after_dice was called with correct dice_result
+            mock_gm_agent.resume_after_dice.assert_called_once()
+            call_kwargs = mock_gm_agent.resume_after_dice.call_args.kwargs
+            assert call_kwargs["dice_result"]["total"] == 4
+            assert call_kwargs["dice_result"]["outcome"] == "failure"
+
+            # Verify complete message was sent
             calls = mock_websocket.send_json.call_args_list
-            complete_call = next(call for call in calls if call[0][0].get("type") == "complete")
-            content = complete_call[0][0]["data"]["content"]
-            assert "失败" in content or "4" in content
+            complete_sent = any(call[0][0].get("type") == "complete" for call in calls)
+            assert complete_sent
         finally:
             manager.active_connections = original_active
 
@@ -329,11 +353,16 @@ class TestWebSocketHandlers:
 
             await _handle_dice_result(session_id, data, mock_gm_agent)
 
-            # Verify partial success narrative
+            # Verify resume_after_dice was called with correct dice_result
+            mock_gm_agent.resume_after_dice.assert_called_once()
+            call_kwargs = mock_gm_agent.resume_after_dice.call_args.kwargs
+            assert call_kwargs["dice_result"]["total"] == 7
+            assert call_kwargs["dice_result"]["outcome"] == "partial"
+
+            # Verify complete message was sent
             calls = mock_websocket.send_json.call_args_list
-            complete_call = next(call for call in calls if call[0][0].get("type") == "complete")
-            content = complete_call[0][0]["data"]["content"]
-            assert "部分成功" in content or "代价" in content or "7" in content
+            complete_sent = any(call[0][0].get("type") == "complete" for call in calls)
+            assert complete_sent
         finally:
             manager.active_connections = original_active
 

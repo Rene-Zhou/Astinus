@@ -104,6 +104,9 @@ class GameState(BaseModel):
     last_check_result: dict[str, Any] | None = Field(
         default=None, description="Most recent dice check outcome"
     )
+    react_pending_state: dict[str, Any] | None = Field(
+        default=None, description="Pending ReAct loop state when waiting for dice roll"
+    )
 
     # Settings
     language: str = Field(default="cn", description="Current language (cn/en)")
@@ -243,8 +246,29 @@ class GameState(BaseModel):
             self.next_agent = next_agent
         self.updated_at = datetime.now()
 
+    def save_react_state(
+        self,
+        iteration: int,
+        llm_messages: list[dict[str, Any]],
+        player_input: str,
+        agent_results: list[dict[str, Any]],
+    ) -> None:
+        self.react_pending_state = {
+            "iteration": iteration,
+            "llm_messages": llm_messages,
+            "player_input": player_input,
+            "agent_results": agent_results,
+        }
+        self.updated_at = datetime.now()
+
+    def clear_react_state(self) -> None:
+        self.react_pending_state = None
+        self.updated_at = datetime.now()
+
+    def has_pending_react_state(self) -> bool:
+        return self.react_pending_state is not None
+
     def __repr__(self) -> str:
-        """Developer-friendly representation."""
         return (
             f"GameState(session={self.session_id}, "
             f"player={self.player.name}, "

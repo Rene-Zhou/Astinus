@@ -98,15 +98,12 @@ class TestGMAgent:
     @pytest.mark.asyncio
     async def test_process_simple_input(self, gm_agent, mock_llm):
         """Test processing simple player input."""
-        # Mock LLM response
         mock_llm.ainvoke.return_value = AIMessage(
             content="""{
-                "player_intent": "examine",
-                "agents_to_call": ["rule"],
-                "context_slices": {
-                    "rule": {}
-                },
-                "reasoning": "需要判断是否检定"
+                "action": "RESPOND",
+                "narrative": "你仔细环顾四周，这是一间昏暗的房间。",
+                "target_location": null,
+                "reasoning": "简单观察，可以直接描述"
             }"""
         )
 
@@ -119,8 +116,7 @@ class TestGMAgent:
 
         assert result.success is True
         assert result.content != ""
-        assert result.metadata["player_intent"] == "examine"
-        assert "rule" in result.metadata["agents_called"]
+        assert "房间" in result.content or "环顾" in result.content
 
     @pytest.mark.asyncio
     async def test_process_no_input(self, gm_agent):
@@ -165,8 +161,8 @@ class TestGMAgent:
 
     @pytest.mark.asyncio
     async def test_process_invalid_json_response(self, gm_agent, mock_llm):
-        """Test error handling for invalid JSON from LLM."""
-        mock_llm.ainvoke.return_value = AIMessage(content="invalid json {")
+        """Test handling for invalid JSON from LLM - uses raw response as narrative."""
+        mock_llm.ainvoke.return_value = AIMessage(content="你尝试进行某些操作。")
 
         input_data = {
             "player_input": "测试",
@@ -175,21 +171,36 @@ class TestGMAgent:
 
         result = await gm_agent.process(input_data)
 
-        assert result.success is False
-        assert "Failed to parse" in result.error
+        assert result.success is True
+        assert result.content == "你尝试进行某些操作。"
 
     @pytest.mark.asyncio
     async def test_agent_dispatch_with_missing_agent(self, gm_agent, mock_llm):
         """Test dispatch to non-existent agent."""
-        # Mock LLM response requesting non-existent agent
-        mock_llm.ainvoke.return_value = AIMessage(
-            content="""{
-                "player_intent": "talk",
-                "agents_to_call": ["npc_unknown"],
-                "context_slices": {},
-                "reasoning": "和未知NPC对话"
-            }"""
-        )
+        call_count = 0
+
+        def mock_response(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return AIMessage(
+                    content="""{
+                        "action": "CALL_AGENT",
+                        "agent_name": "npc_unknown",
+                        "agent_context": {"player_input": "我想和某人说话"},
+                        "reasoning": "和未知NPC对话"
+                    }"""
+                )
+            else:
+                return AIMessage(
+                    content="""{
+                        "action": "RESPOND",
+                        "narrative": "你环顾四周，但没有看到任何人。",
+                        "reasoning": "找不到NPC，直接回应"
+                    }"""
+                )
+
+        mock_llm.ainvoke.side_effect = mock_response
 
         input_data = {
             "player_input": "我想和某人说话",
@@ -200,9 +211,6 @@ class TestGMAgent:
 
         assert result.success is True
         assert "npc_unknown" in result.metadata["agents_called"]
-        # Check that error is recorded in results
-        agent_results = result.metadata["agent_results"]
-        assert any(r["agent"] == "npc_unknown" and not r["success"] for r in agent_results)
 
     @pytest.mark.asyncio
     async def test_synthesize_response(self, gm_agent):
@@ -257,9 +265,8 @@ class TestGMAgent:
 
         mock_llm.ainvoke.return_value = AIMessage(
             content="""{
-                "player_intent": "examine",
-                "agents_to_call": [],
-                "context_slices": {},
+                "action": "RESPOND",
+                "narrative": "你环顾四周，看到昏暗的房间。",
                 "reasoning": "简单观察"
             }"""
         )
@@ -271,10 +278,8 @@ class TestGMAgent:
 
         await gm_agent.process(input_data)
 
-        # Check turn incremented
         assert sample_game_state.turn_count == initial_turn + 1
 
-        # Check messages added
         assert len(sample_game_state.messages) >= 2
         assert sample_game_state.messages[-2]["content"] == "查看四周"
         assert sample_game_state.messages[-1]["content"] != ""
@@ -284,9 +289,8 @@ class TestGMAgent:
         """Test synchronous invocation."""
         mock_llm.ainvoke.return_value = AIMessage(
             content="""{
-                "player_intent": "examine",
-                "agents_to_call": [],
-                "context_slices": {},
+                "action": "RESPOND",
+                "narrative": "你环顾四周。",
                 "reasoning": "简单查看"
             }"""
         )
@@ -302,35 +306,56 @@ class TestGMAgent:
         assert result.content != ""
 
     @pytest.mark.asyncio
-    async def test_parse_intent_and_plan(self, gm_agent, mock_llm):
-        """Test intent parsing and planning."""
+    async def test_get_react_action_respond(self, gm_agent, mock_llm):
+        """Test ReAct action parsing for RESPOND."""
         mock_llm.ainvoke.return_value = AIMessage(
             content="""{
-                "player_intent": "move",
-                "agents_to_call": ["rule"],
-                "context_slices": {
-                    "rule": {}
-                },
-                "reasoning": "移动需要规则判定"
+                "action": "RESPOND",
+                "narrative": "你走向门口。",
+                "target_location": null,
+                "reasoning": "简单移动"
             }"""
         )
 
-        plan = await gm_agent._parse_intent_and_plan("走向门口", "cn")
+        from src.backend.agents.gm import GMActionType
+        action = await gm_agent._get_react_action(
+            player_input="走向门口",
+            lang="cn",
+            iteration=0,
+            max_iterations=5,
+            agent_results=[],
+            dice_result=None,
+            force_output=False,
+        )
 
-        assert plan["success"] is True
-        assert plan["player_intent"] == "move"
-        assert "rule" in plan["agents_to_call"]
-        assert "rule" in plan["context_slices"]
+        assert action.action_type == GMActionType.RESPOND
+        assert "走向门口" in action.content or "门口" in action.content
 
     @pytest.mark.asyncio
-    async def test_parse_intent_invalid_json(self, gm_agent, mock_llm):
-        """Test intent parsing with invalid JSON."""
-        mock_llm.ainvoke.return_value = AIMessage(content="not json")
+    async def test_get_react_action_call_agent(self, gm_agent, mock_llm):
+        """Test ReAct action parsing for CALL_AGENT."""
+        mock_llm.ainvoke.return_value = AIMessage(
+            content="""{
+                "action": "CALL_AGENT",
+                "agent_name": "rule",
+                "agent_context": {"player_input": "攻击怪物"},
+                "reasoning": "需要规则判定"
+            }"""
+        )
 
-        plan = await gm_agent._parse_intent_and_plan("测试", "cn")
+        from src.backend.agents.gm import GMActionType
+        action = await gm_agent._get_react_action(
+            player_input="攻击怪物",
+            lang="cn",
+            iteration=0,
+            max_iterations=5,
+            agent_results=[],
+            dice_result=None,
+            force_output=False,
+        )
 
-        assert plan["success"] is False
-        assert "Failed to parse" in plan["error"]
+        assert action.action_type == GMActionType.CALL_AGENT
+        assert action.agent_name == "rule"
 
     @pytest.mark.asyncio
     async def test_slice_context_for_npc_with_world_pack(
@@ -394,7 +419,6 @@ class TestGMAgent:
     @pytest.mark.asyncio
     async def test_process_with_npc_agent(self, mock_llm, sample_game_state):
         """Test processing with NPC agent dispatch."""
-        # Create mock NPC agent
         mock_npc_agent = AsyncMock()
         mock_npc_agent.ainvoke = AsyncMock(
             return_value=AgentResponse(
@@ -406,19 +430,34 @@ class TestGMAgent:
 
         gm_agent = GMAgent(
             llm=mock_llm,
-            sub_agents={"npc_chen_ling": mock_npc_agent},
+            sub_agents={"npc": mock_npc_agent},
             game_state=sample_game_state,
         )
 
-        # Mock LLM to dispatch to NPC agent
-        mock_llm.ainvoke.return_value = AIMessage(
-            content="""{
-                "player_intent": "talk",
-                "agents_to_call": ["npc_chen_ling"],
-                "context_slices": {},
-                "reasoning": "玩家想和陈玲对话"
-            }"""
-        )
+        call_count = 0
+
+        def mock_response(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return AIMessage(
+                    content="""{
+                        "action": "CALL_AGENT",
+                        "agent_name": "npc_chen_ling",
+                        "agent_context": {"player_input": "我想和陈玲说话"},
+                        "reasoning": "玩家想和陈玲对话"
+                    }"""
+                )
+            else:
+                return AIMessage(
+                    content="""{
+                        "action": "RESPOND",
+                        "narrative": "陈玲害羞地回应：'你...你好。有什么事吗？'",
+                        "reasoning": "NPC已回应，可以输出叙事"
+                    }"""
+                )
+
+        mock_llm.ainvoke.side_effect = mock_response
 
         result = await gm_agent.process(
             {
@@ -429,13 +468,11 @@ class TestGMAgent:
 
         assert result.success is True
         assert "npc_chen_ling" in result.metadata["agents_called"]
-        # NPC response should be in narrative
-        assert "你好" in result.content or "陈玲" in result.content or "尝试" in result.content
+        assert "你好" in result.content or "陈玲" in result.content
 
     @pytest.mark.asyncio
     async def test_npc_agent_registration_with_prefix(self, mock_llm, sample_game_state):
         """Test that NPC agents are registered with npc_ prefix format."""
-        # Create mock NPC agent for old_guard
         mock_npc_agent = AsyncMock()
         mock_npc_agent.ainvoke = AsyncMock(
             return_value=AgentResponse(
@@ -445,28 +482,36 @@ class TestGMAgent:
             )
         )
 
-        # Register NPC agent with npc_ prefix format
         gm_agent = GMAgent(
             llm=mock_llm,
-            sub_agents={"npc_old_guard": mock_npc_agent},
+            sub_agents={"npc": mock_npc_agent},
             game_state=sample_game_state,
         )
 
-        # Verify npc_old_guard is in sub_agents
-        assert "npc_old_guard" in gm_agent.sub_agents
+        call_count = 0
 
-        # Mock LLM to dispatch to NPC agent when player uses vague reference
-        mock_llm.ainvoke.return_value = AIMessage(
-            content="""{
-                "player_intent": "talk",
-                "can_respond_directly": false,
-                "agents_to_call": ["npc_old_guard"],
-                "context_slices": {
-                    "npc_old_guard": {"player_input": "你好", "interaction_type": "talk"}
-                },
-                "reasoning": "玩家想和场景中的老人（老王）对话"
-            }"""
-        )
+        def mock_response(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return AIMessage(
+                    content="""{
+                        "action": "CALL_AGENT",
+                        "agent_name": "npc_old_guard",
+                        "agent_context": {"player_input": "你好", "interaction_type": "talk"},
+                        "reasoning": "玩家想和场景中的老人对话"
+                    }"""
+                )
+            else:
+                return AIMessage(
+                    content="""{
+                        "action": "RESPOND",
+                        "narrative": "老人缓缓抬起头，用沙哑的声音说道：'你想知道什么？'",
+                        "reasoning": "NPC已回应"
+                    }"""
+                )
+
+        mock_llm.ainvoke.side_effect = mock_response
 
         result = await gm_agent.process(
             {
@@ -477,7 +522,6 @@ class TestGMAgent:
 
         assert result.success is True
         assert "npc_old_guard" in result.metadata["agents_called"]
-        # Verify NPC agent was actually called
         mock_npc_agent.ainvoke.assert_called_once()
 
 

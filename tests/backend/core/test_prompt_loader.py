@@ -340,10 +340,17 @@ class TestRealPromptTemplates:
 
         result = template.render(
             "cn",
+            region_name="幽暗区域",
+            region_tone="阴郁",
+            atmosphere_keywords=["黑暗", "神秘"],
             current_location="暗室",
             location_description="这是一间黑暗的房间，四周弥漫着灰尘。",
-            location_items=["蜡烛", "书桌"],
+            location_atmosphere="压抑",
+            visible_items=["蜡烛", "书桌"],
+            hidden_items_hints="",
             connected_locations=["大厅", "走廊"],
+            basic_lore=[],
+            atmosphere_guidance="",
             active_npcs_details=[
                 {"id": "chen_ling", "name": "陈玲", "brief": "一位年轻的研究员"},
                 {"id": "li_ming", "name": "李明", "brief": "神秘的老人"},
@@ -351,7 +358,13 @@ class TestRealPromptTemplates:
             world_background="幽暗庄园的故事背景...",
             game_phase="等待输入",
             turn_count=5,
+            current_iteration=1,
+            max_iterations=5,
+            conversation_history=[],
             player_input="我要查看房间",
+            agent_results=None,
+            dice_result=None,
+            force_output=False,
         )
 
         assert "GM" in result

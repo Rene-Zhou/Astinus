@@ -385,15 +385,6 @@ async def _handle_dice_result(
     data: dict[str, Any],
     gm_agent,
 ) -> None:
-    """
-    Handle dice result message from client.
-
-    Args:
-        session_id: Game session ID
-        data: Message data containing dice result
-        gm_agent: GM Agent instance
-    """
-    # Extract dice result - support both 'result' and 'total' field names
     result = data.get("result") or data.get("total")
     all_rolls = data.get("all_rolls", [])
     kept_rolls = data.get("kept_rolls", [])
@@ -403,122 +394,71 @@ async def _handle_dice_result(
         await manager.send_error(session_id, "dice result is required")
         return
 
-    # Store dice result in game state
+    pending_check = gm_agent.game_state.temp_context.get("pending_dice_check", {})
+    intention = pending_check.get("intention", "action")
+
     dice_result = {
         "total": result,
         "all_rolls": all_rolls,
         "kept_rolls": kept_rolls,
         "outcome": outcome,
+        "intention": intention,
+        "success": outcome in ("success", "partial", "critical"),
+        "is_partial": outcome == "partial",
+        "critical": outcome == "critical",
     }
     gm_agent.game_state.last_check_result = dice_result
+    gm_agent.game_state.temp_context.pop("pending_dice_check", None)
 
-    # Send status update
     await manager.send_status(
         session_id,
-        phase="narrating",
-        message="Generating narrative based on roll...",
+        phase="processing",
+        message="Processing dice result...",
     )
 
     from src.backend.models.game_state import GamePhase
+    gm_agent.game_state.set_phase(GamePhase.PROCESSING)
+    await manager.send_phase_change(session_id, "processing")
 
-    gm_agent.game_state.set_phase(GamePhase.NARRATING)
-    await manager.send_phase_change(session_id, "narrating")
+    lang = gm_agent.game_state.language
 
-    # Get the pending dice check context from temp_context
-    pending_check = gm_agent.game_state.temp_context.get("pending_dice_check", {})
-    intention = pending_check.get("intention", "行动")
-    influencing_factors = pending_check.get("influencing_factors", {})
-    dice_formula = pending_check.get("dice_formula", "2d6")
+    try:
+        gm_response = await gm_agent.resume_after_dice(
+            dice_result=dice_result,
+            lang=lang,
+        )
+    except Exception as exc:
+        await manager.send_error(session_id, f"Processing failed: {exc}")
+        gm_agent.game_state.set_phase(GamePhase.WAITING_INPUT)
+        await manager.send_phase_change(session_id, "waiting_input")
+        return
 
-    # Determine success based on outcome
-    # In PbtA: partial (7-9) is success with cost, so it counts as success
-    success = outcome in ("success", "partial", "critical")
-    critical = outcome == "critical"
-    is_partial = outcome == "partial"
+    phase = gm_agent.game_state.current_phase.value
+    await manager.send_phase_change(session_id, phase)
 
-    # Build result data for Rule Agent
-    result_data = {
-        "intention": intention,
-        "dice_formula": dice_formula,
-        "dice_values": all_rolls,
-        "total": result,
-        "threshold": 7,  # Standard PbtA threshold
-        "success": success,
-        "critical": critical,
-        "is_partial": is_partial,
-        "modifiers": [],
-    }
+    if gm_response.metadata.get("needs_check") and gm_response.metadata.get("dice_check"):
+        dice_check = gm_response.metadata["dice_check"]
+        gm_agent.game_state.temp_context["pending_dice_check"] = dice_check
+        gm_agent.game_state.set_phase(GamePhase.DICE_CHECK)
+        await manager.send_phase_change(session_id, "dice_check")
+        await manager.send_dice_check(session_id, check_request=dice_check)
+        return
 
-    # Add modifiers from influencing factors
-    if influencing_factors.get("traits"):
-        for trait in influencing_factors["traits"]:
-            result_data["modifiers"].append(
-                {
-                    "source": trait,
-                    "effect": "优势" if "kh" in dice_formula else "正面特质",
-                }
-            )
-    if influencing_factors.get("tags"):
-        for tag in influencing_factors["tags"]:
-            result_data["modifiers"].append(
-                {
-                    "source": tag,
-                    "effect": "劣势" if "kl" in dice_formula else "负面状态",
-                }
-            )
-
-    # Build scene context
-    scene_context = {
-        "location": gm_agent.game_state.current_location,
-        "nearby_npcs": gm_agent.game_state.active_npc_ids,
-    }
-
-    # Try to get Rule Agent and process the result
-    narrative = ""
+    narrative = gm_response.content
     response_metadata = {
         "dice_result": dice_result,
         "phase": "narrating",
     }
+    response_metadata.update(gm_response.metadata)
 
-    rule_agent = gm_agent.sub_agents.get("rule")
-    if rule_agent:
-        try:
-            # Call Rule Agent's process_result method
-            rule_response = await rule_agent.process_result(
-                result_data=result_data,
-                context=scene_context,
-            )
-
-            if rule_response.success and rule_response.content:
-                narrative = rule_response.content
-                # Merge Rule Agent metadata
-                response_metadata.update(rule_response.metadata)
-            else:
-                # Fallback if Rule Agent fails
-                narrative = _generate_fallback_narrative(result, outcome)
-        except Exception as exc:
-            # Log error and use fallback
-            print(f"Rule Agent process_result failed: {exc}")
-            narrative = _generate_fallback_narrative(result, outcome)
-    else:
-        # No Rule Agent available, use fallback
-        narrative = _generate_fallback_narrative(result, outcome)
-
-    # Clear the pending dice check from temp_context
-    gm_agent.game_state.temp_context.pop("pending_dice_check", None)
-
-    # Add the narrative to game state messages
-    gm_agent.game_state.add_message(
-        role="assistant",
-        content=narrative,
-        metadata={"phase": "dice_result_narrative", "dice_result": dice_result},
-    )
-
-    # Stream content if substantial
     if len(narrative) > 50:
+        await manager.send_status(
+            session_id,
+            phase="narrating",
+            message="Generating narrative...",
+        )
         await stream_content(session_id, narrative)
 
-    # Send complete response
     await manager.send_complete(
         session_id,
         content=narrative,
@@ -526,7 +466,6 @@ async def _handle_dice_result(
         success=True,
     )
 
-    # Return to waiting_input phase after completing dice result narrative
     gm_agent.game_state.set_phase(GamePhase.WAITING_INPUT)
     await manager.send_phase_change(session_id, "waiting_input")
 

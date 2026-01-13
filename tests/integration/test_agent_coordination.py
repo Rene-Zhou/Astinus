@@ -78,16 +78,14 @@ class TestAgentCoordination:
         )
 
         # Mock LLM responses
-        # First call: GM parses intent and decides to call Rule Agent
+        # First call: GM ReAct loop decides to call Rule Agent
         # Second call: Rule Agent judges the action
         mock_llm.ainvoke.side_effect = [
             AIMessage(
                 content="""{
-                    "player_intent": "escape",
-                    "agents_to_call": ["rule"],
-                    "context_slices": {
-                        "rule": {}
-                    },
+                    "action": "CALL_AGENT",
+                    "agent_name": "rule",
+                    "agent_context": {},
                     "reasoning": "逃离房间需要检定"
                 }"""
             ),
@@ -120,10 +118,13 @@ class TestAgentCoordination:
         # Verify coordination
         assert result.success is True
         assert "rule" in result.metadata["agents_called"]
+        # When dice check is needed, GM pauses in DICE_CHECK phase
+        assert result.metadata.get("needs_check") is True
+        assert result.metadata.get("dice_check") is not None
 
-        # Check that game state was updated
-        assert sample_game_state.turn_count == 1
-        assert len(sample_game_state.messages) == 2
+        # Check that player message was added (GM stops before incrementing turn)
+        assert len(sample_game_state.messages) >= 1
+        assert sample_game_state.messages[0]["role"] == "player"
 
     @pytest.mark.asyncio
     async def test_rule_agent_judges_action(self, mock_llm):
@@ -181,12 +182,13 @@ class TestAgentCoordination:
 
         # Mock LLM responses
         mock_llm.ainvoke.side_effect = [
-            # GM decides to call Rule Agent
+            # GM ReAct decides to call Rule Agent
             AIMessage(
                 content="""{
-                    "player_intent": "examine",
-                    "agents_to_call": ["rule"],
-                    "context_slices": {}
+                    "action": "CALL_AGENT",
+                    "agent_name": "rule",
+                    "agent_context": {},
+                    "reasoning": "查看房间需要规则判定"
                 }"""
             ),
             # Rule Agent says no check needed
@@ -194,6 +196,14 @@ class TestAgentCoordination:
                 content="""{
                     "needs_check": false,
                     "reasoning": "查看房间不需要检定"
+                }"""
+            ),
+            # GM ReAct responds with narrative after rule result
+            AIMessage(
+                content="""{
+                    "action": "RESPOND",
+                    "narrative": "你仔细查看了房间。",
+                    "reasoning": "简单行动完成"
                 }"""
             ),
         ]
@@ -220,13 +230,21 @@ class TestAgentCoordination:
         mock_llm.ainvoke.side_effect = [
             AIMessage(
                 content="""{
-                    "player_intent": "examine",
-                    "agents_to_call": ["rule"],
-                    "context_slices": {}
+                    "action": "CALL_AGENT",
+                    "agent_name": "rule",
+                    "agent_context": {},
+                    "reasoning": "需要规则判定"
                 }"""
             ),
             AIMessage(
                 content='{"needs_check": false, "reasoning": "简单查看"}'
+            ),
+            AIMessage(
+                content="""{
+                    "action": "RESPOND",
+                    "narrative": "你查看了四周。",
+                    "reasoning": "简单行动完成"
+                }"""
             ),
         ]
 
@@ -263,13 +281,21 @@ class TestAgentCoordination:
         mock_llm.ainvoke.side_effect = [
             AIMessage(
                 content="""{
-                    "player_intent": "talk",
-                    "agents_to_call": ["rule"],
-                    "context_slices": {}
+                    "action": "CALL_AGENT",
+                    "agent_name": "rule",
+                    "agent_context": {},
+                    "reasoning": "对话需要规则判定"
                 }"""
             ),
             AIMessage(
                 content='{"needs_check": false, "reasoning": "对话"}'
+            ),
+            AIMessage(
+                content="""{
+                    "action": "RESPOND",
+                    "narrative": "你和陈玲说话。",
+                    "reasoning": "对话完成"
+                }"""
             ),
         ]
 
@@ -306,13 +332,22 @@ class TestAgentCoordination:
         mock_llm.ainvoke.side_effect = [
             AIMessage(
                 content="""{
-                    "player_intent": "act",
-                    "agents_to_call": ["rule"],
-                    "context_slices": {}
+                    "action": "CALL_AGENT",
+                    "agent_name": "rule",
+                    "agent_context": {},
+                    "reasoning": "需要规则判定"
                 }"""
             ),
             # Rule Agent returns invalid JSON
             AIMessage(content="invalid json {"),
+            # GM falls back to RESPOND after rule agent failure
+            AIMessage(
+                content="""{
+                    "action": "RESPOND",
+                    "narrative": "你尝试执行复杂行动。",
+                    "reasoning": "规则代理失败后的回退"
+                }"""
+            ),
         ]
 
         result = await gm_agent.process({
@@ -320,13 +355,10 @@ class TestAgentCoordination:
             "lang": "cn",
         })
 
-        # GM should handle the error gracefully
-        assert result.success is True  # GM succeeded in orchestration
-        # But the Rule Agent result should show failure
-        assert any(
-            not r["success"]
-            for r in result.metadata["agent_results"]
-        )
+        # GM should handle the error gracefully and still produce output
+        assert result.success is True
+        # GM still calls rule agent even if it fails
+        assert "rule" in result.metadata.get("agents_called", [])
 
     @pytest.mark.asyncio
     async def test_sync_and_async_consistency(self, mock_llm, sample_game_state):
@@ -338,17 +370,25 @@ class TestAgentCoordination:
             game_state=sample_game_state,
         )
 
-        # Mock responses
+        # Mock responses for first call
         mock_llm.ainvoke.side_effect = [
             AIMessage(
                 content="""{
-                    "player_intent": "examine",
-                    "agents_to_call": ["rule"],
-                    "context_slices": {}
+                    "action": "CALL_AGENT",
+                    "agent_name": "rule",
+                    "agent_context": {},
+                    "reasoning": "需要规则判定"
                 }"""
             ),
             AIMessage(
                 content='{"needs_check": false, "reasoning": "检查"}'
+            ),
+            AIMessage(
+                content="""{
+                    "action": "RESPOND",
+                    "narrative": "你检查了周围。",
+                    "reasoning": "检查完成"
+                }"""
             ),
         ]
 
@@ -358,17 +398,25 @@ class TestAgentCoordination:
             "lang": "cn",
         })
 
-        # Reset mock
+        # Reset mock for second call
         mock_llm.ainvoke.side_effect = [
             AIMessage(
                 content="""{
-                    "player_intent": "examine",
-                    "agents_to_call": ["rule"],
-                    "context_slices": {}
+                    "action": "CALL_AGENT",
+                    "agent_name": "rule",
+                    "agent_context": {},
+                    "reasoning": "需要规则判定"
                 }"""
             ),
             AIMessage(
                 content='{"needs_check": false, "reasoning": "检查"}'
+            ),
+            AIMessage(
+                content="""{
+                    "action": "RESPOND",
+                    "narrative": "你检查了周围。",
+                    "reasoning": "检查完成"
+                }"""
             ),
         ]
 

@@ -1,23 +1,28 @@
-"""
-GM Agent - Central orchestrator for the game.
+"""GM Agent - Central orchestrator using ReAct loop for multi-agent coordination."""
 
-The GM Agent is the center of the star topology, responsible for:
-- Parsing player intent
-- Deciding which sub-agents to call
-- Preparing context slices for sub-agents
-- Synthesizing sub-agent responses
-
-Ported from weave's Orchestrator, adapted for:
-- LangChain Runnable interface
-- Context slicing to prevent information leakage
-- Multi-agent coordination
-"""
-
+from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Callable, Awaitable
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from src.backend.agents.base import AgentResponse, BaseAgent
+
+
+class GMActionType(str, Enum):
+    RESPOND = "RESPOND"
+    CALL_AGENT = "CALL_AGENT"
+    WAIT_DICE = "WAIT_DICE"
+
+
+@dataclass
+class GMAction:
+    action_type: GMActionType
+    content: str = ""
+    agent_name: str | None = None
+    agent_context: dict[str, Any] = field(default_factory=dict)
+    dice_check: dict[str, Any] | None = None
+    reasoning: str = ""
 
 StatusCallback = Callable[[str, str | None], Awaitable[None]]
 from src.backend.core.config import get_settings
@@ -72,18 +77,6 @@ class GMAgent(BaseAgent):
         self.status_callback: StatusCallback | None = None
 
     async def process(self, input_data: dict[str, Any]) -> AgentResponse:
-        """
-        Process player input and orchestrate sub-agents.
-
-        Args:
-            input_data: Must contain:
-                - player_input: Player's action/description
-                - lang: Language code (cn/en)
-
-        Returns:
-            AgentResponse with orchestration results and narrative
-        """
-        # Extract input
         player_input = input_data.get("player_input", "")
         lang = input_data.get("lang", "cn")
 
@@ -98,115 +91,399 @@ class GMAgent(BaseAgent):
         if self.status_callback:
             await self.status_callback("gm", None)
 
-        # Add player message BEFORE _parse_intent_and_plan so conversation history includes current input
         self.game_state.add_message(role="player", content=player_input)
 
-        agent_dispatch_plan = await self._parse_intent_and_plan(player_input, lang)
+        return await self._run_react_loop(
+            player_input=player_input,
+            lang=lang,
+            iteration=0,
+            agent_results=[],
+            dice_result=None,
+        )
 
-        if not agent_dispatch_plan["success"]:
+    async def resume_after_dice(
+        self,
+        dice_result: dict[str, Any],
+        lang: str = "cn",
+    ) -> AgentResponse:
+        pending_state = self.game_state.react_pending_state
+        if not pending_state:
             return AgentResponse(
                 content="",
                 success=False,
-                error=agent_dispatch_plan["error"],
+                error="No pending ReAct state to resume",
                 metadata={"agent": self.agent_name},
             )
 
-        # Check if GM can respond directly
-        needs_check = False
-        dice_check = None
+        player_input = pending_state["player_input"]
+        iteration = pending_state["iteration"]
+        agent_results = pending_state["agent_results"]
 
-        if agent_dispatch_plan.get("can_respond_directly", False):
-            narrative = agent_dispatch_plan.get("direct_response", "")
-            agents_to_call = []
-            agent_results = []
-        else:
-            # Execute agent dispatch plan
-            agents_to_call = agent_dispatch_plan.get("agents_to_call", [])
-            context_slices = agent_dispatch_plan.get("context_slices", {})
+        self.game_state.clear_react_state()
 
-            agent_results = []
+        return await self._run_react_loop(
+            player_input=player_input,
+            lang=lang,
+            iteration=iteration,
+            agent_results=agent_results,
+            dice_result=dice_result,
+        )
 
-            for agent_name in agents_to_call:
-                if agent_name in self.sub_agents:
-                    if self.status_callback:
-                        await self.status_callback(agent_name, None)
-                    agent = self.sub_agents[agent_name]
-                    context = context_slices.get(agent_name, {})
+    async def _run_react_loop(
+        self,
+        player_input: str,
+        lang: str,
+        iteration: int,
+        agent_results: list[dict[str, Any]],
+        dice_result: dict[str, Any] | None,
+    ) -> AgentResponse:
+        logger = get_game_logger()
+        max_iterations = get_settings().game.gm_max_iterations
+        agents_called: list[str] = []
 
-                    result = await agent.ainvoke(context)
-                    agent_results.append(
-                        {
-                            "agent": agent_name,
-                            "result": result,
-                        }
-                    )
+        while iteration < max_iterations:
+            force_output = iteration >= max_iterations - 1
 
-                    if agent_name == "rule" and result.metadata.get("needs_check"):
-                        needs_check = True
-                        dice_check = result.metadata.get("dice_check")
-                        break
-                else:
-                    agent_results.append(
-                        {
-                            "agent": agent_name,
-                            "error": f"Agent not found: {agent_name}",
-                        }
-                    )
-
-            # Synthesize responses into narrative
-            narrative = await self._synthesize_response(
-                player_input,
-                agent_dispatch_plan["player_intent"],
-                agent_results,
-                lang,
+            action = await self._get_react_action(
+                player_input=player_input,
+                lang=lang,
+                iteration=iteration,
+                max_iterations=max_iterations,
+                agent_results=agent_results,
+                dice_result=dice_result,
+                force_output=force_output,
             )
 
-        # Handle scene transition if target_location is specified
-        target_location = agent_dispatch_plan.get("target_location")
-        if target_location and agent_dispatch_plan.get("player_intent") == "move":
-            self._handle_scene_transition(target_location)
+            if action.action_type == GMActionType.RESPOND:
+                return self._finalize_response(
+                    narrative=action.content,
+                    player_input=player_input,
+                    agents_called=agents_called,
+                    target_location=action.agent_context.get("target_location"),
+                    logger=logger,
+                )
+
+            elif action.action_type == GMActionType.CALL_AGENT:
+                agent_name = action.agent_name
+                if not agent_name:
+                    iteration += 1
+                    continue
+
+                agents_called.append(agent_name)
+
+                if self.status_callback:
+                    await self.status_callback(agent_name, None)
+
+                agent_context = self._prepare_agent_context(
+                    agent_name=agent_name,
+                    player_input=player_input,
+                    lang=lang,
+                    provided_context=action.agent_context,
+                )
+
+                result = await self._invoke_sub_agent(agent_name, agent_context)
+                agent_results.append({
+                    "agent": agent_name,
+                    "content": result.content if result.success else "",
+                    "metadata": result.metadata,
+                    "success": result.success,
+                })
+
+                if agent_name == "rule" and result.metadata.get("needs_check"):
+                    dice_check = result.metadata.get("dice_check", {})
+                    narrative = await self._generate_pre_check_narrative(
+                        player_input, agent_results, lang
+                    )
+
+                    self.game_state.save_react_state(
+                        iteration=iteration + 1,
+                        llm_messages=[],
+                        player_input=player_input,
+                        agent_results=agent_results,
+                    )
+
+                    from src.backend.models.game_state import GamePhase
+                    self.game_state.set_phase(GamePhase.DICE_CHECK)
+
+                    return AgentResponse(
+                        content=narrative,
+                        success=True,
+                        metadata={
+                            "agent": self.agent_name,
+                            "needs_check": True,
+                            "dice_check": dice_check,
+                            "agents_called": agents_called,
+                        },
+                    )
+
+                dice_result = None
+                iteration += 1
+
+            elif action.action_type == GMActionType.WAIT_DICE:
+                dice_check = action.dice_check or {}
+                narrative = action.content
+
+                self.game_state.save_react_state(
+                    iteration=iteration + 1,
+                    llm_messages=[],
+                    player_input=player_input,
+                    agent_results=agent_results,
+                )
+
+                from src.backend.models.game_state import GamePhase
+                self.game_state.set_phase(GamePhase.DICE_CHECK)
+
+                return AgentResponse(
+                    content=narrative,
+                    success=True,
+                    metadata={
+                        "agent": self.agent_name,
+                        "needs_check": True,
+                        "dice_check": dice_check,
+                        "agents_called": agents_called,
+                    },
+                )
+
+            else:
+                iteration += 1
+
+        fallback_narrative = await self._generate_fallback_narrative(
+            player_input, agent_results, lang
+        )
+        return self._finalize_response(
+            narrative=fallback_narrative,
+            player_input=player_input,
+            agents_called=agents_called,
+            target_location=None,
+            logger=logger,
+        )
+
+    async def _get_react_action(
+        self,
+        player_input: str,
+        lang: str,
+        iteration: int,
+        max_iterations: int,
+        agent_results: list[dict[str, Any]],
+        dice_result: dict[str, Any] | None,
+        force_output: bool,
+    ) -> GMAction:
+        template = self.prompt_loader.get_template("gm_agent")
+        scene_context = self._get_scene_context(lang)
+
+        recent_messages = self.game_state.get_recent_messages(
+            count=get_settings().game.conversation_history_length
+        )
+        conversation_history = [
+            {
+                "turn": msg.get("turn", 0),
+                "role": "玩家" if msg.get("role") == "player" else "GM",
+                "content": msg.get("content", "")[:200],
+            }
+            for msg in recent_messages
+        ]
+
+        formatted_agent_results = [
+            {
+                "agent": r.get("agent", "unknown"),
+                "content": r.get("content", ""),
+                "metadata": str(r.get("metadata", {}))[:200],
+            }
+            for r in agent_results
+        ]
+
+        template_vars = {
+            "region_name": scene_context.get("region_name"),
+            "region_tone": scene_context.get("region_tone"),
+            "atmosphere_keywords": scene_context.get("atmosphere_keywords", []),
+            "current_location": self.game_state.current_location,
+            "location_description": scene_context.get("location_description"),
+            "location_atmosphere": scene_context.get("location_atmosphere"),
+            "visible_items": scene_context.get("visible_items", []),
+            "hidden_items_hints": scene_context.get("hidden_items_hints"),
+            "connected_locations": scene_context.get("connected_locations", []),
+            "basic_lore": scene_context.get("basic_lore", []),
+            "atmosphere_guidance": scene_context.get("atmosphere_guidance"),
+            "active_npcs_details": scene_context.get("active_npcs_details", []),
+            "world_background": scene_context.get("world_background"),
+            "game_phase": self.game_state.current_phase.value,
+            "turn_count": self.game_state.turn_count,
+            "current_iteration": iteration + 1,
+            "max_iterations": max_iterations,
+            "conversation_history": conversation_history,
+            "player_input": player_input,
+            "agent_results": formatted_agent_results if agent_results else None,
+            "dice_result": dice_result,
+            "force_output": force_output,
+        }
+
+        system_message = template.get_system_message(lang=lang, **template_vars)
+        user_message = template.get_user_message(lang=lang, **template_vars)
+
+        messages = [
+            SystemMessage(content=system_message),
+            HumanMessage(content=user_message),
+        ]
+
+        llm_response = await self._call_llm(messages)
 
         logger = get_game_logger()
+        logger.log_llm_raw_response(
+            agent_name="gm_agent_react",
+            prompt_summary=f"Iteration {iteration + 1}/{max_iterations} | Player: {player_input[:50]}",
+            raw_response=llm_response,
+        )
+
+        try:
+            result = self._extract_json_from_response(llm_response)
+        except ValueError:
+            return GMAction(
+                action_type=GMActionType.RESPOND,
+                content=llm_response,
+                reasoning="Failed to parse JSON, using raw response as narrative",
+            )
+
+        action_str = result.get("action", "RESPOND").upper()
+
+        if action_str == "RESPOND":
+            return GMAction(
+                action_type=GMActionType.RESPOND,
+                content=result.get("narrative", ""),
+                agent_context={"target_location": result.get("target_location")},
+                reasoning=result.get("reasoning", ""),
+            )
+        elif action_str == "CALL_AGENT":
+            return GMAction(
+                action_type=GMActionType.CALL_AGENT,
+                agent_name=result.get("agent_name"),
+                agent_context=result.get("agent_context", {}),
+                reasoning=result.get("reasoning", ""),
+            )
+        elif action_str == "WAIT_DICE":
+            return GMAction(
+                action_type=GMActionType.WAIT_DICE,
+                content=result.get("narrative", ""),
+                dice_check=result.get("dice_check"),
+                reasoning=result.get("reasoning", ""),
+            )
+        else:
+            return GMAction(
+                action_type=GMActionType.RESPOND,
+                content=result.get("narrative", llm_response),
+                reasoning="Unknown action type, defaulting to RESPOND",
+            )
+
+    def _prepare_agent_context(
+        self,
+        agent_name: str,
+        player_input: str,
+        lang: str,
+        provided_context: dict[str, Any],
+    ) -> dict[str, Any]:
+        if agent_name == "rule":
+            return self._slice_context_for_rule(player_input, lang)
+        elif agent_name == "lore":
+            return self._slice_context_for_lore(player_input, lang)
+        elif agent_name.startswith("npc_"):
+            npc_id = agent_name[4:]
+            return self._slice_context_for_npc(npc_id, player_input, lang)
+        else:
+            context = {"player_input": player_input, "lang": lang}
+            context.update(provided_context)
+            return context
+
+    async def _invoke_sub_agent(
+        self,
+        agent_name: str,
+        context: dict[str, Any],
+    ) -> AgentResponse:
+        actual_agent_name = agent_name
+        if agent_name.startswith("npc_"):
+            actual_agent_name = "npc"
+
+        if actual_agent_name in self.sub_agents:
+            agent = self.sub_agents[actual_agent_name]
+            if agent_name.startswith("npc_"):
+                context["npc_id"] = agent_name[4:]
+            return await agent.ainvoke(context)
+        else:
+            return AgentResponse(
+                content="",
+                success=False,
+                error=f"Agent not found: {agent_name}",
+                metadata={"agent": agent_name},
+            )
+
+    async def _generate_pre_check_narrative(
+        self,
+        player_input: str,
+        agent_results: list[dict[str, Any]],
+        lang: str,
+    ) -> str:
+        rule_result = next(
+            (r for r in agent_results if r.get("agent") == "rule"),
+            None
+        )
+        if rule_result:
+            content = rule_result.get("content")
+            if content and isinstance(content, str):
+                return content
+
+        if lang == "cn":
+            return f"你准备{player_input}。这需要进行一次检定。"
+        return f"You prepare to {player_input}. This requires a check."
+
+    async def _generate_fallback_narrative(
+        self,
+        player_input: str,
+        agent_results: list[dict[str, Any]],
+        lang: str,
+    ) -> str:
+        contents = [r.get("content", "") for r in agent_results if r.get("content")]
+        if contents:
+            return " ".join(contents)
+
+        if lang == "cn":
+            return f"你尝试{player_input}。"
+        return f"You attempt to {player_input}."
+
+    def _finalize_response(
+        self,
+        narrative: str,
+        player_input: str,
+        agents_called: list[str],
+        target_location: str | None,
+        logger,
+    ) -> AgentResponse:
+        if target_location:
+            self._handle_scene_transition(target_location)
+
         logger.log_player_input(self.game_state.turn_count, player_input)
 
         self.game_state.increment_turn()
         self.game_state.add_message(
             role="assistant",
             content=narrative,
-            metadata={"phase": "gm_response", "agents_called": agents_to_call},
+            metadata={"phase": "gm_response", "agents_called": agents_called},
         )
 
         logger.log_gm_output(
             self.game_state.turn_count,
             narrative,
-            agent_dispatch_plan.get("player_intent"),
-            agents_to_call,
+            "react_response",
+            agents_called,
         )
 
-        response_metadata = {
-            "agent": self.agent_name,
-            "player_intent": agent_dispatch_plan["player_intent"],
-            "can_respond_directly": agent_dispatch_plan.get("can_respond_directly", False),
-            "agents_called": agents_to_call,
-            "agent_results": [
-                {
-                    "agent": r["agent"],
-                    "success": r["result"].success if "result" in r else False,
-                }
-                for r in agent_results
-            ],
-        }
-
-        # Add dice check info if present
-        if needs_check:
-            response_metadata["needs_check"] = True
-            if dice_check:
-                response_metadata["dice_check"] = dice_check
+        from src.backend.models.game_state import GamePhase
+        self.game_state.set_phase(GamePhase.WAITING_INPUT)
 
         return AgentResponse(
             content=narrative,
-            metadata=response_metadata,
             success=True,
+            metadata={
+                "agent": self.agent_name,
+                "agents_called": agents_called,
+            },
         )
 
     def _get_scene_context(self, lang: str) -> dict[str, Any]:
@@ -222,8 +499,7 @@ class GMAgent(BaseAgent):
         Returns:
             Dict containing region, location, lore, NPCs, etc.
         """
-        # Default empty context
-        context = {
+        context: dict[str, Any] = {
             "region_name": "Unknown",
             "region_tone": "",
             "atmosphere_keywords": [],

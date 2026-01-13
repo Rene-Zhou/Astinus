@@ -432,11 +432,22 @@ class TestMessageHandlers:
     @pytest.fixture
     def mock_gm_agent(self):
         """Create a mock GM Agent."""
+        from src.backend.agents.base import AgentResponse
+
         agent = MagicMock()
         agent.game_state = MagicMock()
         agent.game_state.current_phase = MagicMock()
         agent.game_state.current_phase.value = "waiting_input"
         agent.game_state.last_check_result = None
+        agent.game_state.temp_context = {}
+        agent.game_state.language = "cn"
+        agent.resume_after_dice = AsyncMock(
+            return_value=AgentResponse(
+                content="检定成功，你完成了行动。",
+                metadata={"agent": "gm_agent", "needs_check": False},
+                success=True,
+            )
+        )
         return agent
 
     @pytest.mark.asyncio
