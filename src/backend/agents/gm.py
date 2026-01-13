@@ -257,14 +257,43 @@ class GMAgent(BaseAgent):
             for msg in recent_messages
         ]
 
-        formatted_agent_results = [
-            {
-                "agent": r.get("agent", "unknown"),
-                "content": r.get("content", ""),
-                "metadata": str(r.get("metadata", {}))[:200],
-            }
-            for r in agent_results
-        ]
+        def _format_agent_result(r: dict[str, Any]) -> dict[str, Any]:
+            """Format agent result for GM prompt - parse NPC metadata for clarity."""
+            agent_name = r.get("agent", "unknown")
+            metadata = r.get("metadata", {})
+            
+            # For NPC agents, parse and format metadata for clarity
+            if agent_name.startswith("npc_") or agent_name == "npc":
+                response = r.get("content", "")
+                emotion = metadata.get("emotion", "unknown")
+                action = metadata.get("action", "")
+                relation_change = metadata.get("relation_change", 0)
+                relation_reason = metadata.get("relation_reason", "")
+                
+                # Build structured content
+                parts = [f"回应: {response}" if response else "回应: (无)"]
+                if emotion != "unknown":
+                    parts.append(f"情绪: {emotion}")
+                if action:
+                    # Truncate action if too long
+                    if len(action) > 300:
+                        action = action[:300] + "..."
+                    parts.append(f"动作: {action}")
+                if relation_change != 0:
+                    parts.append(f"关系变化: {relation_change:+d} ({relation_reason})")
+                
+                return {
+                    "agent": agent_name,
+                    "content": " | ".join(parts),
+                }
+            else:
+                # For other agents, keep simple format
+                return {
+                    "agent": agent_name,
+                    "content": r.get("content", ""),
+                }
+
+        formatted_agent_results = [_format_agent_result(r) for r in agent_results]
 
         template_vars = {
             "region_name": scene_context.get("region_name"),

@@ -25,10 +25,10 @@ cn:
 
   guidelines:
     - 当玩家进行观察、移动、简单互动等不涉及风险的行为时，直接 RESPOND
-    - 【重要】当玩家进行有风险的行为（战斗、潜行、说服等）时，必须 CALL_AGENT(rule) 获取检定需求，即使是与 NPC 对话中的说服、威胁、欺骗等行为
-    - 【重要】对于涉及 NPC 的有风险行为：先 CALL_AGENT(rule)，Rule Agent 会判断是否需要检定。如果需要检定，Rule Agent 会自动生成 dice_check，前端显示掷骰界面。收到骰子结果后，GM 继续 ReAct 循环并可调用 NPC
+    - 【重要】当玩家行动涉及风险（战斗、潜行、说服、威胁、欺骗等）时，必须【先】CALL_AGENT(rule) 判断是否需要检定，【再】根据结果决定后续行动。顺序绝对不能颠倒！即使是与 NPC 互动也遵循此规则。
+    - 如果 NPC 已经在本次循环中回应过玩家，则【不能再调用 Rule Agent】——因为 Rule Agent 的检定结果已经通过 dice_result 传递给你，你已经有足够信息生成叙事或调用 NPC
     - 当玩家与 NPC 进行普通对话（问候、闲聊、询问公开信息）时，直接 CALL_AGENT(npc_{id})
-    - 收到 Rule Agent 的检定结果后，如果成功/失败会影响 NPC 反应，再 CALL_AGENT(npc_{id}) 并传入 dice_result
+    - 收到骰子检定结果后，如果成功/失败会影响 NPC 反应，【才】CALL_AGENT(npc_{id}) 并传入 dice_result
     - 保持叙事的连贯性和沉浸感，用第二人称描述（"你看到..."、"你听到..."）
 
   information_control: |
@@ -96,7 +96,6 @@ cn:
     === 本次循环中的 Agent 响应 ===
     {% for result in agent_results %}
     【{{ result.agent }}】: {{ result.content }}
-    {% if result.metadata %}元数据: {{ result.metadata }}{% endif %}
     {% endfor %}
     {% endif %}
 
@@ -120,7 +119,8 @@ cn:
     1. 是否有足够信息生成连贯叙事？
     2. 是否需要调用 Agent 获取更多信息？
     3. 叙事中是否包含 ID 或未知名字？
-
+    4. NPC 已经在本次循环中回应过了吗？如果是，不要再调用 Rule Agent！
+    
     **NPC 调用规则**：
     - NPC Agent 名称格式为 `npc_{id}`
     - 你不能直接扮演 NPC，必须通过 CALL_AGENT 获取回应
@@ -177,10 +177,10 @@ en:
 
   guidelines:
     - For observation, movement, simple interactions → RESPOND directly
-    - 【IMPORTANT】For risky actions (combat, stealth, persuasion) → CALL_AGENT(rule) FIRST, even for persuasion/intimidation/deception during NPC dialogue
-    - 【IMPORTANT】For risky actions involving NPCs: CALL_AGENT(rule) first → Rule Agent decides if check needed. If needed, Rule Agent generates dice_check, frontend shows dice roller. After dice result, GM continues ReAct loop and can call NPC
+    - 【IMPORTANT】When player action involves risk (combat, stealth, persuasion, intimidation, deception) → you MUST【FIRST】CALL_AGENT(rule) to determine if a check is needed, then decide next action based on result. Order MUST NOT be reversed! This applies even to NPC interactions.
+    - If NPC has already responded to the player in this cycle, you CANNOT call Rule Agent again — because Rule Agent's check result is already passed to you via dice_result, and you have enough information to generate narrative or call NPC
     - For normal NPC dialogue (greetings, small talk, asking public info) → CALL_AGENT(npc_{id}) directly
-    - After dice result affecting NPC reaction → CALL_AGENT(npc_{id}) again with the dice_result
+    - After dice check result, if success/failure affects NPC reaction, 【THEN】CALL_AGENT(npc_{id}) with dice_result
     - Maintain narrative coherence, use second person ("You see...", "You hear...")
 
   information_control: |
@@ -247,7 +247,6 @@ en:
     === Agent Responses This Iteration ===
     {% for result in agent_results %}
     【{{ result.agent }}】: {{ result.content }}
-    {% if result.metadata %}Metadata: {{ result.metadata }}{% endif %}
     {% endfor %}
     {% endif %}
 
@@ -271,7 +270,8 @@ en:
     1. Do I have enough info for coherent narrative?
     2. Do I need to call an Agent for more info?
     3. Does narrative contain IDs or unknown names?
-
+    4. Has NPC already responded in this cycle? If yes, do NOT call Rule Agent again!
+    
     **NPC Invocation Rules**:
     - NPC Agent names follow format `npc_{id}`
     - You CANNOT roleplay NPCs, must use CALL_AGENT
