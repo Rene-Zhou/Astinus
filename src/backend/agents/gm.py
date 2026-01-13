@@ -12,7 +12,6 @@ from src.backend.agents.base import AgentResponse, BaseAgent
 class GMActionType(str, Enum):
     RESPOND = "RESPOND"
     CALL_AGENT = "CALL_AGENT"
-    WAIT_DICE = "WAIT_DICE"
 
 
 @dataclass
@@ -21,7 +20,6 @@ class GMAction:
     content: str = ""
     agent_name: str | None = None
     agent_context: dict[str, Any] = field(default_factory=dict)
-    dice_check: dict[str, Any] | None = None
     reasoning: str = ""
 
 StatusCallback = Callable[[str, str | None], Awaitable[None]]
@@ -220,31 +218,6 @@ class GMAgent(BaseAgent):
                 dice_result = None
                 iteration += 1
 
-            elif action.action_type == GMActionType.WAIT_DICE:
-                dice_check = action.dice_check or {}
-                narrative = action.content
-
-                self.game_state.save_react_state(
-                    iteration=iteration + 1,
-                    llm_messages=[],
-                    player_input=player_input,
-                    agent_results=agent_results,
-                )
-
-                from src.backend.models.game_state import GamePhase
-                self.game_state.set_phase(GamePhase.DICE_CHECK)
-
-                return AgentResponse(
-                    content=narrative,
-                    success=True,
-                    metadata={
-                        "agent": self.agent_name,
-                        "needs_check": True,
-                        "dice_check": dice_check,
-                        "agents_called": agents_called,
-                    },
-                )
-
             else:
                 iteration += 1
 
@@ -358,13 +331,6 @@ class GMAgent(BaseAgent):
                 action_type=GMActionType.CALL_AGENT,
                 agent_name=result.get("agent_name"),
                 agent_context=result.get("agent_context", {}),
-                reasoning=result.get("reasoning", ""),
-            )
-        elif action_str == "WAIT_DICE":
-            return GMAction(
-                action_type=GMActionType.WAIT_DICE,
-                content=result.get("narrative", ""),
-                dice_check=result.get("dice_check"),
                 reasoning=result.get("reasoning", ""),
             )
         else:
