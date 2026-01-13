@@ -252,7 +252,7 @@ export const StatBlock: React.FC<StatBlockProps> = ({
         <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
           {t("game.phase", "Phase")}
         </p>
-        <div className="inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+        <div className="inline-flex w-full h-[50px] items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
           <span className="flex h-4 w-4 items-center justify-center" aria-hidden>
             {isAIWorking ? (
               <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-amber-300 border-t-amber-600 dark:border-amber-700 dark:border-t-amber-400" />
@@ -261,7 +261,7 @@ export const StatBlock: React.FC<StatBlockProps> = ({
             )}
           </span>
           <span className="flex flex-col leading-tight">
-            <span>{phaseText}</span>
+            <span className="text-left w-fit">{phaseText}</span>
             {isAIWorking && statusText && (
               <span className="text-xs text-amber-600 dark:text-amber-300">
                 {statusText}
