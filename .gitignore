@@ -51,3 +51,4 @@ htmlcov/
 *.tmp
 *.bak
 .cache/
+docs/tmp
