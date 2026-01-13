@@ -59,21 +59,21 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       {/* Sheet */}
       <div
         ref={sheetRef}
-        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl transition-transform duration-300 ease-out"
+        className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl shadow-xl transition-transform duration-300 ease-out"
         style={{ maxHeight, transform: "translateY(100%)" }}
       >
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="h-1 w-10 rounded-full bg-gray-300" />
+          <div className="h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-600" />
         </div>
 
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 pb-3">
-            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 px-4 pb-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
             <button
               onClick={onClose}
-              className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
               aria-label="Close"
             >
               <svg
