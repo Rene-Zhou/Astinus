@@ -171,6 +171,9 @@ class GameConfig(BaseModel):
     default_language: str = Field(default="cn")
     packs_directory: str = Field(default="data/packs")
     dice: DiceConfig = Field(default_factory=DiceConfig)
+    conversation_history_length: int = Field(
+        default=5, ge=0, le=20, description="Number of recent messages to include in GM context"
+    )
 
 
 class FrontendConfig(BaseModel):

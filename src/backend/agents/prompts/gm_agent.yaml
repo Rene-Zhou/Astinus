@@ -110,6 +110,14 @@ cn:
     === 游戏状态 ===
     游戏阶段：{{ game_phase }}
     回合数：{{ turn_count }}
+    {% if conversation_history %}
+
+    === 最近对话历史 ===
+    以下是最近的对话记录，帮助你理解上下文并做出连贯的决策：
+    {% for msg in conversation_history %}
+    【回合{{ msg.turn }}】{{ msg.role }}: {{ msg.content }}
+    {% endfor %}
+    {% endif %}
     {% if world_background %}
 
     === 世界背景（仅供GM参考，不可直接透露给玩家）===
@@ -267,6 +275,14 @@ en:
     === Game State ===
     Game Phase: {{ game_phase }}
     Turn Count: {{ turn_count }}
+    {% if conversation_history %}
+
+    === Recent Conversation History ===
+    The following is recent dialogue history to help you understand context and make coherent decisions:
+    {% for msg in conversation_history %}
+    【Turn {{ msg.turn }}】{{ msg.role }}: {{ msg.content }}
+    {% endfor %}
+    {% endif %}
     {% if world_background %}
 
     === World Background (GM REFERENCE ONLY - DO NOT reveal directly to player) ===

@@ -20,6 +20,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.backend.agents.base import AgentResponse, BaseAgent
 
 StatusCallback = Callable[[str, str | None], Awaitable[None]]
+from src.backend.core.config import get_settings
 from src.backend.core.prompt_loader import get_prompt_loader
 from src.backend.models.game_state import GameState
 from src.backend.services.game_logger import get_game_logger
@@ -436,6 +437,18 @@ class GMAgent(BaseAgent):
         # Get scene context from world pack
         scene_context = self._get_scene_context(lang)
 
+        recent_messages = self.game_state.get_recent_messages(
+            count=get_settings().game.conversation_history_length
+        )
+        conversation_history = [
+            {
+                "turn": msg.get("turn", 0),
+                "role": "玩家" if msg.get("role") == "player" else "GM",
+                "content": msg.get("content", "")[:200],
+            }
+            for msg in recent_messages
+        ]
+
         # Prepare template variables with hierarchical context
         template_vars = {
             # Region context (NEW)
@@ -458,6 +471,7 @@ class GMAgent(BaseAgent):
             # Game state
             "game_phase": self.game_state.current_phase.value,
             "turn_count": self.game_state.turn_count,
+            "conversation_history": conversation_history,
             "player_input": player_input,
         }
 
