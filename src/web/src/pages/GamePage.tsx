@@ -8,7 +8,6 @@ import DiceRoller from "../components/DiceRoller/DiceRoller";
 import Button from "../components/common/Button";
 import { Card, Loading } from "../components/common/Card";
 import { BottomSheet } from "../components/common/BottomSheet";
-import { MobileToolbar } from "../components/common/MobileToolbar";
 import { useGameStore } from "../stores/gameStore";
 import { useUIStore } from "../stores/uiStore";
 import { useGameActions } from "../hooks/useGameActions";
@@ -131,12 +130,21 @@ const GamePage: React.FC = () => {
     navigate(path);
   };
 
+  // Mobile toolbar actions for ChatBox
+  const mobileToolbarActions = {
+    onMenuClick: handleMenuClick,
+    onCharacterClick: handleCharacterClick,
+    onDiceClick: handleDiceClick,
+    activePanel: mobileActivePanel,
+    hasPendingDice: showDice,
+  };
+
   // Mobile layout - rendered via Portal to bypass Layout's Header/Footer
   if (isMobile) {
     const mobileContent = (
       <div className="fixed inset-0 z-40 flex h-dvh flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
         {/* Main Content - Full screen ChatBox */}
-        <main className="flex flex-1 flex-col overflow-hidden px-2 pb-20 pt-2">
+        <main className="flex flex-1 flex-col overflow-hidden px-2 pb-14 pt-2">
           {!player ? (
             <div className="flex h-full items-center justify-center">
               <Loading text={t("common.loading")} />
@@ -149,19 +157,12 @@ const GamePage: React.FC = () => {
                 isStreaming={isStreaming}
                 streamingContent={streamingContent}
                 disabled={showDice}
+                isMobile
+                mobileToolbar={mobileToolbarActions}
               />
             </div>
           )}
         </main>
-
-        {/* Mobile Toolbar */}
-        <MobileToolbar
-          onMenuClick={handleMenuClick}
-          onCharacterClick={handleCharacterClick}
-          onDiceClick={handleDiceClick}
-          activePanel={mobileActivePanel}
-          hasPendingDice={showDice}
-        />
 
         {/* Menu Bottom Sheet */}
         <BottomSheet
