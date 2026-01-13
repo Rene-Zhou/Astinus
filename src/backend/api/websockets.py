@@ -431,8 +431,10 @@ async def _handle_dice_result(
     dice_formula = pending_check.get("dice_formula", "2d6")
 
     # Determine success based on outcome
-    success = outcome in ("success", "critical")
+    # In PbtA: partial (7-9) is success with cost, so it counts as success
+    success = outcome in ("success", "partial", "critical")
     critical = outcome == "critical"
+    is_partial = outcome == "partial"
 
     # Build result data for Rule Agent
     result_data = {
@@ -443,6 +445,7 @@ async def _handle_dice_result(
         "threshold": 7,  # Standard PbtA threshold
         "success": success,
         "critical": critical,
+        "is_partial": is_partial,
         "modifiers": [],
     }
 

@@ -30,13 +30,13 @@ export function pickLocalized(
 
 /**
  * Parse dice notation like "2d6", "3d6kh2", "4d6kl3".
- * Defaults to 1d6 on invalid input.
+ * Defaults to 2d6 on invalid input (standard PbtA dice).
  */
 export function parseDiceFormula(formula?: string): ParsedDiceFormula {
-  if (!formula) return { count: 1, sides: 6 };
+  if (!formula) return { count: 2, sides: 6 };
   const match = formula.trim().match(/^(?<count>\d+)d(?<sides>\d+)(?:k(?<keepDir>h|l)?(?<keep>\d+))?$/i);
 
-  if (!match || !match.groups) return { count: 1, sides: 6 };
+  if (!match || !match.groups) return { count: 2, sides: 6 };
 
   const count = Number(match.groups.count);
   const sides = Number(match.groups.sides);
@@ -44,7 +44,7 @@ export function parseDiceFormula(formula?: string): ParsedDiceFormula {
   const keepDir = match.groups.keepDir;
 
   if (!Number.isFinite(count) || !Number.isFinite(sides) || count <= 0 || sides <= 1) {
-    return { count: 1, sides: 6 };
+    return { count: 2, sides: 6 };
   }
 
   if (!keepCount || keepCount <= 0) {
@@ -62,19 +62,23 @@ export function parseDiceFormula(formula?: string): ParsedDiceFormula {
 }
 
 /**
- * Compute a narrative outcome based on total vs. max possible.
+ * Compute a narrative outcome based on fixed PbtA thresholds.
+ * Per GUIDE.md:
+ *   12+: critical (exceptional success)
+ *   10-11: success (full success)
+ *   7-9: partial (success with cost/complication)
+ *   6-: failure
+ *
+ * Note: keptCount and sides are kept for API compatibility but unused.
  */
 export function computeOutcome(
   total: number,
-  keptCount: number,
-  sides: number,
+  _keptCount: number,
+  _sides: number,
 ): DiceOutcome {
-  const maxPossible = keptCount * sides;
-  const ratio = total / maxPossible;
-
-  if (ratio >= 0.95) return "critical";
-  if (ratio >= 0.7) return "success";
-  if (ratio >= 0.4) return "partial";
+  if (total >= 12) return "critical";
+  if (total >= 10) return "success";
+  if (total >= 7) return "partial";
   return "failure";
 }
 
@@ -104,7 +108,7 @@ export function rollDice(
   const outcome = computeOutcome(total, kept.length, parsed.sides);
 
   return {
-    formula: formula?.trim() || "1d6",
+    formula: formula?.trim() || "2d6",
     total,
     all_rolls: rolls,
     kept_rolls: kept,

@@ -29,9 +29,9 @@ interface ParsedFormula {
 }
 
 const parseDiceFormula = (formula?: string): ParsedFormula => {
-  if (!formula) return { count: 1, sides: 6 };
+  if (!formula) return { count: 2, sides: 6 };
   const match = formula.trim().match(/^(\d+)d(\d+)(?:k(l)?(\d+))?$/i);
-  if (!match) return { count: 1, sides: 6 };
+  if (!match) return { count: 2, sides: 6 };
 
   const count = Number(match[1]);
   const sides = Number(match[2]);
@@ -39,7 +39,7 @@ const parseDiceFormula = (formula?: string): ParsedFormula => {
   const keepType = match[3] ? "lowest" : "highest";
 
   if (Number.isNaN(count) || Number.isNaN(sides) || count <= 0 || sides <= 1) {
-    return { count: 1, sides: 6 };
+    return { count: 2, sides: 6 };
   }
 
   if (!keepCount || Number.isNaN(keepCount) || keepCount <= 0) {
@@ -56,11 +56,10 @@ const parseDiceFormula = (formula?: string): ParsedFormula => {
   };
 };
 
-const buildOutcome = (total: number, maxPossible: number): DiceOutcome => {
-  const ratio = total / maxPossible;
-  if (ratio >= 0.95) return "critical";
-  if (ratio >= 0.7) return "success";
-  if (ratio >= 0.4) return "partial";
+const buildOutcome = (total: number, _maxPossible: number): DiceOutcome => {
+  if (total >= 12) return "critical";
+  if (total >= 10) return "success";
+  if (total >= 7) return "partial";
   return "failure";
 };
 
@@ -145,7 +144,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
   const [result, setResult] = useState<DiceResult | null>(null);
   const [rolling, setRolling] = useState(false);
 
-  const formula = checkRequest?.dice_formula ?? "1d6";
+  const formula = checkRequest?.dice_formula ?? "2d6";
 
   const handleRoll = useCallback(() => {
     setRolling(true);
