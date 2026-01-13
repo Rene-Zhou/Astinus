@@ -78,11 +78,11 @@ class NPCAgent(BaseAgent):
                 - content: NPC's dialogue response
                 - metadata: npc_id, emotion, action, relation_change
         """
-        # Extract data from context slice
         npc_data_dict = input_data.get("npc_data")
         player_input = input_data.get("player_input", "")
         context = input_data.get("context", {})
         lang = input_data.get("lang", "cn")
+        narrative_style = input_data.get("narrative_style", "detailed")
 
         # Validate required fields
         if not npc_data_dict:
@@ -115,12 +115,12 @@ class NPCAgent(BaseAgent):
         # Get relationship level with player
         relationship_level = npc.body.relations.get("player", 0)
 
-        # Build prompt
         messages = self._build_prompt(
             npc_data=npc_data_dict,
             player_input=player_input,
             context=context,
             lang=lang,
+            narrative_style=narrative_style,
         )
 
         # Call LLM
@@ -228,26 +228,11 @@ class NPCAgent(BaseAgent):
         player_input: str,
         context: dict,
         lang: str = "cn",
+        narrative_style: str = "detailed",
     ) -> list[BaseMessage]:
-        """
-        Build prompt for LLM using NPC data.
-
-        Args:
-            npc_data: NPCData as dict
-            player_input: What the player said/did
-            context: Scene context
-            lang: Language code
-
-        Returns:
-            List of messages for LLM
-        """
-        # Parse NPC data
         npc = NPCData(**npc_data)
 
-        # Build system prompt from NPC soul (with memory retrieval and location-based knowledge)
-        system_parts = self._build_system_prompt(npc, player_input, context, lang)
-
-        # Build user prompt with context and input
+        system_parts = self._build_system_prompt(npc, player_input, context, lang, narrative_style)
         user_parts = self._build_user_prompt(npc, player_input, context, lang)
 
         return [
@@ -256,20 +241,13 @@ class NPCAgent(BaseAgent):
         ]
 
     def _build_system_prompt(
-        self, npc: NPCData, player_input: str, context: dict, lang: str
+        self,
+        npc: NPCData,
+        player_input: str,
+        context: dict,
+        lang: str,
+        narrative_style: str = "detailed",
     ) -> str:
-        """
-        Build system prompt from NPC soul with relevant memories and location-based knowledge.
-
-        Args:
-            npc: NPC data
-            player_input: Current player input (for memory retrieval)
-            context: Scene context including location and world_pack_id
-            lang: Language code
-
-        Returns:
-            Formatted system prompt
-        """
         soul = npc.soul
         body = npc.body
 
@@ -332,14 +310,24 @@ class NPCAgent(BaseAgent):
                 lines.append("## 你知道的信息")
                 lines.append(location_lore)
 
-            # Add response format
+            lines.append("")
+            lines.append("## 叙事风格指示")
+            if narrative_style == "brief":
+                lines.append("当前处于连续对话中，请精简动作描写：")
+                lines.append("- action 字段留空或只写极简动作（如「点头」「摇头」）")
+                lines.append("- 重点放在对白本身，避免重复之前已描述过的神态动作")
+            else:
+                lines.append("这是对话开始或间隔较久后的交互，请丰富动作描写：")
+                lines.append("- action 字段写出有画面感的动作、神态、小动作")
+                lines.append("- 体现角色性格特征和当前情绪状态")
+
             lines.append("")
             lines.append("## 响应格式")
             lines.append("以 JSON 格式回复：")
             lines.append("{")
             lines.append('  "response": "你的对话内容",')
             lines.append('  "emotion": "情绪状态（如 happy, sad, angry, scared, neutral）",')
-            lines.append('  "action": "伴随动作描述（可为空）",')
+            lines.append('  "action": "伴随动作描述（根据叙事风格指示填写）",')
             lines.append('  "relation_change": 0  // 关系变化 -10 到 +10，通常为 0')
             lines.append("}")
 
@@ -401,12 +389,23 @@ class NPCAgent(BaseAgent):
                 lines.append(location_lore)
 
             lines.append("")
+            lines.append("## Narrative Style")
+            if narrative_style == "brief":
+                lines.append("Currently in continuous dialogue, keep action description minimal:")
+                lines.append("- Leave action field empty or use minimal actions (e.g., 'nods', 'shakes head')")
+                lines.append("- Focus on the dialogue itself, avoid repeating previously described gestures")
+            else:
+                lines.append("This is a new interaction or after a gap, enrich the action description:")
+                lines.append("- Write vivid actions, expressions, and subtle movements in action field")
+                lines.append("- Reflect character personality and current emotional state")
+
+            lines.append("")
             lines.append("## Response Format")
             lines.append("Reply in JSON format:")
             lines.append("{")
             lines.append('  "response": "your dialogue",')
             lines.append('  "emotion": "emotional state (happy, sad, angry, scared, neutral)",')
-            lines.append('  "action": "accompanying action description (can be empty)",')
+            lines.append('  "action": "accompanying action description (follow narrative style above)",')
             lines.append('  "relation_change": 0  // relation change -10 to +10, usually 0')
             lines.append("}")
 

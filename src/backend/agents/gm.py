@@ -611,13 +611,11 @@ class GMAgent(BaseAgent):
         Returns:
             Context slice for NPC Agent
         """
-        # Get recent messages with this NPC
         recent_messages = self.game_state.get_recent_messages(count=10)
         npc_messages = [
             msg for msg in recent_messages if msg.get("metadata", {}).get("npc_id") == npc_id
         ]
 
-        # Try to get NPC data from world pack
         npc_data = None
         if self.world_pack_loader:
             try:
@@ -626,25 +624,48 @@ class GMAgent(BaseAgent):
                 if npc:
                     npc_data = npc.model_dump()
             except Exception:
-                # If we can't load the NPC, we'll pass None
                 pass
+
+        narrative_style = self._determine_npc_narrative_style(npc_messages, npc_data)
 
         context = {
             "npc_id": npc_id,
             "player_input": player_input,
             "recent_messages": npc_messages,
             "lang": lang,
+            "narrative_style": narrative_style,
             "context": {
                 "location": self.game_state.current_location,
-                "world_pack_id": self.game_state.world_pack_id,  # NEW: For location-based knowledge filtering
+                "world_pack_id": self.game_state.world_pack_id,
             },
-            # Note: No access to other NPCs, other locations, etc.
         }
 
         if npc_data:
             context["npc_data"] = npc_data
 
         return context
+
+    def _determine_npc_narrative_style(
+        self,
+        npc_messages: list[dict[str, Any]],
+        npc_data: dict[str, Any] | None,
+    ) -> str:
+        current_turn = self.game_state.turn_count
+
+        if npc_messages:
+            last_npc_turn = max(msg.get("turn", 0) for msg in npc_messages)
+            turns_since_last = current_turn - last_npc_turn
+
+            if turns_since_last <= 2:
+                return "brief"
+
+            if len(npc_messages) >= 3:
+                recent_three = sorted(npc_messages, key=lambda m: m.get("turn", 0))[-3:]
+                turns_span = recent_three[-1].get("turn", 0) - recent_three[0].get("turn", 0)
+                if turns_span <= 5:
+                    return "brief"
+
+        return "detailed"
 
     def _retrieve_relevant_history(
         self,
@@ -783,6 +804,14 @@ class GMAgent(BaseAgent):
 4. 不要提及 Agent 的名称或任何技术细节
 5. 所有信息的揭示必须有合理的来源（NPC告知、检定成功、阅读文件等）
 
+【叙事整合规则 - 禁止加戏】：
+1. 玩家行动：玩家输入中已描述的行动，不要重复或润色（玩家说"我走到老人面前"，你不需要再描述"走向"、"站定"等）
+2. NPC 输出：
+   - "对白" 字段：原样呈现为角色说的话
+   - "动作" 字段：这是 NPC Agent 精心设计的描写，原样整合到叙事中，不要修改、替换或另外创作
+   - "情绪" 字段：仅供参考语气，不需要额外描述
+3. 你的职责是"连接"而非"创作"：只添加必要的过渡语句，不要创作额外的动作、神态、语气描写
+
 玩家意图：{player_intent}
 玩家输入：{player_input}
 
@@ -799,6 +828,14 @@ Use second person ("you"), maintain immersion.
 4. Do NOT mention agent names or any technical details
 5. All information revelation must have a reasonable source (NPC told them, successful check, read document)
 
+【Narrative Integration Rules - NO EMBELLISHMENT】:
+1. Player actions: Do NOT repeat or embellish actions already described in player input (if player said "I walk to the old man", don't add "you stride toward", "you halt", etc.)
+2. NPC output:
+   - "Dialogue" field: Present as-is as the character's spoken words
+   - "Action" field: This is carefully crafted by the NPC Agent - integrate it as-is, do NOT modify, replace, or create alternatives
+   - "Emotion" field: Reference only for tone, no need to describe explicitly
+3. Your role is to "connect" not to "create": Only add necessary transitions, do NOT create additional actions, expressions, or tone descriptions
+
 Player intent: {player_intent}
 Player input: {player_input}
 
@@ -807,7 +844,30 @@ Agent responses:
 
         for output in agent_outputs:
             if "content" in output:
-                synthesis_prompt += f"\n{output['agent']}: {output['content']}"
+                agent_name = output["agent"]
+                content = output["content"]
+
+                if agent_name.startswith("npc_") and output.get("metadata"):
+                    metadata = output["metadata"]
+                    action = metadata.get("action", "")
+                    emotion = metadata.get("emotion", "")
+
+                    if lang == "cn":
+                        npc_output = f"对白: {content}"
+                        if action:
+                            npc_output += f"\n动作: {action}"
+                        if emotion and emotion != "neutral":
+                            npc_output += f"\n情绪: {emotion}"
+                    else:
+                        npc_output = f"Dialogue: {content}"
+                        if action:
+                            npc_output += f"\nAction: {action}"
+                        if emotion and emotion != "neutral":
+                            npc_output += f"\nEmotion: {emotion}"
+
+                    synthesis_prompt += f"\n{agent_name}:\n{npc_output}"
+                else:
+                    synthesis_prompt += f"\n{agent_name}: {content}"
 
         synthesis_prompt += "\n\n请生成叙事：" if lang == "cn" else "\n\nGenerate narrative:"
 
@@ -816,15 +876,17 @@ Agent responses:
             SystemMessage(
                 content=(
                     "你是一个 TTRPG 叙事助手，负责将多个来源的信息整合成流畅的叙事文本。"
-                    "【重要】你必须严格遵守信息控制规则：禁止泄露任何内部ID或标识符，"
-                    "禁止使用玩家尚未得知的NPC名字，禁止透露玩家不应知道的背景信息。"
+                    "【重要】你必须严格遵守两条核心规则：\n"
+                    "1. 信息控制：禁止泄露任何内部ID或标识符，禁止使用玩家尚未得知的NPC名字，禁止透露玩家不应知道的背景信息。\n"
+                    "2. 禁止加戏：不要重复或润色玩家已描述的行动，NPC的动作描写必须原样使用，不要自己创作额外的神态、动作、语气描写。"
                 )
                 if lang == "cn"
                 else (
                     "You are a TTRPG narrative assistant, responsible for synthesizing information "
                     "from multiple sources into smooth narrative text. "
-                    "【IMPORTANT】You MUST follow information control rules: NEVER expose internal IDs or identifiers, "
-                    "NEVER use NPC names the player hasn't learned, NEVER reveal background info the player shouldn't know."
+                    "【IMPORTANT】You MUST follow two core rules:\n"
+                    "1. Information Control: NEVER expose internal IDs, NEVER use NPC names player hasn't learned, NEVER reveal hidden background info.\n"
+                    "2. No Embellishment: Do NOT repeat/embellish player's described actions, use NPC action descriptions as-is, do NOT create additional expressions/actions/tone descriptions."
                 )
             ),
             HumanMessage(content=synthesis_prompt),
