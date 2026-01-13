@@ -98,6 +98,9 @@ class GMAgent(BaseAgent):
         if self.status_callback:
             await self.status_callback("gm", None)
 
+        # Add player message BEFORE _parse_intent_and_plan so conversation history includes current input
+        self.game_state.add_message(role="player", content=player_input)
+
         agent_dispatch_plan = await self._parse_intent_and_plan(player_input, lang)
 
         if not agent_dispatch_plan["success"]:
@@ -169,11 +172,6 @@ class GMAgent(BaseAgent):
         logger = get_game_logger()
         logger.log_player_input(self.game_state.turn_count, player_input)
 
-        self.game_state.add_message(
-            role="user",
-            content=player_input,
-            metadata={"phase": "player_input"},
-        )
         self.game_state.increment_turn()
         self.game_state.add_message(
             role="assistant",
