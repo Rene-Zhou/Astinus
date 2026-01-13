@@ -118,6 +118,24 @@ function ChatInput({ onSend, disabled = false, isMobile = false, mobileToolbar }
     [disabled, history, send],
   );
 
+  // Auto-resize textarea based on content
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    // Reset height to auto to get the correct scrollHeight
+    textarea.style.height = "auto";
+    // Set to scrollHeight, but cap at max height (4 lines ~= 96px)
+    const maxHeight = 96;
+    textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+  }, []);
+
+  // Adjust height when value changes (mobile only)
+  useEffect(() => {
+    if (isMobile) {
+      adjustTextareaHeight();
+    }
+  }, [value, isMobile, adjustTextareaHeight]);
+
   // Mobile compact layout with integrated toolbar
   if (isMobile && mobileToolbar) {
     const { onMenuClick, onCharacterClick, onDiceClick, activePanel, hasPendingDice } = mobileToolbar;
@@ -131,8 +149,8 @@ function ChatInput({ onSend, disabled = false, isMobile = false, mobileToolbar }
       ].join(" ");
 
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 px-2 py-2 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/95">
-        <div className="flex items-center gap-1">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 p-2 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/95">
+        <div className="flex items-end gap-2">
           {/* Toolbar buttons */}
           <button onClick={onMenuClick} className={toolbarBtnClass("menu")} aria-label={t("nav.menu")}>
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -153,14 +171,14 @@ function ChatInput({ onSend, disabled = false, isMobile = false, mobileToolbar }
             </svg>
           </button>
 
-          {/* Input field */}
+          {/* Input field - auto-grows with content */}
           <textarea
             ref={textareaRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            className="min-h-[36px] flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            className="min-h-[36px] max-h-24 flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm leading-5 text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
             placeholder={t("game.inputPlaceholder")}
             disabled={disabled}
           />
@@ -169,7 +187,7 @@ function ChatInput({ onSend, disabled = false, isMobile = false, mobileToolbar }
           <button
             onClick={send}
             disabled={disabled || !value.trim()}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:opacity-50 dark:bg-primary"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:opacity-50 dark:bg-primary"
             aria-label={t("game.send")}
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
