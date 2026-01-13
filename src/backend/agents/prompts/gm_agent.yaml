@@ -152,9 +152,9 @@ cn:
       "can_respond_directly": true/false,
       "direct_response": "（如果 can_respond_directly 为 true）你的叙事描述【确保不含ID、未知名字、无来源的背景信息】",
       "target_location": "（如果 player_intent 为 move 且成功移动）目标位置的 ID，如 'mountain_path'、'manor_entrance' 等",
-      "agents_to_call": ["rule", "npc_old_guard", "lore"],
+      "agents_to_call": ["rule", "npc_{npc的内部ID}", "lore"],
       "context_slices": {
-        "npc_old_guard": { "player_input": "玩家说的话", "interaction_type": "talk" }
+        "npc_{npc的内部ID}": { "player_input": "玩家说的话", "interaction_type": "talk" }
       },
       "reasoning": "为什么这样决定"
     }
@@ -309,9 +309,9 @@ en:
       "can_respond_directly": true/false,
       "direct_response": "(if can_respond_directly is true) your narrative description【ENSURE no IDs, unknown names, or unsourced background info】",
       "target_location": "(if player_intent is move AND movement succeeds) target location ID, e.g., 'mountain_path', 'manor_entrance'",
-      "agents_to_call": ["rule", "npc_old_guard", "lore"],
+      "agents_to_call": ["rule", "npc_{npc_internal_id}", "lore"],
       "context_slices": {
-        "npc_old_guard": { "player_input": "what the player said", "interaction_type": "talk" }
+        "npc_{npc_internal_id}": { "player_input": "what the player said", "interaction_type": "talk" }
       },
       "reasoning": "why this decision"
     }
