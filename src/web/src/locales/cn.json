@@ -62,10 +62,10 @@
     "roll": "掷骰",
     "result": "结果",
     "total": "总值",
-      "kept": "保留",
-      "waitingForCheck": "当你的行动需要检定时，它会出现在这里。",
-      "hintText": "某些行动（如攀爬、说服、战斗）可能需要掷骰检定。",
-      "outcome": {
+    "kept": "保留",
+    "waitingForCheck": "当你的行动需要检定时，它会出现在这里。",
+    "hintText": "某些行动（如攀爬、说服、战斗）可能需要掷骰检定。",
+    "outcome": {
       "critical": "大成功",
       "success": "成功",
       "partial": "部分成功",
@@ -102,7 +102,7 @@
     "language": "语言",
     "animationSpeed": "动画速度",
     "providers": "AI 提供商",
-    "agents": "AI 代理",
+    "agents": "AI Agent",
     "save": "保存设置",
     "reset": "重置更改",
     "testConnection": "测试连接",
@@ -139,10 +139,10 @@
     "errorDisplayName": "显示名称为必填项",
     "editProvider": "编辑提供商",
     "agentTitles": {
-      "gm": "GM 代理",
-      "npc": "NPC 代理",
-      "rule": "规则代理",
-      "lore": "知识代理"
+      "gm": "GM Agent",
+      "npc": "NPC Agent",
+      "rule": "规则 Agent",
+      "lore": "知识 Agent"
     },
     "agentDescs": {
       "gm": "核心叙事引擎。处理故事推进、场景描述和整体协调。",
@@ -156,6 +156,8 @@
     "confirm": "确认",
     "cancel": "取消",
     "success": "成功",
-    "error": "错误"
+    "error": "错误",
+    "select": "选择",
+    "selected": "已选择"
   }
 }

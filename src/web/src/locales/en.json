@@ -62,10 +62,10 @@
     "roll": "Roll",
     "result": "Result",
     "total": "Total",
-      "kept": "Kept",
-      "waitingForCheck": "When your action requires a check, it will appear here.",
-      "hintText": "Some actions (like climbing, persuading, combat) may require a dice roll.",
-      "outcome": {
+    "kept": "Kept",
+    "waitingForCheck": "When your action requires a check, it will appear here.",
+    "hintText": "Some actions (like climbing, persuading, combat) may require a dice roll.",
+    "outcome": {
       "critical": "Critical Success",
       "success": "Success",
       "partial": "Partial Success",
@@ -156,6 +156,8 @@
     "confirm": "Confirm",
     "cancel": "Cancel",
     "success": "Success",
-    "error": "Error"
+    "error": "Error",
+    "select": "Select",
+    "selected": "Selected"
   }
 }
