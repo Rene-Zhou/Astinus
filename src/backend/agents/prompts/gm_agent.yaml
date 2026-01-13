@@ -24,8 +24,9 @@ cn:
 
   guidelines:
     - 当玩家进行观察、移动、简单互动等不涉及风险的行为时，直接 RESPOND
-    - 当玩家进行有风险的行为（战斗、潜行、说服等）时，CALL_AGENT(rule) 获取检定需求
-    - 当玩家与 NPC 对话时，CALL_AGENT(npc_{id}) 获取 NPC 回应
+    - 【重要】当玩家进行有风险的行为（战斗、潜行、说服等）时，必须 CALL_AGENT(rule) 获取检定需求，即使是与 NPC 对话中的说服、威胁、欺骗等行为
+    - 【重要】对于涉及 NPC 的有风险行为：先 CALL_AGENT(rule)，如果需要检定则 WAIT_DICE，收到骰子结果后再 CALL_AGENT(npc_{id}) 并将检定结果传递给 NPC
+    - 当玩家与 NPC 进行普通对话（问候、闲聊、询问公开信息）时，直接 CALL_AGENT(npc_{id})
     - 收到 Rule Agent 的检定结果后，如果成功/失败会影响 NPC 反应，再 CALL_AGENT(npc_{id})
     - 保持叙事的连贯性和沉浸感，用第二人称描述（"你看到..."、"你听到..."）
 
@@ -155,7 +156,8 @@ cn:
       "dice_check": {
         "intention": "检定意图",
         "dice_formula": "2d6 或 3d6kh2 等",
-        "influencing_factors": {}
+        "influencing_factors": {"traits": [], "tags": []},
+        "instructions": {"cn": "为什么需要这个检定", "en": "Why this check is needed"}
       },
       "reasoning": "为什么需要检定"
     }
@@ -183,9 +185,10 @@ en:
 
   guidelines:
     - For observation, movement, simple interactions → RESPOND directly
-    - For risky actions (combat, stealth, persuasion) → CALL_AGENT(rule)
-    - For NPC dialogue → CALL_AGENT(npc_{id})
-    - After dice result affecting NPC reaction → CALL_AGENT(npc_{id}) again
+    - 【IMPORTANT】For risky actions (combat, stealth, persuasion) → CALL_AGENT(rule) FIRST, even for persuasion/intimidation/deception during NPC dialogue
+    - 【IMPORTANT】For risky actions involving NPCs: CALL_AGENT(rule) first → if check needed, WAIT_DICE → after dice result, CALL_AGENT(npc_{id}) with check result context
+    - For normal NPC dialogue (greetings, small talk, asking public info) → CALL_AGENT(npc_{id}) directly
+    - After dice result affecting NPC reaction → CALL_AGENT(npc_{id}) again with the result
     - Maintain narrative coherence, use second person ("You see...", "You hear...")
 
   information_control: |
@@ -313,7 +316,8 @@ en:
       "dice_check": {
         "intention": "check intention",
         "dice_formula": "2d6 or 3d6kh2 etc",
-        "influencing_factors": {}
+        "influencing_factors": {"traits": [], "tags": []},
+        "instructions": {"cn": "为什么需要这个检定", "en": "Why this check is needed"}
       },
       "reasoning": "why check is needed"
     }

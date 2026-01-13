@@ -150,9 +150,12 @@ export function flattenInfluencingFactors(
  * Helper to get instructions as string
  */
 export function getInstructionsText(
-  instructions: string | LocalizedString,
+  instructions: string | LocalizedString | undefined,
   lang: Language = "cn",
 ): string {
+  if (!instructions) {
+    return "";
+  }
   if (typeof instructions === "string") {
     return instructions;
   }
@@ -493,10 +496,13 @@ export interface APIError {
  * Helper to get localized string value
  */
 export function getLocalizedValue(
-  str: LocalizedString,
+  str: LocalizedString | undefined | null,
   lang: Language,
 ): string {
-  return str[lang] || str.cn || str.en;
+  if (!str) {
+    return "";
+  }
+  return str[lang] || str.cn || str.en || "";
 }
 
 // ============================================================================

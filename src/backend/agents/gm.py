@@ -179,6 +179,7 @@ class GMAgent(BaseAgent):
                     player_input=player_input,
                     lang=lang,
                     provided_context=action.agent_context,
+                    dice_result=dice_result,
                 )
 
                 result = await self._invoke_sub_agent(agent_name, agent_context)
@@ -379,6 +380,7 @@ class GMAgent(BaseAgent):
         player_input: str,
         lang: str,
         provided_context: dict[str, Any],
+        dice_result: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if agent_name == "rule":
             return self._slice_context_for_rule(player_input, lang)
@@ -386,7 +388,7 @@ class GMAgent(BaseAgent):
             return self._slice_context_for_lore(player_input, lang)
         elif agent_name.startswith("npc_"):
             npc_id = agent_name[4:]
-            return self._slice_context_for_npc(npc_id, player_input, lang)
+            return self._slice_context_for_npc(npc_id, player_input, lang, dice_result)
         else:
             context = {"player_input": player_input, "lang": lang}
             context.update(provided_context)
@@ -882,6 +884,7 @@ class GMAgent(BaseAgent):
         npc_id: str,
         player_input: str,
         lang: str,
+        dice_result: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Prepare context slice for NPC Agent.
@@ -892,6 +895,7 @@ class GMAgent(BaseAgent):
             npc_id: NPC identifier
             player_input: Player's action
             lang: Language code
+            dice_result: Optional dice check result from a previous roll
 
         Returns:
             Context slice for NPC Agent
@@ -927,6 +931,9 @@ class GMAgent(BaseAgent):
 
         if npc_data:
             context["npc_data"] = npc_data
+
+        if dice_result:
+            context["dice_result"] = dice_result
 
         return context
 
