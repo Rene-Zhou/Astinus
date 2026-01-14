@@ -73,7 +73,9 @@ export function parseDiceFormula(formula?: string): ParsedDiceFormula {
  */
 export function computeOutcome(
   total: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _keptCount: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _sides: number,
 ): DiceOutcome {
   if (total >= 12) return "critical";
@@ -88,7 +90,7 @@ export function computeOutcome(
 export function rollDice(
   formula?: string,
   rng: () => number = Math.random,
-): DiceResult & { formula: string } {
+): DiceResult & { formula: string; dropped_rolls: number[] } {
   const parsed = parseDiceFormula(formula);
   const rolls: number[] = [];
 
@@ -104,14 +106,35 @@ export function rollDice(
       .slice(0, count);
   }
 
+  // Calculate dropped rolls by tracking usage count
+  const keptCounts = new Map<number, number>();
+  kept.forEach((value) => {
+    keptCounts.set(value, (keptCounts.get(value) || 0) + 1);
+  });
+
+  const dropped_rolls: number[] = [];
+  rolls.forEach((value) => {
+    const count = keptCounts.get(value) || 0;
+    if (count > 0) {
+      keptCounts.set(value, count - 1);
+    } else {
+      dropped_rolls.push(value);
+    }
+  });
+
   const total = kept.reduce((sum, n) => sum + n, 0);
   const outcome = computeOutcome(total, kept.length, parsed.sides);
 
+  // Validate formula format; fallback to "2d6" if invalid
+  const isValidFormula = formula?.trim() && /^(?<count>\d+)d(?<sides>\d+)(?:k(?<keepDir>h|l)?(?<keep>\d+)?)?$/i.test(formula.trim());
+  const effectiveFormula = isValidFormula ? formula!.trim() : "2d6";
+
   return {
-    formula: formula?.trim() || "2d6",
+    formula: effectiveFormula,
     total,
     all_rolls: rolls,
     kept_rolls: kept,
+    dropped_rolls,
     outcome,
   };
 }

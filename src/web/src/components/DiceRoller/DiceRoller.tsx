@@ -9,6 +9,9 @@ import {
   flattenInfluencingFactors,
   getInstructionsText,
 } from "../../api/types";
+import {
+  rollDice,
+} from "../../utils/dice";
 import Button from "../common/Button";
 import { Card } from "../common/Card";
 
@@ -18,77 +21,6 @@ export interface DiceRollerProps {
   onRoll: (result: DiceResult) => void;
   onCancel: () => void;
 }
-
-interface ParsedFormula {
-  count: number;
-  sides: number;
-  keep?: {
-    type: "lowest" | "highest";
-    count: number;
-  };
-}
-
-const parseDiceFormula = (formula?: string): ParsedFormula => {
-  if (!formula) return { count: 2, sides: 6 };
-  const match = formula.trim().match(/^(\d+)d(\d+)(?:k(l)?(\d+))?$/i);
-  if (!match) return { count: 2, sides: 6 };
-
-  const count = Number(match[1]);
-  const sides = Number(match[2]);
-  const keepCount = match[4] ? Number(match[4]) : undefined;
-  const keepType = match[3] ? "lowest" : "highest";
-
-  if (Number.isNaN(count) || Number.isNaN(sides) || count <= 0 || sides <= 1) {
-    return { count: 2, sides: 6 };
-  }
-
-  if (!keepCount || Number.isNaN(keepCount) || keepCount <= 0) {
-    return { count, sides };
-  }
-
-  return {
-    count,
-    sides,
-    keep: {
-      type: keepType as "lowest" | "highest",
-      count: Math.min(keepCount, count),
-    },
-  };
-};
-
-const buildOutcome = (total: number, _maxPossible: number): DiceOutcome => {
-  if (total >= 12) return "critical";
-  if (total >= 10) return "success";
-  if (total >= 7) return "partial";
-  return "failure";
-};
-
-const rollDiceInternal = (formula?: string): DiceResult => {
-  const parsed = parseDiceFormula(formula);
-  const rolls: number[] = [];
-  for (let i = 0; i < parsed.count; i += 1) {
-    rolls.push(1 + Math.floor(Math.random() * parsed.sides));
-  }
-
-  let kept = [...rolls];
-  if (parsed.keep) {
-    const { type, count } = parsed.keep;
-    kept = [...rolls]
-      .sort((a, b) => (type === "lowest" ? a - b : b - a))
-      .slice(0, count);
-  }
-
-  const total = kept.reduce((sum, n) => sum + n, 0);
-  const maxPossible = (parsed.keep?.count ?? parsed.count) * parsed.sides;
-  const outcome = buildOutcome(total, maxPossible);
-
-  return {
-    total,
-    all_rolls: rolls,
-    kept_rolls: kept,
-    outcome,
-  };
-};
 
 /**
  * Dice icon SVG for idle state
@@ -148,7 +80,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
 
   const handleRoll = useCallback(() => {
     setRolling(true);
-    const next = rollDiceInternal(formula);
+    const next = rollDice(formula);
     setResult(next);
     setRolling(false);
   }, [formula]);
