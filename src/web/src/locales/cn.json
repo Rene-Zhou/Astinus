@@ -31,7 +31,10 @@
       "waitingInput": "等待输入",
       "narrating": "叙述中",
       "diceCheck": "掷骰检定",
-      "error": "错误"
+      "error": "错误",
+      "analyzingAction": "分析你的行动...",
+      "generatingNarrative": "生成叙事中...",
+      "processingDiceResult": "处理骰子结果..."
     },
     "notStarted": "尚未开始游戏",
     "startPrompt": "请从菜单页面选择一个世界包开始游戏。",

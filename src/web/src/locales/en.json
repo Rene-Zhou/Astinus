@@ -31,7 +31,10 @@
       "waitingInput": "Waiting for Input",
       "narrating": "Narrating",
       "diceCheck": "Dice Check",
-      "error": "Error"
+      "error": "Error",
+      "analyzingAction": "Analyzing your action...",
+      "generatingNarrative": "Generating narrative...",
+      "processingDiceResult": "Processing dice result..."
     },
     "notStarted": "Game Not Started",
     "startPrompt": "Please select a world pack from the menu to start.",

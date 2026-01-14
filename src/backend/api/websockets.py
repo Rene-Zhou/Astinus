@@ -273,32 +273,21 @@ async def _handle_player_input(
     stream = data.get("stream", True)
 
     if not player_input:
-        await manager.send_error(session_id, "player_input/content is required")
+        await manager.send_error(session_id, "player_input_required")
         return
 
-    agent_labels = {
-        "gm": "GM Agent" if lang == "en" else "GM 代理",
-        "rule": "Rule Agent" if lang == "en" else "规则代理",
-        "npc": "NPC Agent" if lang == "en" else "NPC 代理",
-        "lore": "Lore Agent" if lang == "en" else "知识代理",
-    }
-
     async def status_callback(agent: str, message: str | None) -> None:
-        agent_label = agent_labels.get(agent, agent)
-        if agent.startswith("npc_"):
-            agent_label = agent_labels.get("npc", "NPC Agent")
-        status_msg = message or agent_label
         await manager.send_status(
             session_id,
             phase="processing",
-            message=status_msg,
+            message=message,
             agent=agent,
         )
 
     await manager.send_status(
         session_id,
         phase="processing",
-        message="Analyzing your action..." if lang == "en" else "正在分析你的行动...",
+        message="analyzing_action",
         agent="gm",
     )
 
@@ -346,7 +335,7 @@ async def _handle_player_input(
             await manager.send_status(
                 session_id,
                 phase="narrating",
-                message="Generating narrative..." if lang == "en" else "正在生成叙事...",
+                message="generating_narrative",
             )
             await stream_content(session_id, result.content)
 
@@ -413,7 +402,7 @@ async def _handle_dice_result(
     await manager.send_status(
         session_id,
         phase="processing",
-        message="Processing dice result...",
+        message="processing_dice_result",
     )
 
     from src.backend.models.game_state import GamePhase
@@ -455,7 +444,7 @@ async def _handle_dice_result(
         await manager.send_status(
             session_id,
             phase="narrating",
-            message="Generating narrative...",
+            message="generating_narrative",
         )
         await stream_content(session_id, narrative)
 

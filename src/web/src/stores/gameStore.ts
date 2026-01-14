@@ -338,7 +338,21 @@ export const useGameStore = create<GameStoreState>()(
           onStatus: (msg) =>
             set((state) => {
               state.isProcessing = true;
-              state.processingStatus = msg.data.message || null;
+
+              const messageKey = msg.data.message;
+              let translatedMessage: string | null = null;
+
+              if (messageKey) {
+                const camelCaseKey = messageKey.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+                translatedMessage = i18n.t(`game.status.${camelCaseKey}`, messageKey);
+              }
+
+              if (!translatedMessage && msg.data.agent) {
+                const agentKey = msg.data.agent.startsWith("npc") ? "npc" : msg.data.agent;
+                translatedMessage = i18n.t(`settings.agentTitles.${agentKey}`, "");
+              }
+
+              state.processingStatus = translatedMessage || null;
               state.processingAgent = msg.data.agent || null;
             }),
           onPhase: (msg) =>
