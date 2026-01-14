@@ -10,13 +10,14 @@ on:
     branches: [main, master]
 
 env:
-  PYTHON_VERSION: "3.14"
+  PYTHON_VERSION: "3.13"
+  NODE_VERSION: "20"
   # Fake API key for tests - actual LLM calls are mocked
   OPENAI_API_KEY: "sk-test-fake-key-for-ci-testing"
 
 jobs:
-  test:
-    name: Test
+  backend-test:
+    name: Backend Test
     runs-on: ubuntu-latest
 
     steps:
@@ -32,7 +33,7 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync
 
       - name: Run tests with coverage
         run: |
@@ -52,8 +53,8 @@ jobs:
           fail_ci_if_error: false
           verbose: true
 
-  lint:
-    name: Lint
+  backend-lint:
+    name: Backend Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -69,7 +70,7 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync
 
       - name: Run Ruff linter
         run: uv run ruff check src tests
@@ -77,8 +78,8 @@ jobs:
       - name: Run Ruff formatter check
         run: uv run ruff format --check src tests
 
-  type-check:
-    name: Type Check
+  backend-type-check:
+    name: Backend Type Check
     runs-on: ubuntu-latest
 
     steps:
@@ -94,16 +95,15 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync
 
       - name: Run mypy
         run: uv run mypy src --ignore-missing-imports --no-error-summary || true
         # Using || true for now as mypy may have some unresolved issues
         # Remove || true once all type issues are fixed
 
-  # Optional: Build check to ensure package can be built
-  build:
-    name: Build Check
+  backend-build:
+    name: Backend Build Check
     runs-on: ubuntu-latest
 
     steps:
@@ -121,27 +121,135 @@ jobs:
       - name: Build package
         run: uv build
 
+  frontend-test:
+    name: Frontend Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+
+      - name: Run tests
+        working-directory: src/web
+        run: npm test
+
+  frontend-lint:
+    name: Frontend Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: src/web
+        run: npm run lint
+
+  frontend-type-check:
+    name: Frontend Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+
+      - name: Run TypeScript compiler
+        working-directory: src/web
+        run: npx tsc -b --noEmit
+
+  frontend-build:
+    name: Frontend Build Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: src/web
+        run: npm run build
+
   # Summary job for branch protection
   ci-success:
     name: CI Success
-    needs: [test, lint, type-check, build]
+    needs: [backend-test, backend-lint, backend-type-check, backend-build, frontend-test, frontend-lint, frontend-type-check, frontend-build]
     runs-on: ubuntu-latest
     if: always()
 
     steps:
       - name: Check all jobs passed
         run: |
-          if [[ "${{ needs.test.result }}" != "success" ]]; then
-            echo "Test job failed"
+          if [[ "${{ needs.backend-test.result }}" != "success" ]]; then
+            echo "Backend test job failed"
             exit 1
           fi
-          if [[ "${{ needs.lint.result }}" != "success" ]]; then
-            echo "Lint job failed"
+          if [[ "${{ needs.backend-lint.result }}" != "success" ]]; then
+            echo "Backend lint job failed"
             exit 1
           fi
-          # type-check is allowed to fail for now
-          if [[ "${{ needs.build.result }}" != "success" ]]; then
-            echo "Build job failed"
+          # backend-type-check is allowed to fail for now
+          if [[ "${{ needs.backend-build.result }}" != "success" ]]; then
+            echo "Backend build job failed"
+            exit 1
+          fi
+          if [[ "${{ needs.frontend-test.result }}" != "success" ]]; then
+            echo "Frontend test job failed"
+            exit 1
+          fi
+          if [[ "${{ needs.frontend-lint.result }}" != "success" ]]; then
+            echo "Frontend lint job failed"
+            exit 1
+          fi
+          if [[ "${{ needs.frontend-type-check.result }}" != "success" ]]; then
+            echo "Frontend type check job failed"
+            exit 1
+          fi
+          if [[ "${{ needs.frontend-build.result }}" != "success" ]]; then
+            echo "Frontend build job failed"
             exit 1
           fi
           echo "All required CI checks passed!"
