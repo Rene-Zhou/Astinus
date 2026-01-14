@@ -48,7 +48,6 @@ class AgentsConfigResponse(BaseModel):
 
     gm: AgentConfigResponse
     npc: AgentConfigResponse
-    rule: AgentConfigResponse
     lore: AgentConfigResponse
 
 
@@ -91,7 +90,6 @@ class AgentsInput(BaseModel):
 
     gm: AgentInput | None = None
     npc: AgentInput | None = None
-    rule: AgentInput | None = None
     lore: AgentInput | None = None
 
 
@@ -191,7 +189,6 @@ def _build_settings_response(settings: Settings) -> SettingsResponse:
         agents_resp = AgentsConfigResponse(
             gm=AgentConfigResponse(**settings.agents.gm.model_dump()),
             npc=AgentConfigResponse(**settings.agents.npc.model_dump()),
-            rule=AgentConfigResponse(**settings.agents.rule.model_dump()),
             lore=AgentConfigResponse(**settings.agents.lore.model_dump()),
         )
 
@@ -382,23 +379,17 @@ async def reload_agents():
     without restarting the backend server.
     """
     try:
-            import src.backend.main as main_module
-            from src.backend.agents.gm import GMAgent
-            from src.backend.agents.lore import LoreAgent
-            from src.backend.agents.npc import NPCAgent
-            from src.backend.core.config import get_settings
-            from src.backend.core.llm_provider import create_llm_from_settings
-            from src.backend.models.character import PlayerCharacter, Trait
-            from src.backend.models.game_state import GameState
-            from src.backend.models.i18n import LocalizedString
+        import src.backend.main as main_module
+        from src.backend.agents.gm import GMAgent
+        from src.backend.agents.lore import LoreAgent
+        from src.backend.agents.npc import NPCAgent
+        from src.backend.core.config import get_settings
+        from src.backend.core.llm_provider import create_llm_from_settings
+        from src.backend.models.character import PlayerCharacter, Trait
+        from src.backend.models.game_state import GameState
+        from src.backend.models.i18n import LocalizedString
 
-            settings = get_settings()
-
-        except ImportError:
-            return ReloadAgentsResponse(
-                success=False,
-                message="Failed to import required modules.",
-            )
+        settings = get_settings()
 
         if not settings.is_new_format():
             return ReloadAgentsResponse(
@@ -469,7 +460,7 @@ async def reload_agents():
             player=default_character,
             current_location=starting_location_id,
             active_npc_ids=active_npc_ids,
-         )
+        )
 
         lore_agent = LoreAgent(
             llm=llm,

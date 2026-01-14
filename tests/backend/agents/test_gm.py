@@ -1,108 +1,114 @@
-    """Tests for GMAgent."""
+"""Tests for GMAgent."""
 
-    import os
-    from unittest.mock import AsyncMock, MagicMock
+import os
+from unittest.mock import AsyncMock, MagicMock
 
-    import pytest
-    from langchain_core.messages import AIMessage
+import pytest
+from langchain_core.messages import AIMessage
 
-    from src.backend.agents.base import AgentResponse, BaseAgent
-    from src.backend.agents.gm import GMAgent
-    from src.backend.models.character import PlayerCharacter, Trait
-    from src.backend.models.game_state import GameState
-    from src.backend.models.i18n import LocalizedString
+from src.backend.agents.base import AgentResponse
+from src.backend.agents.gm import GMAgent
+from src.backend.models.character import PlayerCharacter, Trait
+from src.backend.models.game_state import GameState
+from src.backend.models.i18n import LocalizedString
+from src.backend.models.world_pack import (
+    NPCBody,
+    NPCData,
+    NPCSoul,
+)
+from src.backend.services.vector_store import VectorStoreService
 
-    # Set fake API key for tests
-    os.environ["OPENAI_API_KEY"] = "sk-test-fake-key-for-testing"
+# Set fake API key for tests
+os.environ["OPENAI_API_KEY"] = "sk-test-fake-key-for-testing"
 
-    class TestGMAgent:
-        """Test suite for GMAgent class."""
 
-        @pytest.fixture
-        def mock_llm(self):
-            """Create mock LLM."""
-            return AsyncMock()
+class TestGMAgent:
+    """Test suite for GMAgent class."""
 
-        @pytest.fixture
-        def mock_npc_agent(self):
-            """Create mock NPC Agent."""
-            agent = AsyncMock()
-            agent.ainvoke = AsyncMock(
-                return_value=AgentResponse(
-                    content="NPC response",
-                    success=True,
+    @pytest.fixture
+    def mock_llm(self):
+        """Create mock LLM."""
+        return AsyncMock()
+
+    @pytest.fixture
+    def mock_npc_agent(self):
+        """Create mock NPC Agent."""
+        agent = AsyncMock()
+        agent.ainvoke = AsyncMock(
+            return_value=AgentResponse(
+                content="NPC response",
+                success=True,
+            )
+        )
+        return agent
+
+    @pytest.fixture
+    def mock_lore_agent(self):
+        """Create mock Lore Agent."""
+        agent = AsyncMock()
+        agent.ainvoke = AsyncMock(
+            return_value=AgentResponse(
+                content="Lore response",
+                success=True,
+            )
+        )
+        return agent
+
+    @pytest.fixture
+    def sample_game_state(self):
+        """Create sample game state."""
+        character = PlayerCharacter(
+            name="张伟",
+            concept=LocalizedString(
+                cn="失业的建筑师",
+                en="Unemployed Architect",
+            ),
+            traits=[
+                Trait(
+                    name=LocalizedString(cn="运动健将", en="Athletic"),
+                    description=LocalizedString(
+                        cn="擅长各种运动",
+                        en="Good at sports",
+                    ),
+                    positive_aspect=LocalizedString(cn="行动敏捷", en="Agile"),
+                    negative_aspect=LocalizedString(cn="容易鲁莽", en="Rash"),
                 )
-            )
-            return agent
+            ],
+            tags=["右腿受伤"],
+        )
 
-        @pytest.fixture
-        def mock_lore_agent(self):
-            """Create mock Lore Agent."""
-            agent = AsyncMock()
-            agent.ainvoke = AsyncMock(
-                return_value=AgentResponse(
-                    content="Lore response",
-                    success=True,
-                )
-            )
-            return agent
+        return GameState(
+            session_id="test-session",
+            world_pack_id="demo-pack",
+            player=character,
+            current_location="暗室",
+            active_npc_ids=["chen_ling"],
+        )
 
-        @pytest.fixture
-        def sample_game_state(self):
-            """Create sample game state."""
-            character = PlayerCharacter(
-                name="张伟",
-                concept=LocalizedString(
-                    cn="失业的建筑师",
-                    en="Unemployed Architect",
-                ),
-                traits=[
-                    Trait(
-                        name=LocalizedString(cn="运动健将", en="Athletic"),
-                        description=LocalizedString(
-                            cn="擅长各种运动",
-                            en="Good at sports",
-                        ),
-                        positive_aspect=LocalizedString(cn="行动敏捷", en="Agile"),
-                        negative_aspect=LocalizedString(cn="容易鲁莽", en="Rash"),
-                    )
-                ],
-                tags=["右腿受伤"],
-            )
+    @pytest.fixture
+    def gm_agent(self, mock_llm, mock_npc_agent, mock_lore_agent, sample_game_state):
+        """Create GM Agent instance."""
+        sub_agents = {
+            "npc": mock_npc_agent,
+            "lore": mock_lore_agent,
+        }
+        return GMAgent(
+            llm=mock_llm,
+            sub_agents=sub_agents,
+            game_state=sample_game_state,
+        )
 
-            return GameState(
-                session_id="test-session",
-                world_pack_id="demo-pack",
-                player=character,
-                current_location="暗室",
-                active_npc_ids=["chen_ling"],
-            )
+    def test_create_gm_agent(self, gm_agent, sample_game_state):
+        """Test creating GM Agent."""
+        assert gm_agent.agent_name == "gm_agent"
+        assert "lore" in gm_agent.sub_agents
+        assert "npc" in gm_agent.sub_agents
+        assert gm_agent.game_state == sample_game_state
+        assert gm_agent.prompt_loader is not None
 
-        @pytest.fixture
-        def gm_agent(self, mock_llm, mock_npc_agent, mock_lore_agent, sample_game_state):
-            """Create GM Agent instance."""
-            sub_agents = {
-                "npc": mock_npc_agent,
-                "lore": mock_lore_agent,
-            }
-            return GMAgent(
-                llm=mock_llm,
-                sub_agents=sub_agents,
-                game_state=sample_game_state,
-            )
-
-        def test_create_gm_agent(self, gm_agent, sample_game_state):
-            """Test creating GM Agent."""
-            assert gm_agent.agent_name == "gm_agent"
-            assert "lore" in gm_agent.sub_agents
-            assert "npc" in gm_agent.sub_agents
-            assert gm_agent.game_state == sample_game_state
-            assert gm_agent.prompt_loader is not None
-
-        def test_gm_agent_repr(self, gm_agent):
-            """Test GM Agent string representation."""
-            assert "GMAgent" in repr(gm_agent)
-        assert "rule" in repr(gm_agent)
+    def test_gm_agent_repr(self, gm_agent):
+        """Test GM Agent string representation."""
+        assert "GMAgent" in repr(gm_agent)
 
     @pytest.mark.asyncio
     async def test_process_simple_input(self, gm_agent, mock_llm):
@@ -136,11 +142,6 @@
 
         assert result.success is False
         assert "No player input" in result.error
-
-    @pytest.mark.asyncio
-        # Should NOT have access to full game state
-        assert "messages" not in context
-        assert "current_location" not in context
 
     @pytest.mark.asyncio
     async def test_slice_context_for_npc(self, gm_agent, sample_game_state):
@@ -214,26 +215,25 @@
         """Test response synthesis."""
         agent_results = [
             {
-                "agent": "rule",
+                "agent": "npc",
                 "result": AgentResponse(
-                    content="需要进行检定",
+                    content="NPC responds to player",
                     success=True,
                 ),
             }
         ]
 
         # Mock LLM response for synthesis
-        gm_agent.llm.ainvoke.return_value.content = "你尝试逃离房间，但需要进行检定。"
+        gm_agent.llm.ainvoke.return_value.content = "你尝试与NPC对话。"
 
         narrative = await gm_agent._synthesize_response(
-            player_input="逃离房间",
-            player_intent="escape",
+            player_input="与NPC对话",
+            player_intent="talk",
             agent_results=agent_results,
             lang="cn",
         )
 
-        assert "逃离房间" in narrative or "尝试" in narrative
-        assert "检定" in narrative
+        assert "NPC" in narrative or "对话" in narrative
 
     @pytest.mark.asyncio
     async def test_synthesize_with_errors(self, gm_agent):
@@ -358,7 +358,7 @@
 
     @pytest.mark.asyncio
     async def test_slice_context_for_npc_with_world_pack(
-        self, mock_llm, mock_rule_agent, sample_game_state
+        self, mock_llm, mock_npc_agent, mock_lore_agent, sample_game_state
     ):
         """Test NPC context slicing with world pack loader."""
         # Create mock world pack loader
@@ -391,7 +391,7 @@
 
         gm_agent = GMAgent(
             llm=mock_llm,
-            sub_agents={"rule": mock_rule_agent},
+            sub_agents={"npc": mock_npc_agent, "lore": mock_lore_agent},
             game_state=sample_game_state,
             world_pack_loader=mock_loader,
         )
@@ -522,6 +522,77 @@
         assert result.success is True
         assert "npc_old_guard" in result.metadata["agents_called"]
         mock_npc_agent.ainvoke.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_gm_generates_dice_check(
+        self, mock_llm, mock_npc_agent, mock_lore_agent, sample_game_state
+    ):
+        """Test that GM can generate dice check requests directly."""
+        gm_agent = GMAgent(
+            llm=mock_llm,
+            sub_agents={"npc": mock_npc_agent, "lore": mock_lore_agent},
+            game_state=sample_game_state,
+        )
+
+        mock_llm.ainvoke.return_value = AIMessage(
+            content="""{
+                "action": "RESPOND",
+                "narrative": "你试图攀爬墙壁，这需要进行一次敏捷检定。",
+                "needs_check": true,
+                "check_request": {
+                    "intention": "攀爬墙壁",
+                    "influencing_factors": {
+                        "traits": ["运动健将"],
+                        "tags": ["右腿受伤"]
+                    },
+                    "dice_formula": "2d6",
+                    "instructions": {
+                        "cn": "由于你擅长运动但右腿受伤，两者抵消",
+                        "en": "Athletic skill and leg injury cancel out"
+                    }
+                },
+                "reasoning": "玩家尝试危险行动，需要检定"
+            }"""
+        )
+
+        result = await gm_agent.process(
+            {
+                "player_input": "我要攀爬墙壁",
+                "lang": "cn",
+            }
+        )
+
+        assert result.success is True
+        assert result.metadata.get("needs_check") is True
+
+    @pytest.mark.asyncio
+    async def test_resume_after_dice_success(
+        self, mock_llm, mock_npc_agent, mock_lore_agent, sample_game_state
+    ):
+        """Test GM generates narrative after successful dice check."""
+        gm_agent = GMAgent(
+            llm=mock_llm,
+            sub_agents={"npc": mock_npc_agent, "lore": mock_lore_agent},
+            game_state=sample_game_state,
+        )
+
+        mock_llm.ainvoke.return_value = AIMessage(
+            content="""{
+                "action": "RESPOND",
+                "narrative": "你成功攀爬上了墙壁，发现上面有一个秘密通道。",
+                "reasoning": "检定成功，玩家达成目标"
+            }"""
+        )
+
+        result = await gm_agent.process(
+            {
+                "player_input": "我要攀爬墙壁",
+                "lang": "cn",
+            }
+        )
+
+        assert result.success is True
+        assert "成功" in result.content or "发现" in result.content or "墙壁" in result.content
 
 
 class TestGMAgentConversationHistoryRetrieval:

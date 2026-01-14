@@ -273,89 +273,6 @@ class TestRealPromptTemplates:
         yield
         reset_prompt_loader()
 
-    def test_rule_agent_template_exists(self):
-        """Test that rule_agent template exists."""
-        loader = get_prompt_loader()
-        templates = loader.list_templates()
-
-        assert "rule_agent" in templates
-
-    def test_rule_agent_template_has_both_languages(self):
-        """Test that rule_agent has cn and en."""
-        loader = get_prompt_loader()
-        template = loader.get_template("rule_agent")
-
-        assert "cn" in template.data
-        assert "en" in template.data
-
-    def test_rule_agent_renders_chinese(self):
-        """Test rendering rule_agent in Chinese."""
-        loader = get_prompt_loader()
-        template = loader.get_template("rule_agent")
-
-        result = template.render(
-            "cn",
-            character_name="张伟",
-            traits=[
-                {
-                    "name": "运动健将",
-                    "description": "身体素质出色，擅长各种体育运动",
-                    "positive": "体力充沛，行动敏捷，可以完成高难度动作",
-                    "negative": "可能过于自信，忽视周围环境的危险",
-                },
-                {
-                    "name": "口才",
-                    "description": "善于言辞，能够说服他人",
-                    "positive": "在交涉和谈判中具有优势",
-                    "negative": "可能因为说太多话而暴露秘密",
-                },
-            ],
-            tags=["右腿受伤"],
-            action="逃离房间",
-            argument="",  # Optional field
-        )
-
-        assert "规则裁判" in result
-        assert "张伟" in result
-        assert "运动健将" in result
-        assert "口才" in result
-        assert "右腿受伤" in result
-        assert "逃离房间" in result
-
-    def test_rule_agent_renders_english(self):
-        """Test rendering rule_agent in English."""
-        loader = get_prompt_loader()
-        template = loader.get_template("rule_agent")
-
-        result = template.render(
-            "en",
-            character_name="John",
-            traits=[
-                {
-                    "name": "Athletic",
-                    "description": "Excellent physical fitness, skilled in various sports",
-                    "positive": "High stamina, agile movement, can perform difficult feats",
-                    "negative": "May be overconfident and ignore environmental dangers",
-                },
-                {
-                    "name": "Charismatic",
-                    "description": "Skilled with words, able to persuade others",
-                    "positive": "Advantage in negotiations and social interactions",
-                    "negative": "May talk too much and reveal secrets",
-                },
-            ],
-            tags=["Injured leg"],
-            action="Escape room",
-            argument="",  # Optional field
-        )
-
-        assert "Rule Agent" in result
-        assert "John" in result
-        assert "Athletic" in result
-        assert "Charismatic" in result
-        assert "Injured leg" in result
-        assert "Escape room" in result
-
     def test_gm_agent_template_exists(self):
         """Test that gm_agent template exists."""
         loader = get_prompt_loader()
@@ -395,9 +312,23 @@ class TestRealPromptTemplates:
             agent_results=None,
             dice_result=None,
             force_output=False,
+            player_character={
+                "name": "张伟",
+                "concept": "失业的建筑师",
+                "traits": [
+                    {
+                        "name": "运动健将",
+                        "description": "擅长运动",
+                        "positive": "行动敏捷",
+                        "negative": "容易鲁莽",
+                    }
+                ],
+                "tags": ["右腿受伤"],
+            },
         )
 
         assert "GM" in result
         assert "暗室" in result
         assert "陈玲" in result
         assert "我要查看房间" in result
+        assert "张伟" in result
