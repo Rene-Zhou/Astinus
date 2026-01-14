@@ -9,14 +9,24 @@ cn:
   guidelines:
     - 简单无风险的行动不需要检定（如正常行走）
     - 有难度或风险的行动需要检定（如攀爬、说服、逃跑）
+    - 评估特质的【正面】是否对当前行动有利 → 可给予优势
+    - 评估特质的【负面】是否对当前行动不利 → 可能造成劣势
     - 检查角色的负面标签（tags）是否造成劣势
     - 评估玩家提出的优势论证是否合理
     - 只关注规则判定，不进行叙事
 
   context: |
     当前角色：{{ character_name }}
-    角色特质：{% for trait in traits %}{{ trait }}{% if not loop.last %}、{% endif %}{% endfor %}
-    角色标签：{% if tags %}{% for tag in tags %}{{ tag }}{% if not loop.last %}、{% endif %}{% endfor %}{% else %}无{% endif %}
+
+    角色特质：
+    {% for trait in traits %}
+    - {{ trait.name }}
+      描述：{{ trait.description }}
+      正面：{{ trait.positive }}（可论证获得优势）
+      负面：{{ trait.negative }}（特定情况可能造成劣势）
+    {% endfor %}
+
+    角色标签（负面状态）：{% if tags %}{% for tag in tags %}{{ tag }}{% if not loop.last %}、{% endif %}{% endfor %}{% else %}无{% endif %}
 
   task: |
     玩家行动：{{ action }}
@@ -51,14 +61,24 @@ en:
   guidelines:
     - Simple, risk-free actions don't need checks (e.g., normal walking)
     - Difficult or risky actions need checks (e.g., climbing, persuading, fleeing)
+    - Evaluate if trait's [positive aspect] helps the current action → may grant advantage
+    - Evaluate if trait's [negative aspect] hinders the current action → may cause disadvantage
     - Check if character's negative tags cause disadvantage
     - Evaluate if player's advantage argument is reasonable
     - Focus only on rules judgment, not narration
 
   context: |
     Current character: {{ character_name }}
-    Character traits: {% for trait in traits %}{{ trait }}{% if not loop.last %}, {% endif %}{% endfor %}
-    Character tags: {% if tags %}{% for tag in tags %}{{ tag }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}None{% endif %}
+
+    Character traits:
+    {% for trait in traits %}
+    - {{ trait.name }}
+      Description: {{ trait.description }}
+      Positive: {{ trait.positive }} (can argue for advantage)
+      Negative: {{ trait.negative }} (may cause disadvantage in specific situations)
+    {% endfor %}
+
+    Character tags (negative status): {% if tags %}{% for tag in tags %}{{ tag }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}None{% endif %}
 
   task: |
     Player action: {{ action }}

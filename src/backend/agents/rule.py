@@ -65,6 +65,7 @@ class RuleAgent(BaseAgent):
         character = input_data.get("character", {})
         tags = input_data.get("tags", [])
         argument = input_data.get("argument", "")
+        lang = input_data.get("lang", "cn")
 
         if not action:
             return AgentResponse(
@@ -81,6 +82,7 @@ class RuleAgent(BaseAgent):
             tags,
             action,
             argument,
+            lang,
         )
 
         # Call LLM
@@ -157,6 +159,7 @@ class RuleAgent(BaseAgent):
         tags: list[str],
         action: str,
         argument: str,
+        lang: str = "cn",
     ) -> list[SystemMessage]:
         """
         Build prompt for LLM using rule_agent template.
@@ -167,6 +170,7 @@ class RuleAgent(BaseAgent):
             tags: Current tags
             action: Player action
             argument: Player argument (optional)
+            lang: Language code
 
         Returns:
             List of messages for LLM
@@ -186,23 +190,28 @@ class RuleAgent(BaseAgent):
         else:
             concept_display = str(character_concept)
 
-        # Get traits
-        traits = character.get("traits", [])
-        if traits and isinstance(traits[0], dict):
-            # Trait objects
-            trait_names = []
-            for trait in traits:
-                if isinstance(trait, dict):
-                    name = trait.get("name", {})
-                    if isinstance(name, dict):
-                        trait_names.append(name.get("cn", "") or name.get("en", ""))
-                    else:
-                        trait_names.append(str(name))
-            traits = trait_names
+        # Get traits - extract full trait information (name, description, positive_aspect, negative_aspect)
+        traits_full = []
+        for trait in character.get("traits", []):
+            if isinstance(trait, dict):
+                # Extract LocalizedString fields with fallback to preferred language
+                def get_localized(field: str, preferred_lang: str = "cn") -> str:
+                    value = trait.get(field, {})
+                    if isinstance(value, dict):
+                        return value.get(preferred_lang, "") or value.get("en", "")
+                    return str(value) if value else ""
+
+                traits_full.append({
+                    "name": get_localized("name", lang),
+                    "description": get_localized("description", lang),
+                    "positive": get_localized("positive_aspect", lang),
+                    "negative": get_localized("negative_aspect", lang),
+                })
+        traits = traits_full
 
         # Render system message
         system_message = template.get_system_message(
-            lang="cn",
+            lang=lang,
             character_name=character_name,
             concept=concept_display,
             traits=traits,
@@ -211,7 +220,7 @@ class RuleAgent(BaseAgent):
 
         # Render user message with action
         user_message = template.get_user_message(
-            lang="cn",
+            lang=lang,
             character_name=character_name,
             concept=concept_display,
             traits=traits,
