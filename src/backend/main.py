@@ -14,7 +14,6 @@ from fastapi.responses import JSONResponse
 from src.backend.agents.gm import GMAgent
 from src.backend.agents.lore import LoreAgent
 from src.backend.agents.npc import NPCAgent
-from src.backend.agents.rule import RuleAgent
 from src.backend.api import websockets
 from src.backend.api.v1 import game, settings
 from src.backend.core.config import get_settings
@@ -160,16 +159,14 @@ async def lifespan(app: FastAPI):
             )
 
             # Create sub-agents
-            rule_agent = RuleAgent(llm)
             lore_agent = LoreAgent(
                 llm=llm,
                 world_pack_loader=world_pack_loader,
                 vector_store=vector_store,
             )
 
-            # Build sub_agents dictionary with rule and lore
+            # Build sub_agents dictionary
             sub_agents: dict = {
-                "rule": rule_agent,
                 "lore": lore_agent,
             }
 
@@ -260,10 +257,10 @@ async def health_check():
         "version": "0.1.0",
         "agents": {
             "gm_agent": gm_agent is not None,
-            "rule_agent": gm_agent is not None and "rule" in gm_agent.sub_agents
+            "lore_agent": gm_agent is not None and "lore" in gm_agent.sub_agents
             if gm_agent
             else False,
-            "lore_agent": gm_agent is not None and "lore" in gm_agent.sub_agents
+            "npc_agent": gm_agent is not None and "npc" in gm_agent.sub_agents
             if gm_agent
             else False,
         },

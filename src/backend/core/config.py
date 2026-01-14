@@ -110,7 +110,6 @@ class AgentsConfig(BaseModel):
 
     gm: AgentConfig
     npc: AgentConfig
-    rule: AgentConfig
     lore: AgentConfig
 
 
@@ -119,7 +118,6 @@ class LLMModelsConfig(BaseModel):
 
     gm: str = Field(default="gpt-4o-mini")
     npc: str = Field(default="gpt-4o-mini")
-    rule: str = Field(default="gpt-4o-mini")
     lore: str = Field(default="gpt-4o-mini")
 
 
@@ -224,7 +222,6 @@ class Settings(BaseModel):
         return {
             self.agents.gm.provider_id,
             self.agents.npc.provider_id,
-            self.agents.rule.provider_id,
             self.agents.lore.provider_id,
         }
 
@@ -236,7 +233,7 @@ class Settings(BaseModel):
         errors = []
         provider_ids = {p.id for p in self.providers}
 
-        for agent_name in ["gm", "npc", "rule", "lore"]:
+        for agent_name in ["gm", "npc", "lore"]:
             agent_config = getattr(self.agents, agent_name)
             if agent_config.provider_id not in provider_ids:
                 errors.append(
@@ -280,7 +277,6 @@ def create_default_settings() -> Settings:
         agents=AgentsConfig(
             gm=default_agent.model_copy(),
             npc=default_agent.model_copy(update={"temperature": 0.8}),
-            rule=default_agent.model_copy(update={"temperature": 0.3, "max_tokens": 512}),
             lore=default_agent.model_copy(update={"temperature": 0.5, "max_tokens": 1024}),
         ),
     )
@@ -399,12 +395,6 @@ def migrate_legacy_settings(data: dict[str, Any]) -> dict[str, Any]:
             "model": models.get("npc", "gpt-4o-mini"),
             "temperature": min(temperature + 0.1, 2.0),
             "max_tokens": max_tokens // 2,
-        },
-        "rule": {
-            "provider_id": provider_id,
-            "model": models.get("rule", "gpt-4o-mini"),
-            "temperature": max(temperature - 0.4, 0.0),
-            "max_tokens": max_tokens // 4,
         },
         "lore": {
             "provider_id": provider_id,

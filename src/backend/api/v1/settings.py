@@ -261,7 +261,7 @@ async def update_settings(request: UpdateSettingsRequest):
 
         provider_ids = {p.id for p in settings.providers}
 
-        for agent_name in ["gm", "npc", "rule", "lore"]:
+        for agent_name in ["gm", "npc", "lore"]:
             agent_input = getattr(request.agents, agent_name)
             if agent_input is not None:
                 if agent_input.provider_id not in provider_ids:
@@ -382,18 +382,23 @@ async def reload_agents():
     without restarting the backend server.
     """
     try:
-        import src.backend.main as main_module
-        from src.backend.agents.gm import GMAgent
-        from src.backend.agents.lore import LoreAgent
-        from src.backend.agents.npc import NPCAgent
-        from src.backend.agents.rule import RuleAgent
-        from src.backend.core.config import get_settings
-        from src.backend.core.llm_provider import create_llm_from_settings
-        from src.backend.models.character import PlayerCharacter, Trait
-        from src.backend.models.game_state import GameState
-        from src.backend.models.i18n import LocalizedString
+            import src.backend.main as main_module
+            from src.backend.agents.gm import GMAgent
+            from src.backend.agents.lore import LoreAgent
+            from src.backend.agents.npc import NPCAgent
+            from src.backend.core.config import get_settings
+            from src.backend.core.llm_provider import create_llm_from_settings
+            from src.backend.models.character import PlayerCharacter, Trait
+            from src.backend.models.game_state import GameState
+            from src.backend.models.i18n import LocalizedString
 
-        settings = get_settings()
+            settings = get_settings()
+
+        except ImportError:
+            return ReloadAgentsResponse(
+                success=False,
+                message="Failed to import required modules.",
+            )
 
         if not settings.is_new_format():
             return ReloadAgentsResponse(
@@ -464,9 +469,8 @@ async def reload_agents():
             player=default_character,
             current_location=starting_location_id,
             active_npc_ids=active_npc_ids,
-        )
+         )
 
-        rule_agent = RuleAgent(llm)
         lore_agent = LoreAgent(
             llm=llm,
             world_pack_loader=main_module.world_pack_loader,
@@ -474,7 +478,6 @@ async def reload_agents():
         )
 
         sub_agents: dict = {
-            "rule": rule_agent,
             "lore": lore_agent,
         }
 
