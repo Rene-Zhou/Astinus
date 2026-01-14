@@ -126,28 +126,27 @@ cn:
     {{ world_background }}
     {% endif %}
 
+    {% if agent_results or dice_result %}
+    === 本次循环已获得的信息 (按时间顺序) ===
+    {% if dice_result %}
+    【掷骰检定】意图: {{ dice_result.intention }} | 结果: {{ dice_result.total }} ({{ dice_result.outcome }})
+    {% endif %}
     {% if agent_results %}
-    === 本次循环中的 Agent 响应 ===
     {% for result in agent_results %}
     【{{ result.agent }}】: {{ result.content }}
     {% endfor %}
     {% endif %}
-
-    {% if dice_result %}
-    === 骰子检定结果 ===
-    玩家意图：{{ dice_result.intention }}
-    骰子结果：{{ dice_result.total }}（{{ dice_result.outcome }}）
     {% endif %}
 
   task: |
     玩家输入：{{ player_input }}
-
+    
+    请根据上述信息和"本次循环已获得的信息"，决定下一步行动。
+    
     {% if force_output %}
     【强制输出】你已进行了 {{ max_iterations }} 轮决策，必须立即生成最终叙事输出。
     使用已收集到的所有信息，生成一个合理的叙事结局。只能使用 RESPOND 行动。
     {% endif %}
-
-    请根据当前状态决定下一步行动。
 
     【决策逻辑流（必须严格遵守）】：
     在每一轮迭代中，你必须按照以下顺序进行逻辑判断：
@@ -310,21 +309,20 @@ en:
     {{ world_background }}
     {% endif %}
 
+    {% if agent_results or dice_result %}
+    === Information Gathered This Iteration (in order) ===
+    {% if dice_result %}
+    【Dice Check】Intention: {{ dice_result.intention }} | Result: {{ dice_result.total }} ({{ dice_result.outcome }})
+    {% endif %}
     {% if agent_results %}
-    === Agent Responses This Iteration ===
     {% for result in agent_results %}
     【{{ result.agent }}】: {{ result.content }}
     {% endfor %}
     {% endif %}
-
-    {% if dice_result %}
-    === Dice Check Result ===
-    Intention: {{ dice_result.intention }}
-    Result: {{ dice_result.total }} ({{ dice_result.outcome }})
     {% endif %}
 
   task: |
-    Player Input: {{ player_input }}
+    Based on the "Recent Conversation History" (especially the 【Current Action】 marked input) and "Information Gathered This Iteration", decide next action.
 
     {% if force_output %}
     【FORCE OUTPUT】You have reached {{ max_iterations }} iterations. You MUST output final narrative now.

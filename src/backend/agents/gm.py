@@ -212,6 +212,8 @@ class GMAgent(BaseAgent):
                 )
 
                 result = await self._invoke_sub_agent(agent_name, agent_context)
+                
+                # Record result
                 agent_results.append(
                     {
                         "agent": agent_name,
@@ -221,7 +223,9 @@ class GMAgent(BaseAgent):
                     }
                 )
 
-                dice_result = None
+                # DO NOT clear dice_result here anymore. 
+                # It should persist through the turn's ReAct loop so the GM 
+                # can see it in subsequent iterations even after calling an NPC.
                 iteration += 1
 
             else:
@@ -250,14 +254,20 @@ class GMAgent(BaseAgent):
         recent_messages = self.game_state.get_recent_messages(
             count=get_settings().game.conversation_history_length
         )
-        conversation_history = [
-            {
+        conversation_history = []
+        for i, msg in enumerate(recent_messages):
+            role_label = "玩家" if msg.get("role") == "player" else "GM"
+            content = msg.get("content", "")[:1000]
+            
+            # Highlight current action if it's the last message and it's from player
+            if i == len(recent_messages) - 1 and msg.get("role") == "player":
+                role_label = "【当前行动】玩家"
+            
+            conversation_history.append({
                 "turn": msg.get("turn", 0),
-                "role": "玩家" if msg.get("role") == "player" else "GM",
-                "content": msg.get("content", "")[:200],
-            }
-            for msg in recent_messages
-        ]
+                "role": role_label,
+                "content": content,
+            })
 
         def _format_agent_result(r: dict[str, Any]) -> dict[str, Any]:
             """Format agent result for GM prompt - parse NPC metadata for clarity."""
@@ -295,6 +305,7 @@ class GMAgent(BaseAgent):
                     "content": r.get("content", ""),
                 }
 
+        agent_results = agent_results or []
         formatted_agent_results = [_format_agent_result(r) for r in agent_results]
 
         template_vars = {
@@ -317,7 +328,7 @@ class GMAgent(BaseAgent):
             "max_iterations": max_iterations,
             "conversation_history": conversation_history,
             "player_input": player_input,
-            "agent_results": formatted_agent_results if agent_results else None,
+            "agent_results": formatted_agent_results if formatted_agent_results else [],
             "dice_result": dice_result,
             "force_output": force_output,
             "player_character": {
@@ -698,14 +709,20 @@ class GMAgent(BaseAgent):
         recent_messages = self.game_state.get_recent_messages(
             count=get_settings().game.conversation_history_length
         )
-        conversation_history = [
-            {
+        conversation_history = []
+        for i, msg in enumerate(recent_messages):
+            role_label = "玩家" if msg.get("role") == "player" else "GM"
+            content = msg.get("content", "")[:1000]
+            
+            # Highlight current action if it's the last message and it's from player
+            if i == len(recent_messages) - 1 and msg.get("role") == "player":
+                role_label = "【当前行动】玩家"
+            
+            conversation_history.append({
                 "turn": msg.get("turn", 0),
-                "role": "玩家" if msg.get("role") == "player" else "GM",
-                "content": msg.get("content", "")[:200],
-            }
-            for msg in recent_messages
-        ]
+                "role": role_label,
+                "content": content,
+            })
 
         # Prepare template variables with hierarchical context
         template_vars = {
