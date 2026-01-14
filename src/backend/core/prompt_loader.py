@@ -103,7 +103,7 @@ class PromptTemplate:
 
     def get_system_message(self, lang: str = "cn", **kwargs: Any) -> str:
         """
-        Get the system message portion (role + guidelines + information_control).
+        Get the system message portion (role + rules + format + information_control).
 
         Args:
             lang: Language code
@@ -119,14 +119,30 @@ class PromptTemplate:
             role_template = self.env.from_string(lang_data["role"])
             sections.append(role_template.render(**kwargs))
 
-        if "guidelines" in lang_data:
-            guidelines = lang_data["guidelines"]
-            if isinstance(guidelines, list):
-                sections.append("\n".join(f"- {g}" for g in guidelines))
-            elif isinstance(guidelines, str):
-                sections.append(guidelines)
+        if "react_instructions" in lang_data:
+            template = self.env.from_string(lang_data["react_instructions"])
+            sections.append(template.render(**kwargs))
 
-        # Add information control rules (critical for preventing metagaming)
+        if "decision_flow" in lang_data:
+            template = self.env.from_string(lang_data["decision_flow"])
+            sections.append(template.render(**kwargs))
+
+        if "chain_of_thought" in lang_data:
+            template = self.env.from_string(lang_data["chain_of_thought"])
+            sections.append(template.render(**kwargs))
+
+        if "npc_rules" in lang_data:
+            template = self.env.from_string(lang_data["npc_rules"])
+            sections.append(template.render(**kwargs))
+
+        if "scene_transition_rules" in lang_data:
+            template = self.env.from_string(lang_data["scene_transition_rules"])
+            sections.append(template.render(**kwargs))
+
+        if "response_format" in lang_data:
+            template = self.env.from_string(lang_data["response_format"])
+            sections.append(template.render(**kwargs))
+
         if "information_control" in lang_data:
             info_control_template = self.env.from_string(lang_data["information_control"])
             sections.append(info_control_template.render(**kwargs))

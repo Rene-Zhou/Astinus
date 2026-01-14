@@ -83,9 +83,8 @@ class TestPromptTemplate:
         result = template.get_system_message("cn")
 
         assert "你是测试 Agent" in result
-        assert "规则1" in result
-        assert "规则2" in result
-        # Should NOT include context or task
+        assert "规则1" not in result
+        assert "规则2" not in result
         assert "玩家" not in result
         assert "执行" not in result
 
