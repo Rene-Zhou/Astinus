@@ -9,7 +9,7 @@ Defines database models for:
 
 import json
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -35,11 +35,11 @@ class GameSessionModel(Base):
     session_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     world_pack_id: Mapped[str] = mapped_column(String(64))
     player_name: Mapped[str] = mapped_column(String(128))
-    player_data_json: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    player_data_json: Mapped[str | None] = mapped_column(Text, default=None)
     current_location: Mapped[str] = mapped_column(String(256), default="")
     current_phase: Mapped[str] = mapped_column(String(32), default="waiting_input")
     turn_count: Mapped[int] = mapped_column(Integer, default=0)
-    active_npc_ids_json: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    active_npc_ids_json: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -62,11 +62,11 @@ class GameSessionModel(Base):
         session_id: str,
         world_pack_id: str,
         player_name: str,
-        player_data: Optional[dict[str, Any]] = None,
+        player_data: dict[str, Any] | None = None,
         current_location: str = "",
         current_phase: str = "waiting_input",
         turn_count: int = 0,
-        active_npc_ids: Optional[list[str]] = None,
+        active_npc_ids: list[str] | None = None,
         **kwargs,
     ):
         """
@@ -93,14 +93,14 @@ class GameSessionModel(Base):
         self.active_npc_ids_json = json.dumps(active_npc_ids) if active_npc_ids else None
 
     @property
-    def player_data(self) -> Optional[dict[str, Any]]:
+    def player_data(self) -> dict[str, Any] | None:
         """Get player data as dict."""
         if self.player_data_json:
             return json.loads(self.player_data_json)
         return None
 
     @player_data.setter
-    def player_data(self, value: Optional[dict[str, Any]]) -> None:
+    def player_data(self, value: dict[str, Any] | None) -> None:
         """Set player data from dict."""
         self.player_data_json = json.dumps(value) if value else None
 
@@ -112,7 +112,7 @@ class GameSessionModel(Base):
         return []
 
     @active_npc_ids.setter
-    def active_npc_ids(self, value: Optional[list[str]]) -> None:
+    def active_npc_ids(self, value: list[str] | None) -> None:
         """Set active NPC IDs from list."""
         self.active_npc_ids_json = json.dumps(value) if value else None
 
@@ -153,7 +153,7 @@ class MessageModel(Base):
     role: Mapped[str] = mapped_column(String(32))  # user, assistant, system
     content: Mapped[str] = mapped_column(Text)
     turn: Mapped[int] = mapped_column(Integer, default=0)
-    extra_data_json: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    extra_data_json: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationship
@@ -167,7 +167,7 @@ class MessageModel(Base):
         role: str,
         content: str,
         turn: int = 0,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ):
         """
@@ -188,14 +188,14 @@ class MessageModel(Base):
         self.extra_data_json = json.dumps(metadata) if metadata else None
 
     @property
-    def extra_data(self) -> Optional[dict[str, Any]]:
+    def extra_data(self) -> dict[str, Any] | None:
         """Get extra data as dict."""
         if self.extra_data_json:
             return json.loads(self.extra_data_json)
         return None
 
     @extra_data.setter
-    def extra_data(self, value: Optional[dict[str, Any]]) -> None:
+    def extra_data(self, value: dict[str, Any] | None) -> None:
         """Set extra data from dict."""
         self.extra_data_json = json.dumps(value) if value else None
 
@@ -231,7 +231,7 @@ class SaveSlotModel(Base):
     )
     slot_name: Mapped[str] = mapped_column(String(128), index=True)
     game_state_json: Mapped[str] = mapped_column(Text)
-    description: Mapped[Optional[str]] = mapped_column(String(512), default=None)
+    description: Mapped[str | None] = mapped_column(String(512), default=None)
     is_auto_save: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -246,7 +246,7 @@ class SaveSlotModel(Base):
         session_id: str,
         slot_name: str,
         game_state_json: str,
-        description: Optional[str] = None,
+        description: str | None = None,
         is_auto_save: bool = False,
         **kwargs,
     ):

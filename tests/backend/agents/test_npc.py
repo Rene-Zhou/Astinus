@@ -2,8 +2,7 @@
 
 import os
 import tempfile
-from pathlib import Path
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 
 import pytest
 from langchain_core.messages import AIMessage
@@ -33,24 +32,22 @@ class TestNPCAgent:
                 name="陈玲",
                 description={
                     "cn": "图书馆的年轻女馆员，戴着圆框眼镜，说话轻声细语。"
-                         "她对古籍有着浓厚的兴趣，经常独自研究馆藏的珍本。",
+                    "她对古籍有着浓厚的兴趣，经常独自研究馆藏的珍本。",
                     "en": "A young female librarian wearing round glasses, "
-                         "speaking softly. She has a deep interest in ancient "
-                         "books and often studies rare collections alone.",
+                    "speaking softly. She has a deep interest in ancient "
+                    "books and often studies rare collections alone.",
                 },
                 personality=["内向", "细心", "好奇", "善良"],
                 speech_style={
-                    "cn": "说话轻柔，经常使用书面语，偶尔引用古文。"
-                         "紧张时会结巴，习惯用手推眼镜。",
+                    "cn": "说话轻柔，经常使用书面语，偶尔引用古文。紧张时会结巴，习惯用手推眼镜。",
                     "en": "Speaks softly, often uses formal language, "
-                         "occasionally quotes classical texts. Stutters when "
-                         "nervous, habitually pushes up her glasses.",
+                    "occasionally quotes classical texts. Stutters when "
+                    "nervous, habitually pushes up her glasses.",
                 },
                 example_dialogue=[
                     {
                         "user": "这里有什么有趣的书吗？",
-                        "char": "有...有的。这边有一本《山海经》的明刻本，"
-                               "是我们馆的镇馆之宝呢...",
+                        "char": "有...有的。这边有一本《山海经》的明刻本，是我们馆的镇馆之宝呢...",
                     }
                 ],
             ),
@@ -79,13 +76,11 @@ class TestNPCAgent:
         assert repr(npc_agent) == "NPCAgent()"
 
     @pytest.mark.asyncio
-    async def test_process_simple_greeting(
-        self, npc_agent, mock_llm, sample_npc_data
-    ):
+    async def test_process_simple_greeting(self, npc_agent, mock_llm, sample_npc_data):
         """Test NPC responding to simple greeting."""
         mock_llm.ainvoke.return_value = AIMessage(
             content='{"response": "你...你好。有什么我能帮你的吗？", '
-                   '"emotion": "shy", "action": "推了推眼镜"}'
+            '"emotion": "shy", "action": "推了推眼镜"}'
         )
 
         input_data = {
@@ -105,16 +100,14 @@ class TestNPCAgent:
         assert "emotion" in result.metadata
 
     @pytest.mark.asyncio
-    async def test_process_with_relationship_influence(
-        self, npc_agent, mock_llm, sample_npc_data
-    ):
+    async def test_process_with_relationship_influence(self, npc_agent, mock_llm, sample_npc_data):
         """Test NPC response influenced by relationship value."""
         # Update relationship to positive
         sample_npc_data.body.relations["player"] = 50
 
         mock_llm.ainvoke.return_value = AIMessage(
             content='{"response": "啊，是你！真高兴又见到你。今天想看什么书？", '
-                   '"emotion": "happy", "action": "微笑着放下手中的书"}'
+            '"emotion": "happy", "action": "微笑着放下手中的书"}'
         )
 
         input_data = {
@@ -129,15 +122,12 @@ class TestNPCAgent:
         assert result.metadata.get("relationship_level") == 50
 
     @pytest.mark.asyncio
-    async def test_process_with_negative_relationship(
-        self, npc_agent, mock_llm, sample_npc_data
-    ):
+    async def test_process_with_negative_relationship(self, npc_agent, mock_llm, sample_npc_data):
         """Test NPC response with negative relationship."""
         sample_npc_data.body.relations["player"] = -30
 
         mock_llm.ainvoke.return_value = AIMessage(
-            content='{"response": "...需要什么？", '
-                   '"emotion": "cold", "action": "没有抬头看向你"}'
+            content='{"response": "...需要什么？", "emotion": "cold", "action": "没有抬头看向你"}'
         )
 
         input_data = {
@@ -152,15 +142,13 @@ class TestNPCAgent:
         assert result.metadata.get("relationship_level") == -30
 
     @pytest.mark.asyncio
-    async def test_process_with_npc_tags(
-        self, npc_agent, mock_llm, sample_npc_data
-    ):
+    async def test_process_with_npc_tags(self, npc_agent, mock_llm, sample_npc_data):
         """Test NPC response influenced by status tags."""
         sample_npc_data.body.tags = ["受伤", "害怕"]
 
         mock_llm.ainvoke.return_value = AIMessage(
             content='{"response": "请...请不要靠近...", '
-                   '"emotion": "scared", "action": "后退一步，捂住手臂"}'
+            '"emotion": "scared", "action": "后退一步，捂住手臂"}'
         )
 
         input_data = {
@@ -175,9 +163,7 @@ class TestNPCAgent:
         assert "受伤" in sample_npc_data.body.tags
 
     @pytest.mark.asyncio
-    async def test_process_npc_remembers_event(
-        self, npc_agent, mock_llm, sample_npc_data
-    ):
+    async def test_process_npc_remembers_event(self, npc_agent, mock_llm, sample_npc_data):
         """Test NPC references memory in response."""
         sample_npc_data.body.memory = {
             "玩家帮忙找到了失踪的古籍": ["古籍", "帮助"],
@@ -185,7 +171,7 @@ class TestNPCAgent:
 
         mock_llm.ainvoke.return_value = AIMessage(
             content='{"response": "上次多亏你帮我找到那本古籍，真是太感谢了！", '
-                   '"emotion": "grateful", "action": "真诚地鞠了一躬"}'
+            '"emotion": "grateful", "action": "真诚地鞠了一躬"}'
         )
 
         input_data = {
@@ -212,9 +198,7 @@ class TestNPCAgent:
         assert "npc_data" in result.error.lower()
 
     @pytest.mark.asyncio
-    async def test_process_missing_player_input(
-        self, npc_agent, sample_npc_data
-    ):
+    async def test_process_missing_player_input(self, npc_agent, sample_npc_data):
         """Test error when player input is missing."""
         input_data = {
             "npc_data": sample_npc_data.model_dump(),
@@ -227,13 +211,9 @@ class TestNPCAgent:
         assert "player_input" in result.error.lower()
 
     @pytest.mark.asyncio
-    async def test_process_invalid_json_response(
-        self, npc_agent, mock_llm, sample_npc_data
-    ):
+    async def test_process_invalid_json_response(self, npc_agent, mock_llm, sample_npc_data):
         """Test error handling for invalid JSON from LLM."""
-        mock_llm.ainvoke.return_value = AIMessage(
-            content="这不是有效的JSON {"
-        )
+        mock_llm.ainvoke.return_value = AIMessage(content="这不是有效的JSON {")
 
         input_data = {
             "npc_data": sample_npc_data.model_dump(),
@@ -247,9 +227,7 @@ class TestNPCAgent:
         assert "parse" in result.error.lower() or "json" in result.error.lower()
 
     @pytest.mark.asyncio
-    async def test_build_prompt_includes_soul(
-        self, npc_agent, sample_npc_data
-    ):
+    async def test_build_prompt_includes_soul(self, npc_agent, sample_npc_data):
         """Test that prompt includes NPC soul information."""
         messages = npc_agent._build_prompt(
             npc_data=sample_npc_data.model_dump(),
@@ -268,9 +246,7 @@ class TestNPCAgent:
         assert "轻柔" in prompt_text or "soft" in prompt_text.lower()
 
     @pytest.mark.asyncio
-    async def test_build_prompt_includes_body_state(
-        self, npc_agent, sample_npc_data
-    ):
+    async def test_build_prompt_includes_body_state(self, npc_agent, sample_npc_data):
         """Test that prompt includes NPC body state."""
         sample_npc_data.body.tags = ["忙碌"]
         sample_npc_data.body.relations["player"] = 30
@@ -287,19 +263,19 @@ class TestNPCAgent:
         assert "忙碌" in prompt_text or "busy" in prompt_text.lower()
 
     @pytest.mark.asyncio
-    async def test_sync_invoke(
-        self, npc_agent, mock_llm, sample_npc_data
-    ):
+    async def test_sync_invoke(self, npc_agent, mock_llm, sample_npc_data):
         """Test synchronous invocation."""
         mock_llm.ainvoke.return_value = AIMessage(
             content='{"response": "你好。", "emotion": "neutral", "action": ""}'
         )
 
-        result = npc_agent.invoke({
-            "npc_data": sample_npc_data.model_dump(),
-            "player_input": "你好",
-            "context": {},
-        })
+        result = npc_agent.invoke(
+            {
+                "npc_data": sample_npc_data.model_dump(),
+                "player_input": "你好",
+                "context": {},
+            }
+        )
 
         assert result.success is True
 
@@ -310,7 +286,7 @@ class TestNPCAgent:
         """Test NPC can suggest relationship changes."""
         mock_llm.ainvoke.return_value = AIMessage(
             content='{"response": "太感谢你了！", "emotion": "grateful", '
-                   '"action": "眼眶湿润", "relation_change": 10}'
+            '"action": "眼眶湿润", "relation_change": 10}'
         )
 
         input_data = {
@@ -327,9 +303,7 @@ class TestNPCAgent:
             assert result.metadata["relation_change"] == 10
 
     @pytest.mark.asyncio
-    async def test_language_selection_cn(
-        self, npc_agent, sample_npc_data
-    ):
+    async def test_language_selection_cn(self, npc_agent, sample_npc_data):
         """Test prompt uses Chinese when lang=cn."""
         messages = npc_agent._build_prompt(
             npc_data=sample_npc_data.model_dump(),
@@ -343,9 +317,7 @@ class TestNPCAgent:
         assert "图书馆" in prompt_text or "馆员" in prompt_text
 
     @pytest.mark.asyncio
-    async def test_language_selection_en(
-        self, npc_agent, sample_npc_data
-    ):
+    async def test_language_selection_en(self, npc_agent, sample_npc_data):
         """Test prompt uses English when lang=en."""
         messages = npc_agent._build_prompt(
             npc_data=sample_npc_data.model_dump(),

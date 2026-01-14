@@ -16,16 +16,16 @@ class TestTrait:
             name=LocalizedString(cn="优柔寡断", en="Indecisive"),
             description=LocalizedString(
                 cn="在行动前总是会思考许多，在脑内预演所能想象到的可能性",
-                en="Always thinks through many scenarios before acting"
+                en="Always thinks through many scenarios before acting",
             ),
             positive_aspect=LocalizedString(
                 cn="能预演各种可能性，从而做出更明智的决策",
-                en="Can anticipate outcomes and make wiser decisions"
+                en="Can anticipate outcomes and make wiser decisions",
             ),
             negative_aspect=LocalizedString(
                 cn="常常因为过度思考而错过最佳时机",
-                en="Often misses opportunities due to overthinking"
-            )
+                en="Often misses opportunities due to overthinking",
+            ),
         )
 
     def test_create_trait(self, sample_trait):
@@ -86,6 +86,6 @@ class TestTrait:
             Trait(
                 name=LocalizedString(cn="测试", en="Test"),
                 description=LocalizedString(cn="描述", en="Description"),
-                positive_aspect=LocalizedString(cn="正面", en="Positive")
+                positive_aspect=LocalizedString(cn="正面", en="Positive"),
                 # Missing negative_aspect
             )

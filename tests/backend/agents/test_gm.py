@@ -318,6 +318,7 @@ class TestGMAgent:
         )
 
         from src.backend.agents.gm import GMActionType
+
         action = await gm_agent._get_react_action(
             player_input="走向门口",
             lang="cn",
@@ -344,6 +345,7 @@ class TestGMAgent:
         )
 
         from src.backend.agents.gm import GMActionType
+
         action = await gm_agent._get_react_action(
             player_input="攻击怪物",
             lang="cn",
@@ -886,7 +888,9 @@ class TestGMAgentHierarchicalContext:
                     "temple_entrance": LocationData(
                         id="temple_entrance",
                         name=LocalizedString(cn="神殿入口", en="Temple Entrance"),
-                        description=LocalizedString(cn="古老神殿的入口", en="Entrance to ancient temple"),
+                        description=LocalizedString(
+                            cn="古老神殿的入口", en="Entrance to ancient temple"
+                        ),
                         atmosphere=LocalizedString(cn="庄严神秘", en="Solemn and mysterious"),
                         region_id="temple_district",
                         visible_items=["altar", "statue"],
@@ -983,11 +987,6 @@ class TestGMAgentHierarchicalContext:
 
         from src.backend.models.world_pack import (
             LocationData,
-            LoreEntry,
-            NPCBody,
-            NPCData,
-            NPCSoul,
-            RegionData,
             WorldPack,
             WorldPackInfo,
         )
@@ -1089,9 +1088,7 @@ class TestGMAgentHierarchicalContext:
         self, gm_agent_with_world_pack, sample_game_state_with_location
     ):
         """Test that NPC context slice includes world_pack_id for location filtering."""
-        context = gm_agent_with_world_pack._slice_context_for_npc(
-            "guardian", "你好", "cn"
-        )
+        context = gm_agent_with_world_pack._slice_context_for_npc("guardian", "你好", "cn")
 
         assert "context" in context
         assert "world_pack_id" in context["context"]

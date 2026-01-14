@@ -1,12 +1,20 @@
 """GM Agent - Central orchestrator using ReAct loop for multi-agent coordination."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import Any
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.backend.agents.base import AgentResponse, BaseAgent
+from src.backend.core.config import get_settings
+from src.backend.core.prompt_loader import get_prompt_loader
+from src.backend.models.game_state import GameState
+from src.backend.services.game_logger import get_game_logger
+from src.backend.services.location_context import LocationContextService
+from src.backend.services.vector_store import VectorStoreService
+from src.backend.services.world import WorldPackLoader
 
 
 class GMActionType(str, Enum):
@@ -22,14 +30,8 @@ class GMAction:
     agent_context: dict[str, Any] = field(default_factory=dict)
     reasoning: str = ""
 
+
 StatusCallback = Callable[[str, str | None], Awaitable[None]]
-from src.backend.core.config import get_settings
-from src.backend.core.prompt_loader import get_prompt_loader
-from src.backend.models.game_state import GameState
-from src.backend.services.game_logger import get_game_logger
-from src.backend.services.location_context import LocationContextService
-from src.backend.services.vector_store import VectorStoreService
-from src.backend.services.world import WorldPackLoader
 
 
 class GMAgent(BaseAgent):
@@ -181,12 +183,14 @@ class GMAgent(BaseAgent):
                 )
 
                 result = await self._invoke_sub_agent(agent_name, agent_context)
-                agent_results.append({
-                    "agent": agent_name,
-                    "content": result.content if result.success else "",
-                    "metadata": result.metadata,
-                    "success": result.success,
-                })
+                agent_results.append(
+                    {
+                        "agent": agent_name,
+                        "content": result.content if result.success else "",
+                        "metadata": result.metadata,
+                        "success": result.success,
+                    }
+                )
 
                 if agent_name == "rule" and result.metadata.get("needs_check"):
                     dice_check = result.metadata.get("dice_check", {})
@@ -202,6 +206,7 @@ class GMAgent(BaseAgent):
                     )
 
                     from src.backend.models.game_state import GamePhase
+
                     self.game_state.set_phase(GamePhase.DICE_CHECK)
 
                     return AgentResponse(
@@ -257,7 +262,7 @@ class GMAgent(BaseAgent):
             """Format agent result for GM prompt - parse NPC metadata for clarity."""
             agent_name = r.get("agent", "unknown")
             metadata = r.get("metadata", {})
-            
+
             # For NPC agents, parse and format metadata for clarity
             if agent_name.startswith("npc_") or agent_name == "npc":
                 response = r.get("content", "")
@@ -277,7 +282,7 @@ class GMAgent(BaseAgent):
                     parts.append(f"动作: {action}")
                 if relation_change != 0:
                     parts.append(f"关系变化: {relation_change:+d} ({relation_reason})")
-                
+
                 return {
                     "agent": agent_name,
                     "content": " | ".join(parts),
@@ -413,10 +418,7 @@ class GMAgent(BaseAgent):
         agent_results: list[dict[str, Any]],
         lang: str,
     ) -> str:
-        rule_result = next(
-            (r for r in agent_results if r.get("agent") == "rule"),
-            None
-        )
+        rule_result = next((r for r in agent_results if r.get("agent") == "rule"), None)
         if rule_result:
             content = rule_result.get("content")
             if content and isinstance(content, str):
@@ -454,6 +456,7 @@ class GMAgent(BaseAgent):
         )
 
         from src.backend.models.game_state import GamePhase
+
         self.game_state.set_phase(GamePhase.WAITING_INPUT)
 
         return AgentResponse(
@@ -644,14 +647,18 @@ class GMAgent(BaseAgent):
 
             target_loc = world_pack.get_location(target_location)
             if not target_loc:
-                logger.log_error("scene_transition", f"Target location not found: {target_location}")
+                logger.log_error(
+                    "scene_transition", f"Target location not found: {target_location}"
+                )
                 logger.log_scene_transition(from_location, target_location, False)
                 return False
 
             npc_ids = target_loc.present_npc_ids or []
             self.game_state.update_location(target_location, npc_ids)
             logger.log_scene_transition(from_location, target_location, True, npc_ids)
-            logger.log_state_change("current_location", from_location, target_location, "scene_transition")
+            logger.log_state_change(
+                "current_location", from_location, target_location, "scene_transition"
+            )
             return True
 
         except Exception as e:
@@ -952,7 +959,7 @@ class GMAgent(BaseAgent):
                 "partial": "The NPC's attitude should soften somewhat, but remain guarded, perhaps only revealing limited information, giving a warning, or requesting additional conditions.",
                 "failure": "The NPC should refuse the request, with a colder or more guarded attitude.",
                 "critical_failure": "The NPC should strongly refuse, with worsened attitude, possibly showing hostility or taking confrontational action.",
-            }
+            },
         }
 
         lang_directions = directions.get(lang, directions["en"])
@@ -1219,10 +1226,13 @@ Agent responses:
         if "rule" in [r["agent"] for r in agent_results]:
             # Check if dice check is needed
             for result in agent_results:
-                if result.get("agent") == "rule" and "result" in result:
-                    if result["result"].metadata.get("needs_check"):
-                        self.game_state.set_phase(GamePhase.DICE_CHECK)
-                        return narrative
+                if (
+                    result.get("agent") == "rule"
+                    and "result" in result
+                    and result["result"].metadata.get("needs_check")
+                ):
+                    self.game_state.set_phase(GamePhase.DICE_CHECK)
+                    return narrative
 
         self.game_state.set_phase(GamePhase.NARRATING)
         return narrative

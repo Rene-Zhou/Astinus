@@ -112,9 +112,7 @@ class TestSliceContextForNpcWithDiceResult:
         """Create a GM agent for testing."""
         return create_mock_gm_agent()
 
-    def test_context_includes_roleplay_direction_when_dice_result_present(
-        self, gm_agent
-    ):
+    def test_context_includes_roleplay_direction_when_dice_result_present(self, gm_agent):
         """Test that roleplay_direction is included when dice_result is provided."""
         dice_result = {"outcome": "partial"}
 

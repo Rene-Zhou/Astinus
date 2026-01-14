@@ -17,14 +17,11 @@ These tests verify:
 All tests use mocked agents to isolate API behavior from LLM dependencies.
 """
 
-import asyncio
-import json
 import os
 import uuid
-from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -39,8 +36,6 @@ from src.backend.api.v1.game import router as game_router
 from src.backend.api.websockets import (
     ConnectionManager,
     MessageType,
-    StreamMessage,
-    stream_content,
 )
 from src.backend.api.websockets import (
     router as ws_router,
@@ -94,7 +89,7 @@ def mock_gm_agent(mock_game_state):
     agent = MagicMock()
     agent.game_state = mock_game_state
 
-    async def mock_process(input_data: Dict[str, Any]) -> AgentResponse:
+    async def mock_process(input_data: dict[str, Any]) -> AgentResponse:
         return AgentResponse(
             content="你环顾四周，发现自己身处一间古老的图书馆。高耸的书架排列整齐，空气中弥漫着陈旧纸张的气息。",
             metadata={
@@ -115,7 +110,7 @@ def mock_gm_agent_with_dice_check(mock_game_state):
     agent = MagicMock()
     agent.game_state = mock_game_state
 
-    async def mock_process(input_data: Dict[str, Any]) -> AgentResponse:
+    async def mock_process(input_data: dict[str, Any]) -> AgentResponse:
         return AgentResponse(
             content="",
             metadata={
@@ -446,7 +441,9 @@ def create_app_with_mock_agent(mock_gm_agent):
         }
 
     @app.post("/api/v1/game/new")
-    async def new_game(request: dict = {}):
+    async def new_game(request: dict = None):
+        if request is None:
+            request = {}
         agent = app.state.gm_agent
         if agent is None:
             from fastapi import HTTPException

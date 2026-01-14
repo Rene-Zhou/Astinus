@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 class SceneType(Enum):
     """Types of scenes in the narrative."""
+
     LOCATION = "location"
     ENCOUNTER = "encounter"
     DIALOGUE = "dialogue"
@@ -23,6 +24,7 @@ class SceneType(Enum):
 
 class TransitionCondition(BaseModel):
     """Condition for scene transition."""
+
     type: str = Field(..., description="Condition type: tag, flag, item, etc.")
     key: str = Field(..., description="Condition key (e.g., 'has_key', 'player_has_tag')")
     value: Any = Field(..., description="Required value for the condition")
@@ -30,14 +32,13 @@ class TransitionCondition(BaseModel):
 
 class SceneTransition(BaseModel):
     """Transition from one scene to another."""
+
     target_scene_id: str = Field(..., description="ID of target scene")
     condition: TransitionCondition | None = Field(
-        default=None,
-        description="Optional condition to allow this transition"
+        default=None, description="Optional condition to allow this transition"
     )
     description: str = Field(
-        default="",
-        description="Description of what happens during transition"
+        default="", description="Description of what happens during transition"
     )
 
 
@@ -62,25 +63,18 @@ class Scene(BaseModel):
     id: str = Field(..., description="Unique scene identifier")
     name: str = Field(..., description="Display name")
     type: SceneType = Field(default=SceneType.LOCATION, description="Scene type")
-    description: str = Field(
-        default="",
-        description="Current scene description (can be dynamic)"
-    )
+    description: str = Field(default="", description="Current scene description (can be dynamic)")
     narrative_state: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Story progress state (flags, discovered info, etc.)"
+        default_factory=dict, description="Story progress state (flags, discovered info, etc.)"
     )
     active_npcs: list[str] = Field(
-        default_factory=list,
-        description="NPC IDs present in this scene"
+        default_factory=list, description="NPC IDs present in this scene"
     )
     available_actions: list[str] = Field(
-        default_factory=list,
-        description="Possible actions in this scene"
+        default_factory=list, description="Possible actions in this scene"
     )
     transitions: list[SceneTransition] = Field(
-        default_factory=list,
-        description="Possible transitions to other scenes"
+        default_factory=list, description="Possible transitions to other scenes"
     )
 
     def add_narrative_flag(self, key: str, value: Any) -> None:
@@ -135,16 +129,11 @@ class NarrativeGraph(BaseModel):
 
     world_pack_id: str = Field(..., description="World pack identifier")
     scenes: dict[str, Scene] = Field(
-        default_factory=dict,
-        description="All scenes in the narrative graph"
+        default_factory=dict, description="All scenes in the narrative graph"
     )
-    current_scene_id: str | None = Field(
-        default=None,
-        description="Currently active scene"
-    )
+    current_scene_id: str | None = Field(default=None, description="Currently active scene")
     global_narrative_state: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Global story state (applies across all scenes)"
+        default_factory=dict, description="Global story state (applies across all scenes)"
     )
 
     def add_scene(self, scene: Scene) -> None:

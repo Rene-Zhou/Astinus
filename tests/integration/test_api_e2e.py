@@ -11,10 +11,7 @@ Tests the complete game flow through the API layer:
 These tests use mocked agents to isolate API behavior from LLM dependencies.
 """
 
-import asyncio
-import json
 import os
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -400,7 +397,6 @@ class TestGameStateIntegration:
 
     def test_game_state_phase_transitions(self, game_state):
         """Test phase transitions work correctly."""
-        from src.backend.models.game_state import GamePhase
 
         # Initial phase
         assert game_state.current_phase == GamePhase.WAITING_INPUT
@@ -710,7 +706,6 @@ class TestE2EScenarios:
 
     def test_exploration_scenario_state_changes(self, game_state):
         """Test state changes during exploration."""
-        from src.backend.models.game_state import GamePhase
 
         # Player enters and looks around
         game_state.add_message("player", "我观察庄园入口")
@@ -726,7 +721,6 @@ class TestE2EScenarios:
 
     def test_dice_check_scenario_state_changes(self, game_state):
         """Test state changes during dice check."""
-        from src.backend.models.game_state import GamePhase
 
         # Player tries to search
         game_state.add_message("player", "我仔细搜索入口附近")
@@ -757,7 +751,6 @@ class TestE2EScenarios:
 
     def test_npc_interaction_scenario(self, game_state):
         """Test NPC interaction scenario."""
-        from src.backend.models.game_state import GamePhase
 
         # Player talks to NPC
         game_state.add_message("player", "我向陈玲打招呼")

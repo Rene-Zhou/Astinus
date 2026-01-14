@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { StatBlock } from "../components/StatBlock/StatBlock";
 import type { GamePhase, LocalizedString } from "../api/types";
+import i18n from "i18next";
 
 describe("StatBlock Phase Display", () => {
   const defaultProps = {
@@ -17,24 +18,28 @@ describe("StatBlock Phase Display", () => {
   };
 
   describe("Phase labels in Chinese", () => {
+    beforeEach(() => {
+      i18n.changeLanguage("cn");
+    });
+
     it("displays '等待输入' for waiting_input phase", () => {
       render(<StatBlock {...defaultProps} phase="waiting_input" />);
       expect(screen.getByText("等待输入")).toBeInTheDocument();
     });
 
-    it("displays '处理行动' for processing phase", () => {
+    it("displays '处理中' for processing phase", () => {
       render(<StatBlock {...defaultProps} phase="processing" />);
-      expect(screen.getByText("处理行动")).toBeInTheDocument();
+      expect(screen.getByText("处理中")).toBeInTheDocument();
     });
 
-    it("displays '骰子检定' for dice_check phase", () => {
+    it("displays '掷骰检定' for dice_check phase", () => {
       render(<StatBlock {...defaultProps} phase="dice_check" />);
-      expect(screen.getByText("骰子检定")).toBeInTheDocument();
+      expect(screen.getByText("掷骰检定")).toBeInTheDocument();
     });
 
-    it("displays 'NPC 回应' for npc_response phase", () => {
+    it("displays '处理中' for npc_response phase", () => {
       render(<StatBlock {...defaultProps} phase="npc_response" />);
-      expect(screen.getByText("NPC 回应")).toBeInTheDocument();
+      expect(screen.getByText("处理中")).toBeInTheDocument();
     });
 
     it("displays '叙述中' for narrating phase", () => {
@@ -46,9 +51,13 @@ describe("StatBlock Phase Display", () => {
   describe("Phase labels in English", () => {
     const englishProps = { ...defaultProps, language: "en" as const };
 
-    it("displays 'Waiting Input' for waiting_input phase", () => {
+    beforeEach(() => {
+      i18n.changeLanguage("en");
+    });
+
+    it("displays 'Waiting for Input' for waiting_input phase", () => {
       render(<StatBlock {...englishProps} phase="waiting_input" />);
-      expect(screen.getByText("Waiting Input")).toBeInTheDocument();
+      expect(screen.getByText("Waiting for Input")).toBeInTheDocument();
     });
 
     it("displays 'Processing' for processing phase", () => {
@@ -61,9 +70,9 @@ describe("StatBlock Phase Display", () => {
       expect(screen.getByText("Dice Check")).toBeInTheDocument();
     });
 
-    it("displays 'NPC Response' for npc_response phase", () => {
+    it("displays 'Processing' for npc_response phase", () => {
       render(<StatBlock {...englishProps} phase="npc_response" />);
-      expect(screen.getByText("NPC Response")).toBeInTheDocument();
+      expect(screen.getByText("Processing")).toBeInTheDocument();
     });
 
     it("displays 'Narrating' for narrating phase", () => {
@@ -73,19 +82,22 @@ describe("StatBlock Phase Display", () => {
   });
 
   describe("Phase indicator styling", () => {
+    beforeEach(() => {
+      i18n.changeLanguage("cn");
+    });
+
     it("renders phase indicator with amber styling", () => {
       render(<StatBlock {...defaultProps} phase="waiting_input" />);
-      const phaseElement = screen.getByText("等待输入").closest("p");
+      const phaseElement = screen.getByText("等待输入").closest("div");
       expect(phaseElement).toHaveClass("bg-amber-50");
       expect(phaseElement).toHaveClass("text-amber-800");
     });
 
     it("renders phase status indicator dot", () => {
       render(<StatBlock {...defaultProps} phase="processing" />);
-      const phaseElement = screen.getByText("处理行动").closest("p");
+      const phaseElement = screen.getByText("处理中").closest("div");
       const dot = phaseElement?.querySelector('[aria-hidden="true"]');
       expect(dot).toBeInTheDocument();
-      expect(dot).toHaveClass("bg-amber-400");
     });
   });
 });

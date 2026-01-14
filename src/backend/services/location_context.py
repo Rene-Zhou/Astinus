@@ -86,15 +86,19 @@ class LocationContextService:
         # Build region context
         region_context = {
             "id": region.id if region else "_global",
-            "name": region.name.get(lang) if region else "全局区域" if lang == "cn" else "Global Region",
-            "narrative_tone": region.narrative_tone.get(lang) if region and region.narrative_tone else "",
+            "name": region.name.get(lang)
+            if region
+            else "全局区域"
+            if lang == "cn"
+            else "Global Region",
+            "narrative_tone": region.narrative_tone.get(lang)
+            if region and region.narrative_tone
+            else "",
             "atmosphere_keywords": region.atmosphere_keywords if region else [],
         }
 
         # Determine which hidden items have been discovered
-        hidden_items_revealed = [
-            item for item in location.hidden_items if item in discovered_items
-        ]
+        hidden_items_revealed = [item for item in location.hidden_items if item in discovered_items]
         hidden_items_remaining = [
             item for item in location.hidden_items if item not in discovered_items
         ]

@@ -1,10 +1,9 @@
 """Tests for Director Agent."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.backend.agents.base import AgentResponse
 from src.backend.agents.director import (
     DirectorAgent,
     NarrativeBeat,

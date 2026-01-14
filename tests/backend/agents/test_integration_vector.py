@@ -14,8 +14,10 @@ from src.backend.models.character import PlayerCharacter, Trait
 from src.backend.models.game_state import GameState
 from src.backend.models.i18n import LocalizedString
 from src.backend.models.world_pack import (
-    LoreEntry,
     LocalizedString as WPLocalizedString,
+)
+from src.backend.models.world_pack import (
+    LoreEntry,
     NPCBody,
     NPCData,
     NPCSoul,
@@ -62,9 +64,7 @@ class TestVectorRetrievalIntegration:
                 id="demo_pack",
                 name=WPLocalizedString(cn="演示包", en="Demo Pack"),
                 version="1.0.0",
-                description=WPLocalizedString(
-                    cn="演示用世界包", en="Demo world pack"
-                ),
+                description=WPLocalizedString(cn="演示用世界包", en="Demo world pack"),
             ),
             entries={
                 "1": LoreEntry(
@@ -177,12 +177,10 @@ class TestVectorRetrievalIntegration:
         # Results should include constant entry
         assert any(r.constant for r in results)
 
-    def test_npc_memory_cycle_index_retrieve_influence(
-        self, mock_llm, services_with_vector_store
-    ):
+    def test_npc_memory_cycle_index_retrieve_influence(self, mock_llm, services_with_vector_store):
         """Test 2: NPC memory cycle - add, index, retrieve, influence response."""
         vector_store = services_with_vector_store["vector_store"]
-        world_loader = services_with_vector_store["world_loader"]
+        services_with_vector_store["world_loader"]
 
         # Create NPCAgent with vector store
         npc_agent = NPCAgent(mock_llm, vector_store=vector_store)
@@ -210,6 +208,7 @@ class TestVectorRetrievalIntegration:
 
         # Build prompt (which includes memory retrieval)
         from src.backend.models.world_pack import NPCData
+
         npc = NPCData(**npc_data_dict)
 
         prompt = npc_agent._build_system_prompt(
@@ -222,9 +221,7 @@ class TestVectorRetrievalIntegration:
         # Should include memory section
         assert "记忆" in prompt or "Memory" in prompt
 
-    def test_gm_long_game_history_relevant_retrieval(
-        self, mock_llm, services_with_vector_store
-    ):
+    def test_gm_long_game_history_relevant_retrieval(self, mock_llm, services_with_vector_store):
         """Test 3: GM with long game (50+ turns) - retrieve relevant history."""
         vector_store = services_with_vector_store["vector_store"]
         world_loader = services_with_vector_store["world_loader"]
@@ -303,9 +300,7 @@ class TestVectorRetrievalIntegration:
         )
 
     @pytest.mark.skip(reason="需要改进中文语义匹配")
-    def test_multilingual_query_handling(
-        self, mock_llm, services_with_vector_store
-    ):
+    def test_multilingual_query_handling(self, mock_llm, services_with_vector_store):
         """Test 4: Multilingual query handling - cn/en separation."""
         vector_store = services_with_vector_store["vector_store"]
         world_loader = services_with_vector_store["world_loader"]
@@ -323,15 +318,13 @@ class TestVectorRetrievalIntegration:
         results_en = lore_agent._search_lore(pack, "history of Stormwind", "")
         assert len(results_en) >= 1
 
-    def test_persistence_reload_from_disk(
-        self, mock_llm, services_with_vector_store, temp_dirs
-    ):
+    def test_persistence_reload_from_disk(self, mock_llm, services_with_vector_store, temp_dirs):
         """Test 5: Persistence - data survives reload."""
         vector_store = services_with_vector_store["vector_store"]
         world_loader = services_with_vector_store["world_loader"]
 
         # Load and index a pack
-        pack = world_loader.load("demo_pack")
+        world_loader.load("demo_pack")
 
         # Check collection exists
         collection_name = "lore_entries_demo_pack"
@@ -348,16 +341,14 @@ class TestVectorRetrievalIntegration:
         count_after = vector_store2.get_collection_count(collection_name)
         assert count_after == count_before
 
-    def test_cross_agent_collaboration(
-        self, mock_llm, services_with_vector_store
-    ):
+    def test_cross_agent_collaboration(self, mock_llm, services_with_vector_store):
         """Test 6: Cross-agent collaboration with shared vector store."""
         vector_store = services_with_vector_store["vector_store"]
         world_loader = services_with_vector_store["world_loader"]
 
         # All agents use the same vector store
         lore_agent = LoreAgent(mock_llm, world_loader, vector_store=vector_store)
-        npc_agent = NPCAgent(mock_llm, vector_store=vector_store)
+        NPCAgent(mock_llm, vector_store=vector_store)
 
         # LoreAgent indexes lore entries
         pack = world_loader.load("demo_pack")
@@ -367,9 +358,7 @@ class TestVectorRetrievalIntegration:
         # (memories would be indexed separately)
         assert lore_results is not None
 
-    def test_error_recovery_graceful_degradation(
-        self, mock_llm, services_with_vector_store
-    ):
+    def test_error_recovery_graceful_degradation(self, mock_llm, services_with_vector_store):
         """Test 7: Error recovery - graceful degradation when vector store fails."""
         vector_store = services_with_vector_store["vector_store"]
         world_loader = services_with_vector_store["world_loader"]
@@ -389,9 +378,7 @@ class TestVectorRetrievalIntegration:
         assert len(results) >= 1
 
     @pytest.mark.asyncio
-    async def test_full_integration_game_flow(
-        self, mock_llm, services_with_vector_store
-    ):
+    async def test_full_integration_game_flow(self, mock_llm, services_with_vector_store):
         """Test 8: Full integration - complete game flow with all agents."""
         vector_store = services_with_vector_store["vector_store"]
         world_loader = services_with_vector_store["world_loader"]

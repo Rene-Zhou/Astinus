@@ -110,10 +110,12 @@ class TestAgentCoordination:
         ]
 
         # Process player input
-        result = await gm_agent.process({
-            "player_input": "我要逃离房间",
-            "lang": "cn",
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": "我要逃离房间",
+                "lang": "cn",
+            }
+        )
 
         # Verify coordination
         assert result.success is True
@@ -208,10 +210,12 @@ class TestAgentCoordination:
             ),
         ]
 
-        result = await gm_agent.process({
-            "player_input": "我查看房间",
-            "lang": "cn",
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": "我查看房间",
+                "lang": "cn",
+            }
+        )
 
         assert result.success is True
         assert "rule" in result.metadata["agents_called"]
@@ -236,9 +240,7 @@ class TestAgentCoordination:
                     "reasoning": "需要规则判定"
                 }"""
             ),
-            AIMessage(
-                content='{"needs_check": false, "reasoning": "简单查看"}'
-            ),
+            AIMessage(content='{"needs_check": false, "reasoning": "简单查看"}'),
             AIMessage(
                 content="""{
                     "action": "RESPOND",
@@ -255,10 +257,12 @@ class TestAgentCoordination:
             metadata={"npc_id": "other_npc"},
         )
 
-        result = await gm_agent.process({
-            "player_input": "查看四周",
-            "lang": "cn",
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": "查看四周",
+                "lang": "cn",
+            }
+        )
 
         # Rule Agent should only get action + character + tags
         # NOT full message history or other NPCs
@@ -287,9 +291,7 @@ class TestAgentCoordination:
                     "reasoning": "对话需要规则判定"
                 }"""
             ),
-            AIMessage(
-                content='{"needs_check": false, "reasoning": "对话"}'
-            ),
+            AIMessage(content='{"needs_check": false, "reasoning": "对话"}'),
             AIMessage(
                 content="""{
                     "action": "RESPOND",
@@ -300,10 +302,12 @@ class TestAgentCoordination:
         ]
 
         # Process action
-        result = await gm_agent.process({
-            "player_input": "我想和陈玲说话",
-            "lang": "cn",
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": "我想和陈玲说话",
+                "lang": "cn",
+            }
+        )
 
         # Verify that Rule Agent can only access what GM provides
         # It should NOT have direct access to:
@@ -350,10 +354,12 @@ class TestAgentCoordination:
             ),
         ]
 
-        result = await gm_agent.process({
-            "player_input": "执行复杂行动",
-            "lang": "cn",
-        })
+        result = await gm_agent.process(
+            {
+                "player_input": "执行复杂行动",
+                "lang": "cn",
+            }
+        )
 
         # GM should handle the error gracefully and still produce output
         assert result.success is True
@@ -380,9 +386,7 @@ class TestAgentCoordination:
                     "reasoning": "需要规则判定"
                 }"""
             ),
-            AIMessage(
-                content='{"needs_check": false, "reasoning": "检查"}'
-            ),
+            AIMessage(content='{"needs_check": false, "reasoning": "检查"}'),
             AIMessage(
                 content="""{
                     "action": "RESPOND",
@@ -393,10 +397,12 @@ class TestAgentCoordination:
         ]
 
         # Test async call
-        async_result = await gm_agent.process({
-            "player_input": "检查",
-            "lang": "cn",
-        })
+        async_result = await gm_agent.process(
+            {
+                "player_input": "检查",
+                "lang": "cn",
+            }
+        )
 
         # Reset mock for second call
         mock_llm.ainvoke.side_effect = [
@@ -408,9 +414,7 @@ class TestAgentCoordination:
                     "reasoning": "需要规则判定"
                 }"""
             ),
-            AIMessage(
-                content='{"needs_check": false, "reasoning": "检查"}'
-            ),
+            AIMessage(content='{"needs_check": false, "reasoning": "检查"}'),
             AIMessage(
                 content="""{
                     "action": "RESPOND",
@@ -421,17 +425,16 @@ class TestAgentCoordination:
         ]
 
         # Test sync call
-        sync_result = gm_agent.invoke({
-            "player_input": "检查",
-            "lang": "cn",
-        })
+        sync_result = gm_agent.invoke(
+            {
+                "player_input": "检查",
+                "lang": "cn",
+            }
+        )
 
         # Both should succeed
         assert async_result.success is True
         assert sync_result.success is True
 
         # Both should call the same agents
-        assert (
-            async_result.metadata["agents_called"]
-            == sync_result.metadata["agents_called"]
-        )
+        assert async_result.metadata["agents_called"] == sync_result.metadata["agents_called"]

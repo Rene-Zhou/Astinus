@@ -12,7 +12,6 @@ from src.backend.main import app
 
 
 class TestSettingsAPI:
-
     @pytest.fixture
     def client(self):
         return TestClient(app)
@@ -66,9 +65,7 @@ class TestSettingsAPI:
         )
 
     def test_get_settings(self, client, mock_settings):
-        with patch(
-            "src.backend.api.v1.settings.get_settings", return_value=mock_settings
-        ):
+        with patch("src.backend.api.v1.settings.get_settings", return_value=mock_settings):
             response = client.get("/api/v1/settings")
             assert response.status_code == 200
 
@@ -94,12 +91,10 @@ class TestSettingsAPI:
         assert "ollama" in type_names
 
     def test_update_settings_add_provider(self, client, mock_settings):
-        with patch(
-            "src.backend.api.v1.settings.get_settings", return_value=mock_settings
-        ), patch(
-            "src.backend.api.v1.settings.save_settings_to_file"
-        ) as mock_save, patch(
-            "src.backend.api.v1.settings.reload_settings"
+        with (
+            patch("src.backend.api.v1.settings.get_settings", return_value=mock_settings),
+            patch("src.backend.api.v1.settings.save_settings_to_file") as mock_save,
+            patch("src.backend.api.v1.settings.reload_settings"),
         ):
             response = client.put(
                 "/api/v1/settings",
@@ -126,9 +121,7 @@ class TestSettingsAPI:
             mock_save.assert_called_once()
 
     def test_update_settings_invalid_provider_id(self, client, mock_settings):
-        with patch(
-            "src.backend.api.v1.settings.get_settings", return_value=mock_settings
-        ):
+        with patch("src.backend.api.v1.settings.get_settings", return_value=mock_settings):
             response = client.put(
                 "/api/v1/settings",
                 json={
@@ -147,9 +140,7 @@ class TestSettingsAPI:
             assert "Invalid provider ID" in response.json()["detail"]
 
     def test_update_settings_invalid_provider_type(self, client, mock_settings):
-        with patch(
-            "src.backend.api.v1.settings.get_settings", return_value=mock_settings
-        ):
+        with patch("src.backend.api.v1.settings.get_settings", return_value=mock_settings):
             response = client.put(
                 "/api/v1/settings",
                 json={
@@ -167,12 +158,8 @@ class TestSettingsAPI:
             assert response.status_code == 400
             assert "Invalid provider type" in response.json()["detail"]
 
-    def test_update_settings_agent_references_nonexistent_provider(
-        self, client, mock_settings
-    ):
-        with patch(
-            "src.backend.api.v1.settings.get_settings", return_value=mock_settings
-        ):
+    def test_update_settings_agent_references_nonexistent_provider(self, client, mock_settings):
+        with patch("src.backend.api.v1.settings.get_settings", return_value=mock_settings):
             response = client.put(
                 "/api/v1/settings",
                 json={
@@ -190,9 +177,7 @@ class TestSettingsAPI:
             assert "non-existent provider" in response.json()["detail"]
 
     def test_test_connection_provider_not_found(self, client, mock_settings):
-        with patch(
-            "src.backend.api.v1.settings.get_settings", return_value=mock_settings
-        ):
+        with patch("src.backend.api.v1.settings.get_settings", return_value=mock_settings):
             response = client.post(
                 "/api/v1/settings/test",
                 json={"provider_id": "nonexistent"},
@@ -202,7 +187,6 @@ class TestSettingsAPI:
 
 
 class TestConfigHelpers:
-
     def test_mask_api_key(self):
         from src.backend.core.config import mask_api_key
 
@@ -249,7 +233,6 @@ class TestConfigHelpers:
 
 
 class TestProviderConfig:
-
     def test_provider_config_validation(self):
         from src.backend.core.config import ProviderConfig, ProviderType
 
@@ -279,7 +262,6 @@ class TestProviderConfig:
 
 
 class TestAgentConfig:
-
     def test_agent_config_validation(self):
         from src.backend.core.config import AgentConfig
 

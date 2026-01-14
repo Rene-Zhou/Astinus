@@ -287,7 +287,7 @@ class TestDemoPackIntegration:
         """Test demo pack lore entries."""
         # Manor background is now selective (not constant) to prevent metagaming
         # Player must discover it through checks or NPC dialogue
-        constants = demo_pack.get_constant_entries()
+        demo_pack.get_constant_entries()
         # No constant entries expected - all lore should be discovered
 
         # Search for manor keyword - should still find entries
@@ -312,6 +312,7 @@ class TestDemoPackIntegration:
 
         manor_hall = demo_pack.get_location("manor_hall")
         assert manor_hall is not None
+
 
 class TestRegionData:
     def test_create_basic_region(self):

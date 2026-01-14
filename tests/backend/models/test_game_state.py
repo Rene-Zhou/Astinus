@@ -1,6 +1,5 @@
 """Tests for GameState model."""
 
-
 import pytest
 
 from src.backend.models.character import PlayerCharacter
@@ -23,10 +22,10 @@ class TestGameState:
                     name=LocalizedString(cn="特质", en="Trait"),
                     description=LocalizedString(cn="描述", en="Description"),
                     positive_aspect=LocalizedString(cn="正面", en="Positive"),
-                    negative_aspect=LocalizedString(cn="负面", en="Negative")
+                    negative_aspect=LocalizedString(cn="负面", en="Negative"),
                 )
             ],
-            fate_points=3
+            fate_points=3,
         )
 
     @pytest.fixture
@@ -36,7 +35,7 @@ class TestGameState:
             session_id="test-session-123",
             player=sample_character,
             world_pack_id="demo_pack",
-            current_location="living_room"
+            current_location="living_room",
         )
 
     def test_create_game_state(self, sample_game_state):
@@ -70,9 +69,7 @@ class TestGameState:
     def test_add_message_with_metadata(self, sample_game_state):
         """Test adding a message with metadata."""
         sample_game_state.add_message(
-            "assistant",
-            "你开始翻找书架...",
-            metadata={"agent": "narrator", "phase": "narrating"}
+            "assistant", "你开始翻找书架...", metadata={"agent": "narrator", "phase": "narrating"}
         )
         message = sample_game_state.messages[0]
         assert message["metadata"]["agent"] == "narrator"
@@ -138,23 +135,19 @@ class TestGameState:
         original_time = sample_game_state.updated_at
         # Wait a tiny bit to ensure timestamp changes
         import time
+
         time.sleep(0.01)
         sample_game_state.add_message("user", "test")
         assert sample_game_state.updated_at > original_time
 
     def test_temp_context_for_agent_communication(self, sample_game_state):
         """Test using temp_context for passing data to agents."""
-        sample_game_state.temp_context = {
-            "check_request": {"dice_formula": "3d6kl2"}
-        }
+        sample_game_state.temp_context = {"check_request": {"dice_formula": "3d6kl2"}}
         assert sample_game_state.temp_context["check_request"]["dice_formula"] == "3d6kl2"
 
     def test_last_check_result_storage(self, sample_game_state):
         """Test storing last dice check result."""
-        sample_game_state.last_check_result = {
-            "total": 11,
-            "outcome": "success"
-        }
+        sample_game_state.last_check_result = {"total": 11, "outcome": "success"}
         assert sample_game_state.last_check_result["outcome"] == "success"
 
     def test_repr_shows_key_info(self, sample_game_state):

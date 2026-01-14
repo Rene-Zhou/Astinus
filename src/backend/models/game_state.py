@@ -87,19 +87,15 @@ class GameState(BaseModel):
     )
 
     # Temporal tracking
-    game_time: str = Field(
-        default="00:00", description="In-game time (e.g., '23:47')"
-    )
+    game_time: str = Field(default="00:00", description="In-game time (e.g., '23:47')")
     turn_count: int = Field(default=0, ge=0, description="Number of turns elapsed")
 
     # Communication
     messages: list[dict[str, Any]] = Field(
-        default_factory=list,
-        description="Full conversation history - GM's complete context"
+        default_factory=list, description="Full conversation history - GM's complete context"
     )
     temp_context: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Temporary context for passing data to/from sub-agents"
+        default_factory=dict, description="Temporary context for passing data to/from sub-agents"
     )
     last_check_result: dict[str, Any] | None = Field(
         default=None, description="Most recent dice check outcome"

@@ -20,15 +20,17 @@ class TestWorldPackLoaderErrorMessages:
 
             # Create a dummy pack so list_available() returns something
             Path(tmpdir).joinpath("existing_pack.json").write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "现有包", "en": "Existing Pack"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {},
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "现有包", "en": "Existing Pack"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {},
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -76,11 +78,13 @@ class TestWorldPackLoaderErrorMessages:
             pack_path = Path(tmpdir) / "invalid_schema.json"
             # Missing required 'info' field
             pack_path.write_text(
-                json.dumps({
-                    "entries": {},
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "entries": {},
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -101,21 +105,23 @@ class TestWorldPackLoaderErrorMessages:
             pack_path = Path(tmpdir) / "nested_error.json"
             # Invalid uid type in lore entry
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "测试", "en": "Test"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": "not_an_integer",  # Should be integer
-                            "key": ["test"],
-                            "content": {"cn": "内容", "en": "Content"},
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "测试", "en": "Test"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {
+                            "1": {
+                                "uid": "not_an_integer",  # Should be integer
+                                "key": ["test"],
+                                "content": {"cn": "内容", "en": "Content"},
+                            }
+                        },
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -134,15 +140,17 @@ class TestWorldPackLoaderErrorMessages:
             pack_path = Path(tmpdir) / "missing_cn.json"
             # Missing 'cn' in LocalizedString
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"en": "Test Only"},  # Missing 'cn'
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {},
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"en": "Test Only"},  # Missing 'cn'
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {},
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -161,17 +169,19 @@ class TestWorldPackLoaderErrorMessages:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "valid_pack.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "有效包", "en": "Valid Pack"},
-                        "description": {"cn": "这是一个有效的包", "en": "This is a valid pack"},
-                        "version": "1.0.0",
-                        "author": "Test Author",
-                    },
-                    "entries": {},
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "有效包", "en": "Valid Pack"},
+                            "description": {"cn": "这是一个有效的包", "en": "This is a valid pack"},
+                            "version": "1.0.0",
+                            "author": "Test Author",
+                        },
+                        "entries": {},
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -188,15 +198,17 @@ class TestWorldPackLoaderErrorMessages:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "cached_pack.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "缓存包", "en": "Cached Pack"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {},
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "缓存包", "en": "Cached Pack"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {},
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -233,21 +245,23 @@ class TestWorldPackLoaderVectorIndexing:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "test.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "测试", "en": "Test"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": 1,
-                            "key": ["test"],
-                            "content": {"cn": "内容", "en": "Content"},
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "测试", "en": "Test"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {
+                            "1": {
+                                "uid": 1,
+                                "key": ["test"],
+                                "content": {"cn": "内容", "en": "Content"},
+                            }
+                        },
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -262,30 +276,32 @@ class TestWorldPackLoaderVectorIndexing:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "test_pack.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "测试包", "en": "Test Pack"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": 1,
-                            "key": ["庄园", "manor"],
-                            "content": {"cn": "幽暗庄园的背景", "en": "Dark Manor background"},
-                            "order": 10,
-                            "constant": True,
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "测试包", "en": "Test Pack"},
+                            "description": {"cn": "描述", "en": "Description"},
                         },
-                        "2": {
-                            "uid": 2,
-                            "key": ["密室"],
-                            "content": {"cn": "密室的描述", "en": "Secret room description"},
-                            "order": 50,
-                            "constant": False,
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {},
-                }),
+                        "entries": {
+                            "1": {
+                                "uid": 1,
+                                "key": ["庄园", "manor"],
+                                "content": {"cn": "幽暗庄园的背景", "en": "Dark Manor background"},
+                                "order": 10,
+                                "constant": True,
+                            },
+                            "2": {
+                                "uid": 2,
+                                "key": ["密室"],
+                                "content": {"cn": "密室的描述", "en": "Secret room description"},
+                                "order": 50,
+                                "constant": False,
+                            },
+                        },
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -307,23 +323,25 @@ class TestWorldPackLoaderVectorIndexing:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "meta_test.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "元数据测试", "en": "Metadata Test"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": 1,
-                            "key": ["key1", "key2"],
-                            "content": {"cn": "中文内容", "en": "English content"},
-                            "order": 25,
-                            "constant": True,
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "元数据测试", "en": "Metadata Test"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {
+                            "1": {
+                                "uid": 1,
+                                "key": ["key1", "key2"],
+                                "content": {"cn": "中文内容", "en": "English content"},
+                                "order": 25,
+                                "constant": True,
+                            }
+                        },
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -353,24 +371,23 @@ class TestWorldPackLoaderVectorIndexing:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "bilingual.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "双语测试", "en": "Bilingual Test"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": 1,
-                            "key": ["测试"],
-                            "content": {
-                                "cn": "这是中文内容",
-                                "en": "This is English content"
-                            },
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "双语测试", "en": "Bilingual Test"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {
+                            "1": {
+                                "uid": 1,
+                                "key": ["测试"],
+                                "content": {"cn": "这是中文内容", "en": "This is English content"},
+                            }
+                        },
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -407,15 +424,17 @@ class TestWorldPackLoaderVectorIndexing:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "empty.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "空包", "en": "Empty Pack"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {},
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "空包", "en": "Empty Pack"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {},
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -434,21 +453,23 @@ class TestWorldPackLoaderVectorIndexing:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "no_index.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "无索引", "en": "No Index"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": 1,
-                            "key": ["test"],
-                            "content": {"cn": "内容", "en": "Content"},
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "无索引", "en": "No Index"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {
+                            "1": {
+                                "uid": 1,
+                                "key": ["test"],
+                                "content": {"cn": "内容", "en": "Content"},
+                            }
+                        },
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -471,31 +492,33 @@ class TestWorldPackLoaderVectorIndexing:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "multi.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "多条目", "en": "Multiple Entries"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": 1,
-                            "key": ["entry1"],
-                            "content": {"cn": "第一条", "en": "Entry one"},
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "多条目", "en": "Multiple Entries"},
+                            "description": {"cn": "描述", "en": "Description"},
                         },
-                        "2": {
-                            "uid": 2,
-                            "key": ["entry2"],
-                            "content": {"cn": "第二条", "en": "Entry two"},
+                        "entries": {
+                            "1": {
+                                "uid": 1,
+                                "key": ["entry1"],
+                                "content": {"cn": "第一条", "en": "Entry one"},
+                            },
+                            "2": {
+                                "uid": 2,
+                                "key": ["entry2"],
+                                "content": {"cn": "第二条", "en": "Entry two"},
+                            },
+                            "3": {
+                                "uid": 3,
+                                "key": ["entry3"],
+                                "content": {"cn": "第三条", "en": "Entry three"},
+                            },
                         },
-                        "3": {
-                            "uid": 3,
-                            "key": ["entry3"],
-                            "content": {"cn": "第三条", "en": "Entry three"},
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {},
-                }),
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -514,21 +537,23 @@ class TestWorldPackLoaderVectorIndexing:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "cache_test.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "缓存测试", "en": "Cache Test"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": 1,
-                            "key": ["test"],
-                            "content": {"cn": "内容", "en": "Content"},
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "缓存测试", "en": "Cache Test"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {
+                            "1": {
+                                "uid": 1,
+                                "key": ["test"],
+                                "content": {"cn": "内容", "en": "Content"},
+                            }
+                        },
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -558,27 +583,29 @@ class TestWorldPackMigration:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "old_pack.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "旧包", "en": "Old Pack"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": 1,
-                            "key": ["test"],
-                            "content": {"cn": "内容", "en": "Content"},
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {
-                        "old_location": {
-                            "id": "old_location",
-                            "name": {"cn": "旧地点", "en": "Old Location"},
-                            "description": {"cn": "描述", "en": "Desc"},
-                        }
-                    },
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "旧包", "en": "Old Pack"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {
+                            "1": {
+                                "uid": 1,
+                                "key": ["test"],
+                                "content": {"cn": "内容", "en": "Content"},
+                            }
+                        },
+                        "npcs": {},
+                        "locations": {
+                            "old_location": {
+                                "id": "old_location",
+                                "name": {"cn": "旧地点", "en": "Old Location"},
+                                "description": {"cn": "描述", "en": "Desc"},
+                            }
+                        },
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -596,21 +623,23 @@ class TestWorldPackMigration:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "old_pack.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "旧包", "en": "Old Pack"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {},
-                    "npcs": {},
-                    "locations": {
-                        "old_location": {
-                            "id": "old_location",
-                            "name": {"cn": "旧地点", "en": "Old Location"},
-                            "description": {"cn": "描述", "en": "Desc"},
-                        }
-                    },
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "旧包", "en": "Old Pack"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {},
+                        "npcs": {},
+                        "locations": {
+                            "old_location": {
+                                "id": "old_location",
+                                "name": {"cn": "旧地点", "en": "Old Location"},
+                                "description": {"cn": "描述", "en": "Desc"},
+                            }
+                        },
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -627,22 +656,24 @@ class TestWorldPackMigration:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "old_pack.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "旧包", "en": "Old Pack"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {},
-                    "npcs": {},
-                    "locations": {
-                        "old_location": {
-                            "id": "old_location",
-                            "name": {"cn": "旧地点", "en": "Old Location"},
-                            "description": {"cn": "描述", "en": "Desc"},
-                            "items": ["sword", "shield"],
-                        }
-                    },
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "旧包", "en": "Old Pack"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {},
+                        "npcs": {},
+                        "locations": {
+                            "old_location": {
+                                "id": "old_location",
+                                "name": {"cn": "旧地点", "en": "Old Location"},
+                                "description": {"cn": "描述", "en": "Desc"},
+                                "items": ["sword", "shield"],
+                            }
+                        },
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -659,29 +690,31 @@ class TestWorldPackMigration:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "new_pack.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "新包", "en": "New Pack"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {},
-                    "npcs": {},
-                    "locations": {
-                        "new_location": {
-                            "id": "new_location",
-                            "name": {"cn": "新地点", "en": "New Location"},
-                            "description": {"cn": "描述", "en": "Desc"},
-                            "region_id": "custom_region",
-                        }
-                    },
-                    "regions": {
-                        "custom_region": {
-                            "id": "custom_region",
-                            "name": {"cn": "自定义区域", "en": "Custom Region"},
-                            "description": {"cn": "描述", "en": "Desc"},
-                        }
-                    },
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "新包", "en": "New Pack"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {},
+                        "npcs": {},
+                        "locations": {
+                            "new_location": {
+                                "id": "new_location",
+                                "name": {"cn": "新地点", "en": "New Location"},
+                                "description": {"cn": "描述", "en": "Desc"},
+                                "region_id": "custom_region",
+                            }
+                        },
+                        "regions": {
+                            "custom_region": {
+                                "id": "custom_region",
+                                "name": {"cn": "自定义区域", "en": "Custom Region"},
+                                "description": {"cn": "描述", "en": "Desc"},
+                            }
+                        },
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -699,21 +732,23 @@ class TestWorldPackMigration:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "old_pack.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "旧包", "en": "Old Pack"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": 1,
-                            "key": ["test"],
-                            "content": {"cn": "内容", "en": "Content"},
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "旧包", "en": "Old Pack"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {
+                            "1": {
+                                "uid": 1,
+                                "key": ["test"],
+                                "content": {"cn": "内容", "en": "Content"},
+                            }
+                        },
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -730,24 +765,26 @@ class TestWorldPackMigration:
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_path = Path(tmpdir) / "test_pack.json"
             pack_path.write_text(
-                json.dumps({
-                    "info": {
-                        "name": {"cn": "测试包", "en": "Test Pack"},
-                        "description": {"cn": "描述", "en": "Description"},
-                    },
-                    "entries": {
-                        "1": {
-                            "uid": 1,
-                            "key": ["test"],
-                            "content": {"cn": "内容", "en": "Content"},
-                            "visibility": "basic",
-                            "applicable_regions": ["region1"],
-                            "applicable_locations": ["loc1"],
-                        }
-                    },
-                    "npcs": {},
-                    "locations": {},
-                }),
+                json.dumps(
+                    {
+                        "info": {
+                            "name": {"cn": "测试包", "en": "Test Pack"},
+                            "description": {"cn": "描述", "en": "Description"},
+                        },
+                        "entries": {
+                            "1": {
+                                "uid": 1,
+                                "key": ["test"],
+                                "content": {"cn": "内容", "en": "Content"},
+                                "visibility": "basic",
+                                "applicable_regions": ["region1"],
+                                "applicable_locations": ["loc1"],
+                            }
+                        },
+                        "npcs": {},
+                        "locations": {},
+                    }
+                ),
                 encoding="utf-8",
             )
 

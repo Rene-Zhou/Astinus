@@ -7,8 +7,8 @@ import pytest
 
 from src.backend.models.i18n import LocalizedString
 from src.backend.models.world_pack import (
-    LoreEntry,
     LocationData,
+    LoreEntry,
     NPCBody,
     NPCData,
     NPCSoul,
@@ -59,7 +59,8 @@ class TestLocationContextServiceGetContextForLocation:
                     uid=100,
                     key=["规则"],
                     content=LocalizedString(
-                        cn="这是常量条目。", en="This is a constant entry.",
+                        cn="这是常量条目。",
+                        en="This is a constant entry.",
                     ),
                     order=0,
                     constant=True,
@@ -71,7 +72,8 @@ class TestLocationContextServiceGetContextForLocation:
                     id="village",
                     name=LocalizedString(cn="村庄", en="Village"),
                     description=LocalizedString(
-                        cn="一个宁静的小村庄。", en="A peaceful small village.",
+                        cn="一个宁静的小村庄。",
+                        en="A peaceful small village.",
                     ),
                     atmosphere=LocalizedString(cn="宁静祥和", en="Peaceful and serene"),
                     connected_locations=["forest_path"],
@@ -87,7 +89,8 @@ class TestLocationContextServiceGetContextForLocation:
                     id="secret_room",
                     name=LocalizedString(cn="密室", en="Secret Room"),
                     description=LocalizedString(
-                        cn="一个黑暗潮湿的房间。", en="A dark and damp room.",
+                        cn="一个黑暗潮湿的房间。",
+                        en="A dark and damp room.",
                     ),
                     atmosphere=LocalizedString(cn="阴森恐怖", en="Dark and terrifying"),
                     connected_locations=[],
@@ -258,7 +261,10 @@ class TestLocationContextServiceGetContextForLocation:
         )
 
         assert context["atmosphere_guidance"] != ""
-        assert "寒冷而神秘" in context["atmosphere_guidance"] or "宁静祥和" in context["atmosphere_guidance"]
+        assert (
+            "寒冷而神秘" in context["atmosphere_guidance"]
+            or "宁静祥和" in context["atmosphere_guidance"]
+        )
 
     def test_basic_lore_included(self, world_pack_loader):
         """Test that basic lore entries are included."""
@@ -302,9 +308,15 @@ class TestLocationContextServiceFilterNpcLore:
                 description=LocalizedString(cn="测试", en="Test"),
             ),
             entries={
-                "1": LoreEntry(uid=1, key=["秘密"], content=LocalizedString(cn="秘密1", en="Secret 1")),
-                "2": LoreEntry(uid=2, key=["历史"], content=LocalizedString(cn="历史1", en="History 1")),
-                "3": LoreEntry(uid=3, key=["宝藏"], content=LocalizedString(cn="宝藏1", en="Treasure 1")),
+                "1": LoreEntry(
+                    uid=1, key=["秘密"], content=LocalizedString(cn="秘密1", en="Secret 1")
+                ),
+                "2": LoreEntry(
+                    uid=2, key=["历史"], content=LocalizedString(cn="历史1", en="History 1")
+                ),
+                "3": LoreEntry(
+                    uid=3, key=["宝藏"], content=LocalizedString(cn="宝藏1", en="Treasure 1")
+                ),
             },
             npcs={
                 "npc_no_restrictions": NPCData(
@@ -654,9 +666,7 @@ class TestLocationContextServiceAtmosphereGuidance:
             "visible_items": [],
         }
 
-        guidance_cn = service._build_atmosphere_guidance(
-            region_context, location_context, "cn"
-        )
+        guidance_cn = service._build_atmosphere_guidance(region_context, location_context, "cn")
 
         assert "寒冷而神秘" in guidance_cn
         assert "宁静" in guidance_cn
@@ -690,9 +700,7 @@ class TestLocationContextServiceAtmosphereGuidance:
             "visible_items": [],
         }
 
-        guidance_en = service._build_atmosphere_guidance(
-            region_context, location_context, "en"
-        )
+        guidance_en = service._build_atmosphere_guidance(region_context, location_context, "en")
 
         assert "cold and mysterious" in guidance_en
         assert "peaceful" in guidance_en
@@ -731,7 +739,9 @@ class TestLocationContextServiceIntegration:
                 "3": LoreEntry(
                     uid=3,
                     key=["守卫"],
-                    content=LocalizedString(cn="无形的守卫保护着这里", en="Invisible guardians protect this place"),
+                    content=LocalizedString(
+                        cn="无形的守卫保护着这里", en="Invisible guardians protect this place"
+                    ),
                     order=3,
                     constant=False,
                     visibility="basic",
@@ -764,7 +774,9 @@ class TestLocationContextServiceIntegration:
                 "village_square": LocationData(
                     id="village_square",
                     name=LocalizedString(cn="村庄广场", en="Village Square"),
-                    description=LocalizedString(cn="村庄的中心广场", en="The central square of the village"),
+                    description=LocalizedString(
+                        cn="村庄的中心广场", en="The central square of the village"
+                    ),
                     atmosphere=LocalizedString(cn="喧闹繁忙", en="Busy and bustling"),
                     connected_locations=["temple_entrance"],
                     present_npc_ids=[],
@@ -777,7 +789,9 @@ class TestLocationContextServiceIntegration:
                 "temple_entrance": LocationData(
                     id="temple_entrance",
                     name=LocalizedString(cn="神殿入口", en="Temple Entrance"),
-                    description=LocalizedString(cn="古老神殿的入口", en="Entrance to the ancient temple"),
+                    description=LocalizedString(
+                        cn="古老神殿的入口", en="Entrance to the ancient temple"
+                    ),
                     atmosphere=LocalizedString(cn="庄严神圣", en="Solemn and sacred"),
                     connected_locations=["village_square", "treasure_room"],
                     present_npc_ids=["guardian"],
@@ -805,7 +819,9 @@ class TestLocationContextServiceIntegration:
                 "village_district": RegionData(
                     id="village_district",
                     name=LocalizedString(cn="村庄区", en="Village District"),
-                    description=LocalizedString(cn="村民居住的区域", en="The residential area of the village"),
+                    description=LocalizedString(
+                        cn="村民居住的区域", en="The residential area of the village"
+                    ),
                     narrative_tone=LocalizedString(cn="温馨舒适", en="Cozy and comfortable"),
                     atmosphere_keywords=["homey", "peaceful", "bustling"],
                     location_ids=["village_square"],
@@ -919,6 +935,9 @@ class TestLocationContextServiceIntegration:
         )
 
         assert context_entrance["region"]["id"] == context_treasure["region"]["id"]
-        assert context_entrance["region"]["narrative_tone"] == context_treasure["region"]["narrative_tone"]
+        assert (
+            context_entrance["region"]["narrative_tone"]
+            == context_treasure["region"]["narrative_tone"]
+        )
         assert "holy" in context_entrance["atmosphere_guidance"]
         assert "holy" in context_treasure["atmosphere_guidance"]

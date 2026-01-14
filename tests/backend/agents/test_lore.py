@@ -9,8 +9,8 @@ import pytest
 
 from src.backend.agents.lore import LoreAgent
 from src.backend.models.world_pack import (
-    LoreEntry,
     LocalizedString,
+    LoreEntry,
     WorldPack,
     WorldPackInfo,
 )
@@ -44,9 +44,7 @@ class TestLoreAgentHybridSearch:
                 id="test_pack",
                 name=LocalizedString(cn="测试包", en="Test Pack"),
                 version="1.0.0",
-                description=LocalizedString(
-                    cn="测试用世界包", en="Test world pack"
-                ),
+                description=LocalizedString(cn="测试用世界包", en="Test world pack"),
             ),
             entries={
                 "1": LoreEntry(
@@ -130,9 +128,7 @@ class TestLoreAgentHybridSearch:
         assert agent2.vector_store is vector_store
 
     @pytest.mark.asyncio
-    async def test_keyword_only_search_without_vector_store(
-        self, mock_llm, sample_world_pack
-    ):
+    async def test_keyword_only_search_without_vector_store(self, mock_llm, sample_world_pack):
         """Test fallback to keyword-only search when no vector store."""
         with tempfile.TemporaryDirectory() as tmpdir:
             pack_dir = Path(tmpdir) / "packs"
@@ -632,6 +628,7 @@ class TestLoreAgentLocationFiltering:
     def pack_with_location_filtering(self):
         """Create a world pack with location-filtered lore entries."""
         from src.backend.models.world_pack import LocationData, RegionData
+
         return WorldPack(
             info=WorldPackInfo(
                 name=LocalizedString(cn="测试包", en="Test Pack"),
@@ -664,7 +661,9 @@ class TestLoreAgentLocationFiltering:
                 "4": LoreEntry(
                     uid=4,
                     key=["详细秘密"],
-                    content=LocalizedString(cn="需要调查才能知道的秘密", en="Secret that requires investigation"),
+                    content=LocalizedString(
+                        cn="需要调查才能知道的秘密", en="Secret that requires investigation"
+                    ),
                     order=4,
                     visibility="detailed",
                     applicable_locations=["treasure_room"],
@@ -842,14 +841,19 @@ class TestLoreAgentLocationFiltering:
         agent = LoreAgent(mock_llm, loader)
 
         import asyncio
-        result = asyncio.run(agent.process({
-            "query": "测试查询",
-            "context": "玩家在森林区域",
-            "world_pack_id": "test_pack",
-            "current_location": "treasure_room",
-            "current_region": "forest_region",
-            "discovered_items": [],
-        }))
+
+        result = asyncio.run(
+            agent.process(
+                {
+                    "query": "测试查询",
+                    "context": "玩家在森林区域",
+                    "world_pack_id": "test_pack",
+                    "current_location": "treasure_room",
+                    "current_region": "forest_region",
+                    "discovered_items": [],
+                }
+            )
+        )
 
         assert result.success is True
         assert "current_location" in result.metadata

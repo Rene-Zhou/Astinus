@@ -9,8 +9,7 @@ Tests the complete persistence flow:
 
 import os
 import tempfile
-from typing import AsyncGenerator
-from unittest.mock import MagicMock
+from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -30,7 +29,7 @@ class TestDatabaseService:
     """Test DatabaseService class."""
 
     @pytest_asyncio.fixture
-    async def temp_db_path(self) -> AsyncGenerator[str, None]:
+    async def temp_db_path(self) -> AsyncGenerator[str]:
         """Create a temporary database file."""
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
@@ -40,7 +39,7 @@ class TestDatabaseService:
             os.unlink(db_path)
 
     @pytest_asyncio.fixture
-    async def db_service(self, temp_db_path: str) -> AsyncGenerator[DatabaseService, None]:
+    async def db_service(self, temp_db_path: str) -> AsyncGenerator[DatabaseService]:
         """Create a DatabaseService with temporary database."""
         service = DatabaseService(db_url=f"sqlite+aiosqlite:///{temp_db_path}")
         await service.initialize()
@@ -90,7 +89,7 @@ class TestGameSessionCRUD:
     """Test CRUD operations for game sessions."""
 
     @pytest_asyncio.fixture
-    async def temp_db_path(self) -> AsyncGenerator[str, None]:
+    async def temp_db_path(self) -> AsyncGenerator[str]:
         """Create a temporary database file."""
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
@@ -99,7 +98,7 @@ class TestGameSessionCRUD:
             os.unlink(db_path)
 
     @pytest_asyncio.fixture
-    async def db_service(self, temp_db_path: str) -> AsyncGenerator[DatabaseService, None]:
+    async def db_service(self, temp_db_path: str) -> AsyncGenerator[DatabaseService]:
         """Create a DatabaseService with temporary database."""
         service = DatabaseService(db_url=f"sqlite+aiosqlite:///{temp_db_path}")
         await service.initialize()
@@ -208,7 +207,7 @@ class TestSaveSlotOperations:
     """Test save slot operations."""
 
     @pytest_asyncio.fixture
-    async def temp_db_path(self) -> AsyncGenerator[str, None]:
+    async def temp_db_path(self) -> AsyncGenerator[str]:
         """Create a temporary database file."""
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
@@ -217,7 +216,7 @@ class TestSaveSlotOperations:
             os.unlink(db_path)
 
     @pytest_asyncio.fixture
-    async def db_service(self, temp_db_path: str) -> AsyncGenerator[DatabaseService, None]:
+    async def db_service(self, temp_db_path: str) -> AsyncGenerator[DatabaseService]:
         """Create a DatabaseService with temporary database."""
         service = DatabaseService(db_url=f"sqlite+aiosqlite:///{temp_db_path}")
         await service.initialize()
@@ -340,7 +339,7 @@ class TestMessagePersistence:
     """Test message persistence operations."""
 
     @pytest_asyncio.fixture
-    async def temp_db_path(self) -> AsyncGenerator[str, None]:
+    async def temp_db_path(self) -> AsyncGenerator[str]:
         """Create a temporary database file."""
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
@@ -349,7 +348,7 @@ class TestMessagePersistence:
             os.unlink(db_path)
 
     @pytest_asyncio.fixture
-    async def db_service(self, temp_db_path: str) -> AsyncGenerator[DatabaseService, None]:
+    async def db_service(self, temp_db_path: str) -> AsyncGenerator[DatabaseService]:
         """Create a DatabaseService with temporary database."""
         service = DatabaseService(db_url=f"sqlite+aiosqlite:///{temp_db_path}")
         await service.initialize()
@@ -429,7 +428,7 @@ class TestAutoSave:
     """Test auto-save functionality."""
 
     @pytest_asyncio.fixture
-    async def temp_db_path(self) -> AsyncGenerator[str, None]:
+    async def temp_db_path(self) -> AsyncGenerator[str]:
         """Create a temporary database file."""
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
             db_path = f.name
@@ -438,7 +437,7 @@ class TestAutoSave:
             os.unlink(db_path)
 
     @pytest_asyncio.fixture
-    async def db_service(self, temp_db_path: str) -> AsyncGenerator[DatabaseService, None]:
+    async def db_service(self, temp_db_path: str) -> AsyncGenerator[DatabaseService]:
         """Create a DatabaseService with temporary database."""
         service = DatabaseService(db_url=f"sqlite+aiosqlite:///{temp_db_path}")
         await service.initialize()

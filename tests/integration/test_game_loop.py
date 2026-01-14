@@ -65,7 +65,7 @@ class TestCompleteGameLoop:
                     name=LocalizedString(cn="运动健将", en="Athletic"),
                     description=LocalizedString(
                         cn="身体素质极佳，反应迅速",
-                        en="Excellent physical condition with quick reflexes"
+                        en="Excellent physical condition with quick reflexes",
                     ),
                     positive_aspect=LocalizedString(cn="运动能力强", en="Strong athletic ability"),
                     negative_aspect=LocalizedString(cn="可能过度自信", en="May be overconfident"),
@@ -100,7 +100,7 @@ class TestCompleteGameLoop:
                         "dice_formula": "2d6",
                         "instructions": {
                             "cn": "这是一个简单的搜索检定",
-                            "en": "This is a simple search check"
+                            "en": "This is a simple search check",
                         },
                     }
                 },
@@ -163,10 +163,12 @@ class TestCompleteGameLoop:
         lang = "cn"
 
         # Step 2: Process through GM Agent
-        result = await mock_gm_agent.process({
-            "player_input": player_input,
-            "lang": lang,
-        })
+        result = await mock_gm_agent.process(
+            {
+                "player_input": player_input,
+                "lang": lang,
+            }
+        )
 
         # Step 3: Verify GM routed to Rule Agent
         assert result.success is True
@@ -213,11 +215,13 @@ class TestCompleteGameLoop:
         )
 
         # Process action
-        result = await rule_agent.process({
-            "player_input": "我要逃离这个房间",
-            "character": test_player_character.model_dump(),
-            "lang": "cn",
-        })
+        result = await rule_agent.process(
+            {
+                "player_input": "我要逃离这个房间",
+                "character": test_player_character.model_dump(),
+                "lang": "cn",
+            }
+        )
 
         # Verify
         assert result.success is True
@@ -256,11 +260,13 @@ class TestCompleteGameLoop:
         )
 
         # Process action with trait claim
-        result = await rule_agent.process({
-            "player_input": player_input,
-            "character": test_player_character.model_dump(),
-            "lang": "cn",
-        })
+        result = await rule_agent.process(
+            {
+                "player_input": player_input,
+                "character": test_player_character.model_dump(),
+                "lang": "cn",
+            }
+        )
 
         # Verify
         assert result.success is True
@@ -295,11 +301,13 @@ class TestCompleteGameLoop:
         )
 
         # Process simple action
-        result = await mock_rule_agent.process({
-            "player_input": "我环顾四周",
-            "character": {},
-            "lang": "cn",
-        })
+        result = await mock_rule_agent.process(
+            {
+                "player_input": "我环顾四周",
+                "character": {},
+                "lang": "cn",
+            }
+        )
 
         # Verify no dice check was required
         assert result.success is True
@@ -313,8 +321,7 @@ class TestCompleteGameLoop:
             influencing_factors={"traits": [], "tags": []},
             dice_formula="3d6kl2",
             instructions=LocalizedString(
-                cn="天色昏暗，搜索有劣势",
-                en="Dim lighting gives disadvantage on search"
+                cn="天色昏暗，搜索有劣势", en="Dim lighting gives disadvantage on search"
             ),
         )
 
@@ -356,10 +363,12 @@ class TestCompleteGameLoop:
         player_input = "你好，你在调查这个庄园吗？"
 
         # Process through GM (NPC routing not fully implemented yet)
-        result = await mock_gm_agent.process({
-            "player_input": player_input,
-            "lang": "cn",
-        })
+        result = await mock_gm_agent.process(
+            {
+                "player_input": player_input,
+                "lang": "cn",
+            }
+        )
 
         # For now, GM just narrates the action
         # In full implementation, this would route to NPC Agent

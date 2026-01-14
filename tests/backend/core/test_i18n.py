@@ -157,8 +157,11 @@ class TestI18nService:
     def test_all_errors_exist(self, i18n_service):
         """Test that all error messages have translations."""
         errors = [
-            "invalid_input", "connection_failed", "file_not_found",
-            "session_not_found", "character_not_found"
+            "invalid_input",
+            "connection_failed",
+            "file_not_found",
+            "session_not_found",
+            "character_not_found",
         ]
 
         for error in errors:

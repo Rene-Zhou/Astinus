@@ -10,12 +10,10 @@ to increase coverage for:
 - Dice rolling
 """
 
-import asyncio
 import os
 import uuid
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -25,8 +23,6 @@ os.environ["OPENAI_API_KEY"] = "sk-test-fake-key-for-testing"
 from src.backend.agents.base import AgentResponse
 from src.backend.api.websockets import (
     ConnectionManager,
-    MessageType,
-    StreamMessage,
     _handle_dice_result,
     _handle_player_input,
     manager,
@@ -586,7 +582,7 @@ class TestDatabaseServiceIntegration:
         try:
             # Create session
             session_id = str(uuid.uuid4())
-            session = await service.create_game_session(
+            await service.create_game_session(
                 session_id=session_id,
                 world_pack_id="demo_pack",
                 player_name="测试玩家",
@@ -618,7 +614,7 @@ class TestDatabaseServiceIntegration:
         try:
             # Create session
             session_id = str(uuid.uuid4())
-            session = await service.create_game_session(
+            await service.create_game_session(
                 session_id=session_id,
                 world_pack_id="demo_pack",
                 player_name="测试玩家",

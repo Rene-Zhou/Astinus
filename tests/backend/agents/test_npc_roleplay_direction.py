@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.backend.agents.npc import NPCAgent
-from src.backend.models.world_pack import NPCBody, NPCData, NPCSoul
+from src.backend.models.world_pack import NPCData
 
 # Set fake API key for tests
 os.environ["OPENAI_API_KEY"] = "sk-test-fake-key-for-testing"
@@ -52,11 +52,8 @@ class TestNpcRoleplayDirection:
             },
         }
 
-    def test_build_system_prompt_includes_roleplay_direction_cn(
-        self, npc_agent, sample_npc_data
-    ):
+    def test_build_system_prompt_includes_roleplay_direction_cn(self, npc_agent, sample_npc_data):
         """Test that Chinese prompt includes roleplay direction when provided."""
-        from src.backend.models.world_pack import NPCData
 
         npc = NPCData(**sample_npc_data)
         roleplay_direction = "NPC 的态度应有所松动，但仍保持一定警惕。"
@@ -73,11 +70,8 @@ class TestNpcRoleplayDirection:
         assert "## 扮演方向指示（重要）" in prompt
         assert roleplay_direction in prompt
 
-    def test_build_system_prompt_includes_roleplay_direction_en(
-        self, npc_agent, sample_npc_data
-    ):
+    def test_build_system_prompt_includes_roleplay_direction_en(self, npc_agent, sample_npc_data):
         """Test that English prompt includes roleplay direction when provided."""
-        from src.backend.models.world_pack import NPCData
 
         npc = NPCData(**sample_npc_data)
         roleplay_direction = "The NPC's attitude should soften somewhat."
@@ -94,11 +88,8 @@ class TestNpcRoleplayDirection:
         assert "## Roleplay Direction (IMPORTANT)" in prompt
         assert roleplay_direction in prompt
 
-    def test_build_system_prompt_no_direction_section_when_none(
-        self, npc_agent, sample_npc_data
-    ):
+    def test_build_system_prompt_no_direction_section_when_none(self, npc_agent, sample_npc_data):
         """Test that prompt doesn't include direction section when None."""
-        from src.backend.models.world_pack import NPCData
 
         npc = NPCData(**sample_npc_data)
 
@@ -113,11 +104,8 @@ class TestNpcRoleplayDirection:
 
         assert "扮演方向指示" not in prompt
 
-    def test_build_system_prompt_no_direction_section_when_empty(
-        self, npc_agent, sample_npc_data
-    ):
+    def test_build_system_prompt_no_direction_section_when_empty(self, npc_agent, sample_npc_data):
         """Test that prompt doesn't include direction section when empty string."""
-        from src.backend.models.world_pack import NPCData
 
         npc = NPCData(**sample_npc_data)
 

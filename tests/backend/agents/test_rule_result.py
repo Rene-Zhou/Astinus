@@ -8,7 +8,7 @@ Tests the RuleAgent's ability to:
 """
 
 import os
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 from langchain_core.messages import AIMessage
@@ -247,7 +247,8 @@ class TestRuleAgentResultHandling:
         assert result.success is True or "error" in result.metadata
         # Fallback should still provide usable result
 
-    class TestRuleAgentNarrativeGeneration:
+
+class TestRuleAgentNarrativeGeneration:
     """Test suite for narrative generation from dice results."""
 
     @pytest.fixture
@@ -338,7 +339,8 @@ class TestRuleAgentResultHandling:
             or context.get("location", "") in prompt_text
         )
 
-    class TestRuleAgentStateUpdates:
+
+class TestRuleAgentStateUpdates:
     """Test suite for Rule Agent state update extraction."""
 
     @pytest.fixture

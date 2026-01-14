@@ -258,7 +258,6 @@ class RuleAgent(BaseAgent):
             llm_response = await self._call_llm(messages)
             narrative_result = self._extract_json_from_response(llm_response)
         except Exception as exc:
-
             return AgentResponse(
                 content="",
                 metadata={},
@@ -345,7 +344,7 @@ class RuleAgent(BaseAgent):
             ]
 
             user_lines = [
-                f"## 检定信息",
+                "## 检定信息",
                 f"- 意图：{intention}",
                 f"- 骰子结果：{dice_values} = {total}",
                 f"- 目标值：{threshold}",
@@ -391,7 +390,7 @@ class RuleAgent(BaseAgent):
             ]
 
             user_lines = [
-                f"## Check Information",
+                "## Check Information",
                 f"- Intention: {intention}",
                 f"- Dice Result: {dice_values} = {total}",
                 f"- Target: {threshold}",

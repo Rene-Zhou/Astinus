@@ -19,7 +19,9 @@ class NewGameRequest(BaseModel):
     """Request model for starting a new game."""
 
     world_pack_id: str = Field(default="demo_pack", description="World pack to load")
-    player_name: str = Field(default="玩家", description="Player (user) name - distinct from character name")
+    player_name: str = Field(
+        default="玩家", description="Player (user) name - distinct from character name"
+    )
     preset_character_id: str | None = Field(
         default=None, description="ID of preset character to use (from world pack)"
     )
@@ -110,7 +112,7 @@ async def start_new_game(request: NewGameRequest):
 
         # Register NPC Agents for NPCs in the starting location
         # First, remove any existing NPC agents from sub_agents
-        npc_keys_to_remove = [k for k in gm_agent.sub_agents.keys() if k.startswith("npc_")]
+        npc_keys_to_remove = [k for k in gm_agent.sub_agents if k.startswith("npc_")]
         for key in npc_keys_to_remove:
             del gm_agent.sub_agents[key]
 

@@ -43,11 +43,13 @@ class TestLoreAgent:
         world_loader.load("demo_pack")
 
         # Query about the manor
-        result = await lore_agent.process({
-            "query": "幽暗庄园的历史",
-            "context": "玩家询问庄园的背景",
-            "world_pack_id": "demo_pack",
-        })
+        result = await lore_agent.process(
+            {
+                "query": "幽暗庄园的历史",
+                "context": "玩家询问庄园的背景",
+                "world_pack_id": "demo_pack",
+            }
+        )
 
         assert result.success is True
         assert len(result.content) > 0
@@ -59,11 +61,13 @@ class TestLoreAgent:
     async def test_process_keyword_search(self, lore_agent, world_loader):
         """Test searching by specific keywords."""
         # Search for NPC-related lore
-        result = await lore_agent.process({
-            "query": "管家",
-            "context": "玩家询问关于管家的事情",
-            "world_pack_id": "demo_pack",
-        })
+        result = await lore_agent.process(
+            {
+                "query": "管家",
+                "context": "玩家询问关于管家的事情",
+                "world_pack_id": "demo_pack",
+            }
+        )
 
         assert result.success is True
         assert "管家" in result.content
@@ -72,11 +76,13 @@ class TestLoreAgent:
     @pytest.mark.asyncio
     async def test_process_location_query(self, lore_agent, world_loader):
         """Test querying about locations."""
-        result = await lore_agent.process({
-            "query": "书房",
-            "context": "玩家询问书房的信息",
-            "world_pack_id": "demo_pack",
-        })
+        result = await lore_agent.process(
+            {
+                "query": "书房",
+                "context": "玩家询问书房的信息",
+                "world_pack_id": "demo_pack",
+            }
+        )
 
         assert result.success is True
         assert len(result.content) > 0
@@ -85,9 +91,11 @@ class TestLoreAgent:
     @pytest.mark.asyncio
     async def test_process_no_query(self, lore_agent):
         """Test error when no query provided."""
-        result = await lore_agent.process({
-            "context": "玩家询问",
-        })
+        result = await lore_agent.process(
+            {
+                "context": "玩家询问",
+            }
+        )
 
         assert result.success is False
         assert "No query provided" in result.error
@@ -95,10 +103,12 @@ class TestLoreAgent:
     @pytest.mark.asyncio
     async def test_process_invalid_pack(self, lore_agent):
         """Test error with invalid world pack."""
-        result = await lore_agent.process({
-            "query": "测试",
-            "world_pack_id": "nonexistent_pack",
-        })
+        result = await lore_agent.process(
+            {
+                "query": "测试",
+                "world_pack_id": "nonexistent_pack",
+            }
+        )
 
         assert result.success is False
         assert result.error is not None
@@ -142,11 +152,7 @@ class TestLoreAgent:
         world_pack = world_loader.load("demo_pack")
 
         # Search for manor-related entries
-        entries = lore_agent._search_lore(
-            world_pack,
-            "幽暗庄园的历史",
-            "玩家询问庄园背景"
-        )
+        entries = lore_agent._search_lore(world_pack, "幽暗庄园的历史", "玩家询问庄园背景")
 
         assert len(entries) > 0
         # Should find the constant manor entry
@@ -182,11 +188,13 @@ class TestLoreAgentIntegration:
         lore_agent = LoreAgent(llm, world_loader)
 
         # Query about NPC
-        result = await lore_agent.process({
-            "query": "陈玲是谁",
-            "context": "玩家遇到陈玲，想了解她的背景",
-            "world_pack_id": "demo_pack",
-        })
+        result = await lore_agent.process(
+            {
+                "query": "陈玲是谁",
+                "context": "玩家遇到陈玲，想了解她的背景",
+                "world_pack_id": "demo_pack",
+            }
+        )
 
         assert result.success is True
         assert result.metadata["world_pack_id"] == "demo_pack"

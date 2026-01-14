@@ -371,9 +371,7 @@ class WorldPack(BaseModel):
             return None
         return self.get_region(location.region_id)
 
-    def get_lore_for_location(
-        self, location_id: str, visibility: str = "basic"
-    ) -> list[LoreEntry]:
+    def get_lore_for_location(self, location_id: str, visibility: str = "basic") -> list[LoreEntry]:
         """
         Get lore entries applicable to a location, filtered by visibility.
 
@@ -440,10 +438,7 @@ class WorldPack(BaseModel):
 
         for entry in self.entries.values():
             # Check primary keys (bidirectional: keyword in key OR key in keyword)
-            if any(
-                keyword_lower in k.lower() or k.lower() in keyword_lower
-                for k in entry.key
-            ):
+            if any(keyword_lower in k.lower() or k.lower() in keyword_lower for k in entry.key):
                 matches.append(entry)
                 continue
 

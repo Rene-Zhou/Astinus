@@ -11,11 +11,12 @@ Provides:
 
 import json
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, Optional
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.backend.models.persistence import (
@@ -29,7 +30,7 @@ from src.backend.models.persistence import (
 _database_service: Optional["DatabaseService"] = None
 
 
-def get_database_service(db_url: Optional[str] = None) -> "DatabaseService":
+def get_database_service(db_url: str | None = None) -> "DatabaseService":
     """
     Get or create the singleton DatabaseService instance.
 
@@ -56,7 +57,7 @@ class DatabaseService:
     - Save slots
     """
 
-    def __init__(self, db_url: Optional[str] = None):
+    def __init__(self, db_url: str | None = None):
         """
         Initialize the database service.
 
@@ -109,7 +110,7 @@ class DatabaseService:
             logging.info("Database connection closed")
 
     @asynccontextmanager
-    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
+    async def get_session(self) -> AsyncGenerator[AsyncSession]:
         """
         Get an async database session.
 
@@ -135,7 +136,7 @@ class DatabaseService:
         session_id: str,
         world_pack_id: str,
         player_name: str,
-        player_data: Optional[dict[str, Any]] = None,
+        player_data: dict[str, Any] | None = None,
         current_location: str = "",
         **kwargs,
     ) -> GameSessionModel:
@@ -166,7 +167,7 @@ class DatabaseService:
             await session.refresh(game_session)
             return game_session
 
-    async def get_game_session(self, session_id: str) -> Optional[GameSessionModel]:
+    async def get_game_session(self, session_id: str) -> GameSessionModel | None:
         """
         Get a game session by ID.
 
@@ -186,7 +187,7 @@ class DatabaseService:
         self,
         session_id: str,
         **kwargs,
-    ) -> Optional[GameSessionModel]:
+    ) -> GameSessionModel | None:
         """
         Update a game session.
 
@@ -265,7 +266,7 @@ class DatabaseService:
         role: str,
         content: str,
         turn: int = 0,
-        extra_data: Optional[dict[str, Any]] = None,
+        extra_data: dict[str, Any] | None = None,
     ) -> MessageModel:
         """
         Add a message to a session.
@@ -296,7 +297,7 @@ class DatabaseService:
     async def get_messages(
         self,
         session_id: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ) -> list[MessageModel]:
         """
         Get messages for a session.
@@ -338,7 +339,7 @@ class DatabaseService:
         session_id: str,
         slot_name: str,
         game_state: dict[str, Any],
-        description: Optional[str] = None,
+        description: str | None = None,
         is_auto_save: bool = False,
     ) -> SaveSlotModel:
         """
@@ -390,7 +391,7 @@ class DatabaseService:
         self,
         session_id: str,
         slot_name: str,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Load game state from a slot.
 

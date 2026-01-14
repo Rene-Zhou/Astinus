@@ -40,15 +40,11 @@ class Trait(BaseModel):
         '优柔寡断'
     """
 
-    name: LocalizedString = Field(
-        ..., description="Short label for the trait"
-    )
+    name: LocalizedString = Field(..., description="Short label for the trait")
     description: LocalizedString = Field(
         ..., description="Full description of the trait with context"
     )
-    positive_aspect: LocalizedString = Field(
-        ..., description="How this trait helps the character"
-    )
+    positive_aspect: LocalizedString = Field(..., description="How this trait helps the character")
     negative_aspect: LocalizedString = Field(
         ..., description="How this trait hinders the character"
     )

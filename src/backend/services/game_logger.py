@@ -18,7 +18,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-
 LOG_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -148,7 +147,11 @@ class GameLogger:
             LogLevel.DEBUG,
             LogCategory.LLM_RAW,
             f"Agent: {agent_name} | Prompt: {prompt_summary[:100]}...",
-            {"raw_response": raw_response[:500] + "..." if len(raw_response) > 500 else raw_response},
+            {
+                "raw_response": raw_response[:500] + "..."
+                if len(raw_response) > 500
+                else raw_response
+            },
         )
         self._write(entry)
 

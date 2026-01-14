@@ -236,7 +236,11 @@ class NPCAgent(BaseAgent):
         npc = NPCData(**npc_data)
 
         system_parts = self._build_system_prompt(
-            npc, player_input, context, lang, narrative_style,
+            npc,
+            player_input,
+            context,
+            lang,
+            narrative_style,
             roleplay_direction=roleplay_direction,
         )
         user_parts = self._build_user_prompt(npc, player_input, context, lang)
@@ -405,11 +409,19 @@ class NPCAgent(BaseAgent):
             lines.append("## Narrative Style")
             if narrative_style == "brief":
                 lines.append("Currently in continuous dialogue, keep action description minimal:")
-                lines.append("- Leave action field empty or use minimal actions (e.g., 'nods', 'shakes head')")
-                lines.append("- Focus on the dialogue itself, avoid repeating previously described gestures")
+                lines.append(
+                    "- Leave action field empty or use minimal actions (e.g., 'nods', 'shakes head')"
+                )
+                lines.append(
+                    "- Focus on the dialogue itself, avoid repeating previously described gestures"
+                )
             else:
-                lines.append("This is a new interaction or after a gap, enrich the action description:")
-                lines.append("- Write vivid actions, expressions, and subtle movements in action field")
+                lines.append(
+                    "This is a new interaction or after a gap, enrich the action description:"
+                )
+                lines.append(
+                    "- Write vivid actions, expressions, and subtle movements in action field"
+                )
                 lines.append("- Reflect character personality and current emotional state")
 
             # Add roleplay direction if present
@@ -424,15 +436,15 @@ class NPCAgent(BaseAgent):
             lines.append("{")
             lines.append('  "response": "your dialogue",')
             lines.append('  "emotion": "emotional state (happy, sad, angry, scared, neutral)",')
-            lines.append('  "action": "accompanying action description (follow narrative style above)",')
+            lines.append(
+                '  "action": "accompanying action description (follow narrative style above)",'
+            )
             lines.append('  "relation_change": 0  // relation change -10 to +10, usually 0')
             lines.append("}")
 
         return "\n".join(lines)
 
-    def _get_location_specific_lore(
-        self, npc: NPCData, context: dict, lang: str
-    ) -> str:
+    def _get_location_specific_lore(self, npc: NPCData, context: dict, lang: str) -> str:
         """
         Get location-specific lore that this NPC knows.
 

@@ -237,8 +237,7 @@ class DirectorAgent(BaseAgent):
             result = self._extract_json_from_response(llm_response)
             result["success"] = True
             return result
-        except ValueError as exc:
-            # If JSON parsing fails, provide heuristic-based suggestions
+        except ValueError:
             return self._heuristic_analysis(
                 turn_count=turn_count,
                 turns_in_beat=self._turns_in_beat,

@@ -47,18 +47,12 @@ class PlayerCharacter(BaseModel):
     """
 
     name: str = Field(..., description="Character name (proper noun, not localized)")
-    concept: LocalizedString = Field(
-        ..., description="One-sentence character concept"
-    )
+    concept: LocalizedString = Field(..., description="One-sentence character concept")
     traits: list[Trait] = Field(
         ..., description="Character traits (1-4 traits)", min_length=1, max_length=4
     )
-    fate_points: int = Field(
-        default=3, ge=0, le=5, description="Narrative influence points (0-5)"
-    )
-    tags: list[str] = Field(
-        default_factory=list, description="Status effects and conditions"
-    )
+    fate_points: int = Field(default=3, ge=0, le=5, description="Narrative influence points (0-5)")
+    tags: list[str] = Field(default_factory=list, description="Status effects and conditions")
 
     @field_validator("traits")
     @classmethod

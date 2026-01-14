@@ -406,6 +406,7 @@ async def _handle_dice_result(
     )
 
     from src.backend.models.game_state import GamePhase
+
     gm_agent.game_state.set_phase(GamePhase.PROCESSING)
     await manager.send_phase_change(session_id, "processing")
 

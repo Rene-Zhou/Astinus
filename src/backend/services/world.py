@@ -145,32 +145,36 @@ class WorldPackLoader:
         for entry in pack.entries.values():
             # Chinese document
             documents.append(entry.content.cn)
-            metadatas.append({
-                "uid": entry.uid,
-                "keys": ",".join(entry.key),  # Store as comma-separated string
-                "order": entry.order,
-                "lang": "cn",
-                "constant": entry.constant,
-                # NEW: Location filtering metadata
-                "visibility": entry.visibility,
-                "applicable_regions": ",".join(entry.applicable_regions),
-                "applicable_locations": ",".join(entry.applicable_locations),
-            })
+            metadatas.append(
+                {
+                    "uid": entry.uid,
+                    "keys": ",".join(entry.key),  # Store as comma-separated string
+                    "order": entry.order,
+                    "lang": "cn",
+                    "constant": entry.constant,
+                    # NEW: Location filtering metadata
+                    "visibility": entry.visibility,
+                    "applicable_regions": ",".join(entry.applicable_regions),
+                    "applicable_locations": ",".join(entry.applicable_locations),
+                }
+            )
             ids.append(f"{pack_id}_lore_{entry.uid}_cn")
 
             # English document
             documents.append(entry.content.en)
-            metadatas.append({
-                "uid": entry.uid,
-                "keys": ",".join(entry.key),
-                "order": entry.order,
-                "lang": "en",
-                "constant": entry.constant,
-                # NEW: Location filtering metadata
-                "visibility": entry.visibility,
-                "applicable_regions": ",".join(entry.applicable_regions),
-                "applicable_locations": ",".join(entry.applicable_locations),
-            })
+            metadatas.append(
+                {
+                    "uid": entry.uid,
+                    "keys": ",".join(entry.key),
+                    "order": entry.order,
+                    "lang": "en",
+                    "constant": entry.constant,
+                    # NEW: Location filtering metadata
+                    "visibility": entry.visibility,
+                    "applicable_regions": ",".join(entry.applicable_regions),
+                    "applicable_locations": ",".join(entry.applicable_locations),
+                }
+            )
             ids.append(f"{pack_id}_lore_{entry.uid}_en")
 
         # Add to vector store
@@ -226,11 +230,7 @@ class WorldPackLoader:
         if not self.packs_dir.exists():
             return []
 
-        return [
-            f.stem
-            for f in self.packs_dir.glob("*.json")
-            if f.is_file()
-        ]
+        return [f.stem for f in self.packs_dir.glob("*.json") if f.is_file()]
 
     def clear_cache(self) -> None:
         """Clear the pack cache."""

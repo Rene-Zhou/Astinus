@@ -179,7 +179,11 @@ class TestVectorStoreServiceUnit:
         mock_client_class.return_value = mock_client
         mock_collection = Mock()
         mock_client.get_or_create_collection.return_value = mock_collection
-        mock_collection.query.return_value = {"documents": [[]], "metadatas": [[]], "distances": [[]]}
+        mock_collection.query.return_value = {
+            "documents": [[]],
+            "metadatas": [[]],
+            "distances": [[]],
+        }
 
         with tempfile.TemporaryDirectory() as tmpdir:
             store = VectorStoreService(tmpdir)

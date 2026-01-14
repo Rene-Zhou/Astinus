@@ -74,9 +74,7 @@ class I18nService:
                     with open(json_file, encoding="utf-8") as f:
                         self._cache[cache_key] = json.load(f)
                 except json.JSONDecodeError as exc:
-                    raise ValueError(
-                        f"Invalid JSON in {json_file}: {exc}"
-                    ) from exc
+                    raise ValueError(f"Invalid JSON in {json_file}: {exc}") from exc
 
     def get(self, key: str, lang: str | None = None, **kwargs: Any) -> str:
         """

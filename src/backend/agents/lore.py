@@ -279,14 +279,16 @@ class LoreAgent(BaseAgent):
                 continue
 
             # Skip if location-restricted and doesn't match
-            if entry.applicable_locations:
-                if not current_location or current_location not in entry.applicable_locations:
-                    continue
+            if entry.applicable_locations and (
+                not current_location or current_location not in entry.applicable_locations
+            ):
+                continue
 
             # Skip if region-restricted and doesn't match
-            elif entry.applicable_regions:
-                if not current_region or current_region not in entry.applicable_regions:
-                    continue
+            if entry.applicable_regions and (
+                not current_region or current_region not in entry.applicable_regions
+            ):
+                continue
 
             # Entry passed all filters
             filtered.append(item)
@@ -334,14 +336,16 @@ class LoreAgent(BaseAgent):
                 continue
 
             # Skip if location-restricted and doesn't match
-            if entry.applicable_locations:
-                if not current_location or current_location not in entry.applicable_locations:
-                    continue
+            if entry.applicable_locations and (
+                not current_location or current_location not in entry.applicable_locations
+            ):
+                continue
 
             # Skip if region-restricted and doesn't match
-            elif entry.applicable_regions:
-                if not current_region or current_region not in entry.applicable_regions:
-                    continue
+            if entry.applicable_regions and (
+                not current_region or current_region not in entry.applicable_regions
+            ):
+                continue
 
             filtered_entries.append(entry)
 
@@ -359,13 +363,28 @@ class LoreAgent(BaseAgent):
         """
         # Simple keyword extraction - can be enhanced with NLP
         # Split by common delimiters and filter out stop words
-        stop_words = {"的", "了", "是", "在", "我", "你", "他", "她", "它", "有", "没有", "什么", "怎么", "如何"}
+        stop_words = {
+            "的",
+            "了",
+            "是",
+            "在",
+            "我",
+            "你",
+            "他",
+            "她",
+            "它",
+            "有",
+            "没有",
+            "什么",
+            "怎么",
+            "如何",
+        }
 
         # Extract Chinese and English terms
         terms = []
         for word in query.split():
             # Remove punctuation
-            clean_word = word.strip("，。！？：；""''()（）[]【】")
+            clean_word = word.strip("，。！？：；''()（）[]【】")
             if clean_word and clean_word not in stop_words and len(clean_word) > 1:
                 terms.append(clean_word)
 

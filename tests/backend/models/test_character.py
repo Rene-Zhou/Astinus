@@ -18,16 +18,15 @@ class TestPlayerCharacter:
             name=LocalizedString(cn="运动健将", en="Athletic"),
             description=LocalizedString(
                 cn="多年的体育训练让你拥有出色的身体素质",
-                en="Years of training gave you excellent physical condition"
+                en="Years of training gave you excellent physical condition",
             ),
             positive_aspect=LocalizedString(
                 cn="在需要体力和敏捷的场合表现出色",
-                en="Excel in situations requiring strength and agility"
+                en="Excel in situations requiring strength and agility",
             ),
             negative_aspect=LocalizedString(
-                cn="倾向于用蛮力解决问题而非思考",
-                en="Tend to use brute force instead of thinking"
-            )
+                cn="倾向于用蛮力解决问题而非思考", en="Tend to use brute force instead of thinking"
+            ),
         )
 
     @pytest.fixture
@@ -38,7 +37,7 @@ class TestPlayerCharacter:
             concept=LocalizedString(cn="失业的建筑师", en="Unemployed Architect"),
             traits=[sample_trait],
             fate_points=3,
-            tags=[]
+            tags=[],
         )
 
     def test_create_character(self, sample_character):
@@ -55,7 +54,7 @@ class TestPlayerCharacter:
                 name="测试",
                 concept=LocalizedString(cn="测试", en="Test"),
                 traits=[],  # Empty traits list
-                fate_points=3
+                fate_points=3,
             )
 
     def test_character_cannot_have_more_than_four_traits(self, sample_trait):
@@ -65,7 +64,7 @@ class TestPlayerCharacter:
                 name="测试",
                 concept=LocalizedString(cn="测试", en="Test"),
                 traits=[sample_trait] * 5,  # 5 traits
-                fate_points=3
+                fate_points=3,
             )
 
     def test_add_tag(self, sample_character):
@@ -146,11 +145,13 @@ class TestPlayerCharacter:
             PlayerCharacter(
                 name="测试",
                 concept=LocalizedString(cn="测试", en="Test"),
-                traits=[Trait(
-                    name=LocalizedString(cn="特质", en="Trait"),
-                    description=LocalizedString(cn="描述", en="Desc"),
-                    positive_aspect=LocalizedString(cn="正", en="Pos"),
-                    negative_aspect=LocalizedString(cn="负", en="Neg")
-                )],
-                fate_points=10  # Over max
+                traits=[
+                    Trait(
+                        name=LocalizedString(cn="特质", en="Trait"),
+                        description=LocalizedString(cn="描述", en="Desc"),
+                        positive_aspect=LocalizedString(cn="正", en="Pos"),
+                        negative_aspect=LocalizedString(cn="负", en="Neg"),
+                    )
+                ],
+                fate_points=10,  # Over max
             )

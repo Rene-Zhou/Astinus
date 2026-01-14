@@ -106,10 +106,7 @@ class TestNarrativeManager:
 
         # Get flag values
         assert narrative_manager.get_narrative_flag("quest_started") is True
-        assert (
-            narrative_manager.get_narrative_flag("nonexistent", "default")
-            == "default"
-        )
+        assert narrative_manager.get_narrative_flag("nonexistent", "default") == "default"
 
     def test_npc_management(self, narrative_manager):
         """Test NPC management in scenes."""
