@@ -66,6 +66,9 @@ select = [
 ]
 ignore = [
     "E501", # line too long (handled by formatter)
+    "B005", # Using `.strip()` with multi-character strings (false positive for CJK)
+    "SIM105", # Use contextlib.suppress - style preference
+    "N802", # Function name casing (overriding parent class methods)
 ]
 
 [tool.ruff.format]

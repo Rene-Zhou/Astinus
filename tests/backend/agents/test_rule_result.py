@@ -243,9 +243,9 @@ class TestRuleAgentResultHandling:
 
         result = await rule_agent.process_result(sample_success_result)
 
-        # Should have a fallback narrative
-        assert result.success is True or "error" in result.metadata
-        # Fallback should still provide usable result
+        # Should return error response
+        assert result.success is False
+        assert result.error is not None
 
 
 class TestRuleAgentNarrativeGeneration:
