@@ -212,7 +212,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
           </div>
 
           {/* Formula and factors */}
-          <div className="space-y-3 rounded-md bg-gray-50 p-3 dark:bg-gray-750">
+          <div className="space-y-3 rounded-md bg-gray-50 p-3 dark:bg-gray-800">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("dice.formula")}</span>
               <span className="rounded bg-white px-2 py-1 font-mono text-sm font-semibold text-primary shadow-sm dark:bg-gray-700 dark:text-primary-300">
