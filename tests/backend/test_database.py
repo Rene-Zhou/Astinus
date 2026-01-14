@@ -561,3 +561,98 @@ class TestPersistenceModels:
 
         assert save.slot_name == "Save 1"
         assert save.game_state_json == "{}"
+
+
+class TestPersistenceModelsExtended:
+    """Extended tests for persistence models."""
+
+    def test_game_session_model_properties(self):
+        """Test GameSessionModel properties."""
+        session = GameSessionModel(
+            session_id="test-session",
+            world_pack_id="demo_pack",
+            player_name="测试玩家",
+            player_data={"traits": ["brave"]},
+            current_location="start",
+            current_phase="waiting_input",
+            turn_count=5,
+            active_npc_ids=["npc_1", "npc_2"],
+        )
+
+        # Test player_data property
+        assert session.player_data is not None
+        assert "traits" in session.player_data
+
+        # Test active_npc_ids property
+        assert len(session.active_npc_ids) == 2
+        assert "npc_1" in session.active_npc_ids
+
+    def test_game_session_model_to_dict(self):
+        """Test GameSessionModel to_dict method."""
+        session = GameSessionModel(
+            session_id="test-session",
+            world_pack_id="demo_pack",
+            player_name="测试玩家",
+            player_data=None,
+            current_location="start",
+        )
+
+        data = session.to_dict()
+        assert data["session_id"] == "test-session"
+        assert data["world_pack_id"] == "demo_pack"
+        assert data["player_name"] == "测试玩家"
+
+    def test_game_session_model_repr(self):
+        """Test GameSessionModel repr."""
+        session = GameSessionModel(
+            session_id="test-session",
+            world_pack_id="demo_pack",
+            player_name="测试",
+            player_data=None,
+            current_location="start",
+        )
+        repr_str = repr(session)
+        assert "GameSessionModel" in repr_str
+        assert "test-session" in repr_str
+
+    def test_save_slot_model_properties(self):
+        """Test SaveSlotModel properties."""
+        save = SaveSlotModel(
+            session_id="test-session",
+            slot_name="Save 1",
+            game_state_json='{"location": "cave", "turn": 10}',
+            description="In the cave",
+        )
+
+        # Test game_state property getter
+        state = save.game_state
+        assert state["location"] == "cave"
+        assert state["turn"] == 10
+
+        # Test game_state property setter
+        save.game_state = {"location": "forest", "turn": 15}
+        assert save.game_state["location"] == "forest"
+
+    def test_save_slot_model_to_dict(self):
+        """Test SaveSlotModel to_dict method."""
+        save = SaveSlotModel(
+            session_id="test-session",
+            slot_name="Save 1",
+            game_state_json='{"turn": 5}',
+        )
+
+        data = save.to_dict()
+        assert data["slot_name"] == "Save 1"
+        assert data["game_state"]["turn"] == 5
+
+    def test_save_slot_model_repr(self):
+        """Test SaveSlotModel repr."""
+        save = SaveSlotModel(
+            session_id="test-session",
+            slot_name="Auto Save",
+            game_state_json="{}",
+            is_auto_save=True,
+        )
+        repr_str = repr(save)
+        assert "SaveSlotModel" in repr_str
+        assert "Auto Save" in repr_str

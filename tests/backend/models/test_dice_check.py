@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.backend.models.dice_check import DiceCheckRequest, DiceCheckResponse
+from src.backend.models.dice_check import DiceCheckRequest, DiceCheckResponse, DiceCheckResult
 from src.backend.models.i18n import LocalizedString
 
 
@@ -182,3 +182,220 @@ class TestDiceCheckResponse:
         # action is required
         with pytest.raises(ValueError):
             DiceCheckResponse()
+
+
+class TestDiceCheckResult:
+    @pytest.fixture
+    def success_result(self):
+        return DiceCheckResult(
+            intention="搜索房间",
+            dice_formula="2d6",
+            dice_values=[5, 4],
+            total=9,
+            threshold=7,
+            success=True,
+            critical=False,
+            modifiers=[],
+        )
+
+    @pytest.fixture
+    def critical_success_result(self):
+        return DiceCheckResult(
+            intention="逃离陷阱",
+            dice_formula="2d6",
+            dice_values=[6, 6],
+            total=12,
+            threshold=7,
+            success=True,
+            critical=True,
+            modifiers=[{"source": "敏锐", "effect": "advantage"}],
+        )
+
+    @pytest.fixture
+    def failure_result(self):
+        return DiceCheckResult(
+            intention="说服守卫",
+            dice_formula="2d6",
+            dice_values=[2, 3],
+            total=5,
+            threshold=7,
+            success=False,
+            critical=False,
+            modifiers=[],
+        )
+
+    @pytest.fixture
+    def critical_failure_result(self):
+        return DiceCheckResult(
+            intention="攀爬城墙",
+            dice_formula="2d6",
+            dice_values=[1, 1],
+            total=2,
+            threshold=7,
+            success=False,
+            critical=True,
+            modifiers=[{"source": "受伤", "effect": "disadvantage"}],
+        )
+
+    def test_is_critical_success(self, critical_success_result):
+        assert critical_success_result.is_critical_success() is True
+
+    def test_is_not_critical_success(self, success_result):
+        assert success_result.is_critical_success() is False
+
+    def test_is_critical_failure(self, critical_failure_result):
+        assert critical_failure_result.is_critical_failure() is True
+
+    def test_is_not_critical_failure(self, failure_result):
+        assert failure_result.is_critical_failure() is False
+
+    def test_get_margin_success(self, success_result):
+        margin = success_result.get_margin()
+        assert margin == 2
+
+    def test_get_margin_failure(self, failure_result):
+        margin = failure_result.get_margin()
+        assert margin == -2
+
+    def test_str_success(self, success_result):
+        str_repr = str(success_result)
+        assert "搜索房间" in str_repr
+        assert "9" in str_repr
+        assert "成功" in str_repr
+
+    def test_str_critical_success(self, critical_success_result):
+        str_repr = str(critical_success_result)
+        assert "大成功" in str_repr
+
+    def test_str_failure(self, failure_result):
+        str_repr = str(failure_result)
+        assert "失败" in str_repr
+
+    def test_str_critical_failure(self, critical_failure_result):
+        str_repr = str(critical_failure_result)
+        assert "大失败" in str_repr
+
+    def test_repr(self, success_result):
+        repr_str = repr(success_result)
+        assert "DiceCheckResult" in repr_str
+        assert "搜索房间" in repr_str
+        assert "total=9" in repr_str
+        assert "success=True" in repr_str
+
+
+
+class TestDiceCheckResult:
+    """Tests for DiceCheckResult model."""
+
+    @pytest.fixture
+    def success_result(self):
+        """Create a successful dice check result."""
+        return DiceCheckResult(
+            intention="搜索房间",
+            dice_formula="2d6",
+            dice_values=[5, 4],
+            total=9,
+            threshold=7,
+            success=True,
+            critical=False,
+            modifiers=[],
+        )
+
+    @pytest.fixture
+    def critical_success_result(self):
+        """Create a critical success result."""
+        return DiceCheckResult(
+            intention="逃离陷阱",
+            dice_formula="2d6",
+            dice_values=[6, 6],
+            total=12,
+            threshold=7,
+            success=True,
+            critical=True,
+            modifiers=[{"source": "敏锐", "effect": "advantage"}],
+        )
+
+    @pytest.fixture
+    def failure_result(self):
+        """Create a failure result."""
+        return DiceCheckResult(
+            intention="说服守卫",
+            dice_formula="2d6",
+            dice_values=[2, 3],
+            total=5,
+            threshold=7,
+            success=False,
+            critical=False,
+            modifiers=[],
+        )
+
+    @pytest.fixture
+    def critical_failure_result(self):
+        """Create a critical failure result."""
+        return DiceCheckResult(
+            intention="攀爬城墙",
+            dice_formula="2d6",
+            dice_values=[1, 1],
+            total=2,
+            threshold=7,
+            success=False,
+            critical=True,
+            modifiers=[{"source": "受伤", "effect": "disadvantage"}],
+        )
+
+    def test_is_critical_success(self, critical_success_result):
+        """Test critical success detection."""
+        assert critical_success_result.is_critical_success() is True
+
+    def test_is_not_critical_success(self, success_result):
+        """Test non-critical success."""
+        assert success_result.is_critical_success() is False
+
+    def test_is_critical_failure(self, critical_failure_result):
+        """Test critical failure detection."""
+        assert critical_failure_result.is_critical_failure() is True
+
+    def test_is_not_critical_failure(self, failure_result):
+        """Test non-critical failure."""
+        assert failure_result.is_critical_failure() is False
+
+    def test_get_margin_success(self, success_result):
+        """Test success margin calculation."""
+        margin = success_result.get_margin()
+        assert margin == 2  # 9 - 7 = 2
+
+    def test_get_margin_failure(self, failure_result):
+        """Test failure margin calculation (negative)."""
+        margin = failure_result.get_margin()
+        assert margin == -2  # 5 - 7 = -2
+
+    def test_str_success(self, success_result):
+        """Test string representation for success."""
+        str_repr = str(success_result)
+        assert "搜索房间" in str_repr
+        assert "9" in str_repr
+        assert "成功" in str_repr
+
+    def test_str_critical_success(self, critical_success_result):
+        """Test string representation for critical success."""
+        str_repr = str(critical_success_result)
+        assert "大成功" in str_repr
+
+    def test_str_failure(self, failure_result):
+        """Test string representation for failure."""
+        str_repr = str(failure_result)
+        assert "失败" in str_repr
+
+    def test_str_critical_failure(self, critical_failure_result):
+        """Test string representation for critical failure."""
+        str_repr = str(critical_failure_result)
+        assert "大失败" in str_repr
+
+    def test_repr(self, success_result):
+        """Test developer representation."""
+        repr_str = repr(success_result)
+        assert "DiceCheckResult" in repr_str
+        assert "搜索房间" in repr_str
+        assert "total=9" in repr_str
+        assert "success=True" in repr_str
+

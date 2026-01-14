@@ -483,6 +483,7 @@ class TestNPCAgentMemoryRetrieval:
             prompt = agent._build_system_prompt(
                 npc=npc,
                 player_input="关于书籍的问题",
+                context={},
                 lang="cn",
             )
 
@@ -519,6 +520,7 @@ class TestNPCAgentMemoryRetrieval:
         prompt = agent._build_system_prompt(
             npc=npc,
             player_input="关于书籍的问题",
+            context={},
             lang="cn",
         )
 
@@ -554,6 +556,7 @@ class TestNPCAgentMemoryRetrieval:
         prompt = agent._build_system_prompt(
             npc=npc,
             player_input="你好",
+            context={},
             lang="cn",
         )
 
