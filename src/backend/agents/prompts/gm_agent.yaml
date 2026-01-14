@@ -186,37 +186,6 @@ cn:
     使用已收集到的所有信息，生成一个合理的叙事结局。只能使用 RESPOND 行动。
     {% endif %}
 
-    如果需要骰子检定：
-    {
-      "action": "RESPOND",
-      "reasoning": "推理过程：分析行动风险、评估特质/标签影响、确定骰子公式",
-      "needs_check": true,
-      "check_request": {
-        "intention": "行动意图的简短描述",
-        "influencing_factors": {
-          "traits": ["影响此检定的相关特质"],
-          "tags": ["影响此检定的相关标签"]
-        },
-        "dice_formula": "2d6 或 3d6kh2 或 3d6kl2",
-        "instructions": {
-          "cn": "为什么有这些修正",
-          "en": "Why these modifiers apply"
-        }
-      },
-      "narrative": "检定前的叙事（描述玩家准备行动的情景）"
-    }
-
-    如果需要调用子Agent（仅 NPC 或 Lore）：
-    {
-      "action": "CALL_AGENT",
-      "reasoning": "推理过程：分析玩家意图、说明为什么需要调用这个agent、需要获取什么信息",
-      "agent_name": "npc_{id} 或 lore",
-      "agent_context": {
-        "player_input": "传递给agent的玩家输入",
-        "interaction_type": "talk/act/query 等"
-      }
-    }
-
 en:
   role: |
     You are the GM (Game Master) for Astinus TTRPG, using a ReAct loop to process player actions.
