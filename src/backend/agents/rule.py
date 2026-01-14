@@ -191,6 +191,7 @@ class RuleAgent(BaseAgent):
             concept_display = str(character_concept)
 
         # Get traits - extract full trait information (name, description, positive_aspect, negative_aspect)
+<<<<<<< HEAD
         def _get_localized(trait_data: dict, field: str, preferred_lang: str = "cn") -> str:
             """Extract LocalizedString field with fallback to preferred language."""
             value = trait_data.get(field, {})
@@ -206,6 +207,23 @@ class RuleAgent(BaseAgent):
                     "description": _get_localized(trait, "description", lang),
                     "positive": _get_localized(trait, "positive_aspect", lang),
                     "negative": _get_localized(trait, "negative_aspect", lang),
+=======
+        traits_full = []
+        for trait in character.get("traits", []):
+            if isinstance(trait, dict):
+                # Extract LocalizedString fields with fallback to preferred language
+                def get_localized(field: str, preferred_lang: str = "cn") -> str:
+                    value = trait.get(field, {})
+                    if isinstance(value, dict):
+                        return value.get(preferred_lang, "") or value.get("en", "")
+                    return str(value) if value else ""
+
+                traits_full.append({
+                    "name": get_localized("name", lang),
+                    "description": get_localized("description", lang),
+                    "positive": get_localized("positive_aspect", lang),
+                    "negative": get_localized("negative_aspect", lang),
+>>>>>>> 5aa3c2a11d83e13ba22a59a152c61b8f04b05c89
                 })
         traits = traits_full
 
