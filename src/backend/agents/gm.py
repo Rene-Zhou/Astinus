@@ -155,6 +155,35 @@ class GMAgent(BaseAgent):
             )
 
             if action.action_type == GMActionType.RESPOND:
+                # Check if dice check is needed
+                if action.agent_context.get("needs_check"):
+                    check_request = action.agent_context.get("check_request", {})
+                    narrative = action.content  # Pre-check narrative
+
+                    # Save ReAct state
+                    self.game_state.save_react_state(
+                        iteration=iteration + 1,
+                        llm_messages=[],
+                        player_input=player_input,
+                        agent_results=agent_results,
+                    )
+
+                    from src.backend.models.game_state import GamePhase
+
+                    self.game_state.set_phase(GamePhase.DICE_CHECK)
+
+                    return AgentResponse(
+                        content=narrative,
+                        success=True,
+                        metadata={
+                            "agent": self.agent_name,
+                            "needs_check": True,
+                            "dice_check": check_request,
+                            "agents_called": agents_called,
+                        },
+                    )
+
+                # Normal response (no check)
                 return self._finalize_response(
                     narrative=action.content,
                     player_input=player_input,
@@ -191,34 +220,6 @@ class GMAgent(BaseAgent):
                         "success": result.success,
                     }
                 )
-
-                if agent_name == "rule" and result.metadata.get("needs_check"):
-                    dice_check = result.metadata.get("dice_check", {})
-                    narrative = await self._generate_pre_check_narrative(
-                        player_input, agent_results, lang
-                    )
-
-                    self.game_state.save_react_state(
-                        iteration=iteration + 1,
-                        llm_messages=[],
-                        player_input=player_input,
-                        agent_results=agent_results,
-                    )
-
-                    from src.backend.models.game_state import GamePhase
-
-                    self.game_state.set_phase(GamePhase.DICE_CHECK)
-
-                    return AgentResponse(
-                        content=narrative,
-                        success=True,
-                        metadata={
-                            "agent": self.agent_name,
-                            "needs_check": True,
-                            "dice_check": dice_check,
-                            "agents_called": agents_called,
-                        },
-                    )
 
                 dice_result = None
                 iteration += 1
@@ -319,6 +320,20 @@ class GMAgent(BaseAgent):
             "agent_results": formatted_agent_results if agent_results else None,
             "dice_result": dice_result,
             "force_output": force_output,
+            "player_character": {
+                "name": self.game_state.player.name,
+                "concept": self.game_state.player.concept.get(lang),
+                "traits": [
+                    {
+                        "name": t.name.get(lang),
+                        "description": t.description.get(lang),
+                        "positive": t.positive_aspect.get(lang),
+                        "negative": t.negative_aspect.get(lang),
+                    }
+                    for t in self.game_state.player.traits
+                ],
+                "tags": self.game_state.player.tags,
+            },
         }
 
         system_message = template.get_system_message(lang=lang, **template_vars)
@@ -353,7 +368,11 @@ class GMAgent(BaseAgent):
             return GMAction(
                 action_type=GMActionType.RESPOND,
                 content=result.get("narrative", ""),
-                agent_context={"target_location": result.get("target_location")},
+                agent_context={
+                    "target_location": result.get("target_location"),
+                    "needs_check": result.get("needs_check", False),
+                    "check_request": result.get("check_request"),
+                },
                 reasoning=result.get("reasoning", ""),
             )
         elif action_str == "CALL_AGENT":
@@ -378,9 +397,7 @@ class GMAgent(BaseAgent):
         provided_context: dict[str, Any],
         dice_result: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        if agent_name == "rule":
-            return self._slice_context_for_rule(player_input, lang)
-        elif agent_name == "lore":
+        if agent_name == "lore":
             return self._slice_context_for_lore(player_input, lang)
         elif agent_name.startswith("npc_"):
             npc_id = agent_name[4:]
@@ -411,22 +428,6 @@ class GMAgent(BaseAgent):
                 error=f"Agent not found: {agent_name}",
                 metadata={"agent": agent_name},
             )
-
-    async def _generate_pre_check_narrative(
-        self,
-        player_input: str,
-        agent_results: list[dict[str, Any]],
-        lang: str,
-    ) -> str:
-        rule_result = next((r for r in agent_results if r.get("agent") == "rule"), None)
-        if rule_result:
-            content = rule_result.get("content")
-            if content and isinstance(content, str):
-                return content
-
-        if lang == "cn":
-            return f"你准备{player_input}。这需要进行一次检定。"
-        return f"You prepare to {player_input}. This requires a check."
 
     def _finalize_response(
         self,
@@ -773,13 +774,6 @@ class GMAgent(BaseAgent):
         agents_to_call = result.get("agents_to_call", [])
         context_slices = result.get("context_slices", {})
 
-        # Prepare context for Rule Agent if needed
-        if "rule" in agents_to_call:
-            context_slices["rule"] = self._slice_context_for_rule(
-                player_input,
-                lang,
-            )
-
         # Prepare context for Lore Agent if needed
         if "lore" in agents_to_call:
             context_slices["lore"] = self._slice_context_for_lore(
@@ -805,34 +799,6 @@ class GMAgent(BaseAgent):
             "target_location": target_location,
             "agents_to_call": agents_to_call,
             "context_slices": context_slices,
-        }
-
-    def _slice_context_for_rule(
-        self,
-        player_input: str,
-        lang: str,
-    ) -> dict[str, Any]:
-        """
-        Prepare context slice for Rule Agent.
-
-        Only gives Rule Agent what it needs - prevents information leakage.
-
-        Args:
-            player_input: Player's action
-            lang: Language code
-
-        Returns:
-            Context slice for Rule Agent
-        """
-        return {
-            "action": player_input,
-            "character": {
-                "name": self.game_state.player.name,
-                "concept": self.game_state.player.concept.model_dump(),
-                "traits": [t.model_dump() for t in self.game_state.player.traits],
-            },
-            "tags": self.game_state.player.tags,
-            "lang": lang,
         }
 
     def _slice_context_for_lore(
