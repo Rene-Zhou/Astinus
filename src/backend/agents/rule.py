@@ -201,12 +201,14 @@ class RuleAgent(BaseAgent):
         traits_full = []
         for trait in character.get("traits", []):
             if isinstance(trait, dict):
-                traits_full.append({
-                    "name": _get_localized(trait, "name", lang),
-                    "description": _get_localized(trait, "description", lang),
-                    "positive": _get_localized(trait, "positive_aspect", lang),
-                    "negative": _get_localized(trait, "negative_aspect", lang),
-                })
+                traits_full.append(
+                    {
+                        "name": _get_localized(trait, "name", lang),
+                        "description": _get_localized(trait, "description", lang),
+                        "positive": _get_localized(trait, "positive_aspect", lang),
+                        "negative": _get_localized(trait, "negative_aspect", lang),
+                    }
+                )
         traits = traits_full
 
         # Render system message

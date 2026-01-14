@@ -301,14 +301,14 @@ class TestRealPromptTemplates:
                     "name": "运动健将",
                     "description": "身体素质出色，擅长各种体育运动",
                     "positive": "体力充沛，行动敏捷，可以完成高难度动作",
-                    "negative": "可能过于自信，忽视周围环境的危险"
+                    "negative": "可能过于自信，忽视周围环境的危险",
                 },
                 {
                     "name": "口才",
                     "description": "善于言辞，能够说服他人",
                     "positive": "在交涉和谈判中具有优势",
-                    "negative": "可能因为说太多话而暴露秘密"
-                }
+                    "negative": "可能因为说太多话而暴露秘密",
+                },
             ],
             tags=["右腿受伤"],
             action="逃离房间",
@@ -335,14 +335,14 @@ class TestRealPromptTemplates:
                     "name": "Athletic",
                     "description": "Excellent physical fitness, skilled in various sports",
                     "positive": "High stamina, agile movement, can perform difficult feats",
-                    "negative": "May be overconfident and ignore environmental dangers"
+                    "negative": "May be overconfident and ignore environmental dangers",
                 },
                 {
                     "name": "Charismatic",
                     "description": "Skilled with words, able to persuade others",
                     "positive": "Advantage in negotiations and social interactions",
-                    "negative": "May talk too much and reveal secrets"
-                }
+                    "negative": "May talk too much and reveal secrets",
+                },
             ],
             tags=["Injured leg"],
             action="Escape room",
