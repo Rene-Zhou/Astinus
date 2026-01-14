@@ -11,7 +11,7 @@ Ported from weave's Judge agent, adapted for:
 
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.core.i18n import get_i18n
@@ -160,7 +160,7 @@ class RuleAgent(BaseAgent):
         action: str,
         argument: str,
         lang: str = "cn",
-    ) -> list[SystemMessage]:
+    ) -> list[BaseMessage]:
         """
         Build prompt for LLM using rule_agent template.
 
@@ -309,7 +309,7 @@ class RuleAgent(BaseAgent):
         result_data: dict[str, Any],
         context: dict[str, Any] | None = None,
         lang: str = "cn",
-    ) -> list[SystemMessage]:
+    ) -> list[BaseMessage]:
         """
         Build prompt for narrative generation from dice result.
 
