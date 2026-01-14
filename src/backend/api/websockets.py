@@ -459,27 +459,6 @@ async def _handle_dice_result(
     await manager.send_phase_change(session_id, "waiting_input")
 
 
-def _generate_fallback_narrative(result: int, outcome: str) -> str:
-    """
-    Generate a simple fallback narrative when Rule Agent is unavailable.
-
-    Args:
-        result: Dice roll total
-        outcome: Outcome type (critical, success, partial, failure)
-
-    Returns:
-        Simple narrative string
-    """
-    if outcome == "critical":
-        return f"投出了 {result}！大成功！命运眷顾着你，结果超乎预期。"
-    elif outcome == "success":
-        return f"投出了 {result}，成功了。你的行动达成了预期效果。"
-    elif outcome == "partial":
-        return f"投出了 {result}，部分成功。你勉强达成了目标，但代价是..."
-    else:
-        return f"投出了 {result}，失败了。事情变得更加复杂，你需要另寻他法。"
-
-
 @router.websocket("/ws/game/{session_id}/stream")
 async def websocket_stream_only_endpoint(
     websocket: WebSocket,

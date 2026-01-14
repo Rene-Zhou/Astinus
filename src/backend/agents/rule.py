@@ -248,7 +248,6 @@ class RuleAgent(BaseAgent):
         Returns:
             AgentResponse with narrative and state updates
         """
-        intention = result_data.get("intention", "行动")
         success = result_data.get("success", False)
         critical = result_data.get("critical", False)
 
@@ -258,15 +257,14 @@ class RuleAgent(BaseAgent):
         try:
             llm_response = await self._call_llm(messages)
             narrative_result = self._extract_json_from_response(llm_response)
-        except Exception:
-            # Use fallback narrative if LLM fails
-            fallback_narrative = self._generate_fallback_narrative(result_data, lang="cn")
-            narrative_result = {
-                "narrative": fallback_narrative,
-                "outcome_type": self._determine_outcome_type(success, critical),
-                "consequences": [],
-                "suggested_tags": [],
-            }
+        except Exception as exc:
+
+            return AgentResponse(
+                content="",
+                metadata={},
+                success=False,
+                error=f"Failed to generate narrative: {exc}",
+            )
 
         # Build response metadata
         outcome_type = narrative_result.get(
@@ -423,44 +421,6 @@ class RuleAgent(BaseAgent):
             SystemMessage(content="\n".join(system_lines)),
             HumanMessage(content="\n".join(user_lines)),
         ]
-
-    def _generate_fallback_narrative(
-        self,
-        result_data: dict[str, Any],
-        lang: str = "cn",
-    ) -> str:
-        """
-        Generate fallback narrative when LLM fails.
-
-        Args:
-            result_data: Dice check result
-            lang: Language code
-
-        Returns:
-            Simple narrative string
-        """
-        intention = result_data.get("intention", "行动")
-        success = result_data.get("success", False)
-        critical = result_data.get("critical", False)
-
-        if lang == "cn":
-            if critical and success:
-                return f"你的{intention}大获成功！完美地完成了目标。"
-            elif critical and not success:
-                return f"你尝试{intention}，但遭遇了严重的失败..."
-            elif success:
-                return f"你成功地完成了{intention}。"
-            else:
-                return f"你尝试{intention}，但失败了。"
-        else:
-            if critical and success:
-                return f"Your {intention} was a critical success! Perfectly accomplished."
-            elif critical and not success:
-                return f"You attempted {intention}, but suffered a critical failure..."
-            elif success:
-                return f"You successfully completed {intention}."
-            else:
-                return f"You attempted {intention}, but failed."
 
     def _determine_outcome_type(self, success: bool, critical: bool) -> str:
         """

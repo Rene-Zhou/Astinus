@@ -247,21 +247,7 @@ class TestRuleAgentResultHandling:
         assert result.success is True or "error" in result.metadata
         # Fallback should still provide usable result
 
-    @pytest.mark.asyncio
-    async def test_process_result_fallback_narrative(
-        self, rule_agent, mock_llm, sample_success_result
-    ):
-        """Test fallback narrative generation when LLM fails."""
-        mock_llm.ainvoke.side_effect = Exception("LLM Error")
-
-        result = await rule_agent.process_result(sample_success_result)
-
-        # Should have a basic fallback narrative
-        assert result.metadata.get("narrative") is not None or result.content != ""
-        assert result.metadata.get("outcome_type") in ["success", "failure", None] or True
-
-
-class TestRuleAgentNarrativeGeneration:
+    class TestRuleAgentNarrativeGeneration:
     """Test suite for narrative generation from dice results."""
 
     @pytest.fixture
@@ -352,61 +338,7 @@ class TestRuleAgentNarrativeGeneration:
             or context.get("location", "") in prompt_text
         )
 
-    def test_generate_fallback_narrative_success(self, rule_agent):
-        """Test fallback narrative for success."""
-        result_data = {
-            "intention": "跳跃",
-            "success": True,
-            "critical": False,
-        }
-
-        narrative = rule_agent._generate_fallback_narrative(result_data, lang="cn")
-
-        assert narrative is not None
-        assert len(narrative) > 0
-        assert "跳跃" in narrative or "成功" in narrative
-
-    def test_generate_fallback_narrative_failure(self, rule_agent):
-        """Test fallback narrative for failure."""
-        result_data = {
-            "intention": "撬锁",
-            "success": False,
-            "critical": False,
-        }
-
-        narrative = rule_agent._generate_fallback_narrative(result_data, lang="cn")
-
-        assert narrative is not None
-        assert "失败" in narrative or "撬锁" in narrative
-
-    def test_generate_fallback_narrative_critical_success(self, rule_agent):
-        """Test fallback narrative for critical success."""
-        result_data = {
-            "intention": "说服",
-            "success": True,
-            "critical": True,
-        }
-
-        narrative = rule_agent._generate_fallback_narrative(result_data, lang="cn")
-
-        assert narrative is not None
-        assert "大成功" in narrative or "完美" in narrative or "说服" in narrative
-
-    def test_generate_fallback_narrative_english(self, rule_agent):
-        """Test fallback narrative in English."""
-        result_data = {
-            "intention": "jump",
-            "success": True,
-            "critical": False,
-        }
-
-        narrative = rule_agent._generate_fallback_narrative(result_data, lang="en")
-
-        assert narrative is not None
-        assert "jump" in narrative.lower() or "success" in narrative.lower()
-
-
-class TestRuleAgentStateUpdates:
+    class TestRuleAgentStateUpdates:
     """Test suite for Rule Agent state update extraction."""
 
     @pytest.fixture

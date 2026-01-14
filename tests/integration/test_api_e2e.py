@@ -677,26 +677,6 @@ class TestDiceCheckIntegration:
                 "content", complete_call[1].get("content", "")
             )
 
-    def test_fallback_narrative_generation(self):
-        """Test fallback narrative when Rule Agent is unavailable."""
-        from src.backend.api.websockets import _generate_fallback_narrative
-
-        # Test all outcome types
-        critical = _generate_fallback_narrative(12, "critical")
-        assert "大成功" in critical
-        assert "12" in critical
-
-        success = _generate_fallback_narrative(9, "success")
-        assert "成功" in success
-        assert "9" in success
-
-        partial = _generate_fallback_narrative(7, "partial")
-        assert "部分成功" in partial or "代价" in partial
-
-        failure = _generate_fallback_narrative(5, "failure")
-        assert "失败" in failure
-        assert "5" in failure
-
 
 class TestE2EScenarios:
     """End-to-end scenario tests without requiring real API."""

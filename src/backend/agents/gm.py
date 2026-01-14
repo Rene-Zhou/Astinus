@@ -221,15 +221,11 @@ class GMAgent(BaseAgent):
             else:
                 iteration += 1
 
-        fallback_narrative = await self._generate_fallback_narrative(
-            player_input, agent_results, lang
-        )
-        return self._finalize_response(
-            narrative=fallback_narrative,
-            player_input=player_input,
-            agents_called=agents_called,
-            target_location=None,
-            logger=logger,
+        return AgentResponse(
+            content="",
+            metadata={"agents_called": agents_called},
+            success=False,
+            error="Unable to generate narrative: max iterations reached",
         )
 
     async def _get_react_action(
@@ -269,7 +265,7 @@ class GMAgent(BaseAgent):
                 action = metadata.get("action", "")
                 relation_change = metadata.get("relation_change", 0)
                 relation_reason = metadata.get("relation_reason", "")
-                
+
                 # Build structured content
                 parts = [f"回应: {response}" if response else "回应: (无)"]
                 if emotion != "unknown":
@@ -429,20 +425,6 @@ class GMAgent(BaseAgent):
         if lang == "cn":
             return f"你准备{player_input}。这需要进行一次检定。"
         return f"You prepare to {player_input}. This requires a check."
-
-    async def _generate_fallback_narrative(
-        self,
-        player_input: str,
-        agent_results: list[dict[str, Any]],
-        lang: str,
-    ) -> str:
-        contents = [r.get("content", "") for r in agent_results if r.get("content")]
-        if contents:
-            return " ".join(contents)
-
-        if lang == "cn":
-            return f"你尝试{player_input}。"
-        return f"You attempt to {player_input}."
 
     def _finalize_response(
         self,
@@ -1116,12 +1098,15 @@ class GMAgent(BaseAgent):
                     }
                 )
 
-        # If no successful agent outputs, generate a fallback response
+        # If no successful agent outputs, return error
         if not agent_outputs or all("error" in o for o in agent_outputs):
-            if lang == "cn":
-                return f"你尝试{player_input}，但似乎什么也没有发生。"
-            else:
-                return f"You try to {player_input}, but nothing seems to happen."
+            agents_in_loop = [o.get("agent") for o in agent_outputs if "error" not in o]
+            return AgentResponse(
+                content="",
+                metadata={"agents_called": agents_in_loop},
+                success=False,
+                error="No successful agent outputs from ReAct loop",
+            )
 
         # Build synthesis prompt
         if lang == "cn":
@@ -1225,19 +1210,8 @@ Agent responses:
 
         try:
             narrative = await self._call_llm(messages)
-        except Exception:
-            # Fallback to simple concatenation if synthesis fails
-            parts = []
-            for output in agent_outputs:
-                if "content" in output and output["content"]:
-                    parts.append(output["content"])
-            narrative = (
-                " ".join(parts)
-                if parts
-                else (
-                    f"你尝试{player_input}。" if lang == "cn" else f"You attempt to {player_input}."
-                )
-            )
+        except Exception as exc:
+            raise RuntimeError(f"Failed to synthesize narrative: {exc}") from exc
 
         # Update game phase
         from src.backend.models.game_state import GamePhase
