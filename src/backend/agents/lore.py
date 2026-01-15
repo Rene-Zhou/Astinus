@@ -20,7 +20,8 @@ from src.backend.services.world import WorldPackLoader
 
 # Hybrid search configuration
 # Updated for Qwen3-Embedding which provides better multilingual semantic understanding
-KEYWORD_MATCH_WEIGHT = 1.5  # Strong signal from explicit keyword match
+KEYWORD_MATCH_WEIGHT = 2.0  # Strong signal from explicit primary keyword match
+KEYWORD_SECONDARY_WEIGHT = 1.0  # Lower weight for secondary keyword matches
 VECTOR_MATCH_WEIGHT = 0.8  # Secondary signal from semantic similarity (improved model)
 DUAL_MATCH_BOOST = 1.5  # Boost for entries matching both keyword and vector
 
@@ -166,18 +167,34 @@ class LoreAgent(BaseAgent):
         # Hybrid search: combine keyword and vector scores
         entry_scores = {}
 
-        # Step 1: Keyword matching
+        # Step 1: Keyword matching (with different weights for primary vs secondary)
         search_terms = self._extract_search_terms(query)
         keyword_matched_uids = set()
 
         for term in search_terms:
-            matches = world_pack.search_entries_by_keyword(term, include_secondary=True)
-            for entry in matches:
+            # First, check primary keywords (higher weight)
+            primary_matches = world_pack.search_entries_by_keyword(term, include_secondary=False)
+            for entry in primary_matches:
                 keyword_matched_uids.add(entry.uid)
                 if entry.uid not in entry_scores:
                     entry_scores[entry.uid] = {
                         "entry": entry,
                         "score": KEYWORD_MATCH_WEIGHT,
+                        "keyword_match": True,
+                        "vector_match": False,
+                    }
+
+            # Then, check secondary keywords (lower weight, only if not already matched)
+            secondary_matches = world_pack.search_entries_by_keyword(term, include_secondary=True)
+            for entry in secondary_matches:
+                # Skip if this was already a primary match
+                if entry.uid in keyword_matched_uids:
+                    continue
+                keyword_matched_uids.add(entry.uid)
+                if entry.uid not in entry_scores:
+                    entry_scores[entry.uid] = {
+                        "entry": entry,
+                        "score": KEYWORD_SECONDARY_WEIGHT,
                         "keyword_match": True,
                         "vector_match": False,
                     }

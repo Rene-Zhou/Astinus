@@ -27,17 +27,24 @@ class QwenEmbeddingFunction(EmbeddingFunction):
         1024
     """
 
-    def __init__(self, model_name: str = "Qwen/Qwen3-Embedding-0.6B", device: str = "cpu"):
+    def __init__(self, model_name: str = "Qwen/Qwen3-Embedding-0.6B", device: str | None = None):
         """
         Initialize the Qwen embedding function.
 
         Args:
             model_name: Hugging Face model name to use.
                        Default: "Qwen/Qwen3-Embedding-0.6B"
-            device: Device to run the model on ("cpu" or "cuda").
-                   Default: "cpu" for compatibility
+            device: Device to run the model on ("cpu", "cuda", or None for auto-detect).
+                   Default: None - automatically uses CUDA if available, otherwise CPU
         """
+        import torch
+
+        # Auto-detect device if not specified
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+
         self.model = SentenceTransformer(model_name, device=device)
+        self._device = device
 
     def __call__(self, texts: list[str]) -> list[list[float]]:
         """
@@ -68,15 +75,23 @@ class DefaultEmbeddingFunction(EmbeddingFunction):
     Only use this if Qwen3-Embedding is not available.
     """
 
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2", device: str = "cpu"):
+    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2", device: str | None = None):
         """
         Initialize the default embedding function.
 
         Args:
             model_name: Hugging Face model name to use
-            device: Device to run the model on ("cpu" or "cuda")
+            device: Device to run the model on ("cpu", "cuda", or None for auto-detect)
+                   Default: None - automatically uses CUDA if available, otherwise CPU
         """
+        import torch
+
+        # Auto-detect device if not specified
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+
         self.model = SentenceTransformer(model_name, device=device)
+        self._device = device
 
     def __call__(self, texts: list[str]) -> list[list[float]]:
         """
