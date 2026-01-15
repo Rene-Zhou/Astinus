@@ -174,6 +174,8 @@ export interface DiceResult {
   kept_rolls: number[];
   /** Roll outcome */
   outcome: DiceOutcome;
+  /** Whether a fate point was spent to reroll this result */
+  fate_point_spent?: boolean;
 }
 
 /**
@@ -292,6 +294,8 @@ export interface DiceResultRequest {
   all_rolls: number[];
   kept_rolls: number[];
   outcome: DiceOutcome;
+  /** Whether a fate point was spent to reroll this result */
+  fate_point_spent?: boolean;
 }
 
 export interface DiceResultResponse {
@@ -405,6 +409,8 @@ export interface WSDiceResultMessage extends WSMessage<"dice_result"> {
   all_rolls: number[];
   kept_rolls: number[];
   outcome: DiceOutcome;
+  /** Whether a fate point was spent to reroll this result */
+  fate_point_spent?: boolean;
 }
 
 export type WSClientMessage = WSPlayerInputMessage | WSDiceResultMessage;

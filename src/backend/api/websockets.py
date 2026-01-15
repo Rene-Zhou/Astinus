@@ -378,10 +378,21 @@ async def _handle_dice_result(
     all_rolls = data.get("all_rolls", [])
     kept_rolls = data.get("kept_rolls", [])
     outcome = data.get("outcome", "unknown")
+    fate_point_spent = data.get("fate_point_spent", False)
 
     if result is None:
         await manager.send_error(session_id, "dice result is required")
         return
+
+    # Deduct fate point if player spent one to reroll
+    if fate_point_spent:
+        player = gm_agent.game_state.player
+        if player.spend_fate_point():
+            await manager.send_status(
+                session_id,
+                phase="processing",
+                message="fate_point_spent",
+            )
 
     pending_check = gm_agent.game_state.temp_context.get("pending_dice_check", {})
     intention = pending_check.get("intention", "action")
@@ -395,6 +406,7 @@ async def _handle_dice_result(
         "success": outcome in ("success", "partial", "critical"),
         "is_partial": outcome == "partial",
         "critical": outcome == "critical",
+        "fate_point_spent": fate_point_spent,
     }
     gm_agent.game_state.last_check_result = dice_result
     gm_agent.game_state.temp_context.pop("pending_dice_check", None)

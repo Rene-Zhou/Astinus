@@ -230,6 +230,7 @@ const GamePage: React.FC = () => {
           <DiceRoller
             visible={true}
             checkRequest={pendingDiceCheck}
+            fatePoints={fatePoints}
             onRoll={handleDiceRoll}
             onCancel={handleDiceCancel}
           />
@@ -288,6 +289,7 @@ const GamePage: React.FC = () => {
               <DiceRoller
                 visible={true}
                 checkRequest={pendingDiceCheck}
+                fatePoints={fatePoints}
                 onRoll={handleDiceRoll}
                 onCancel={handleDiceCancel}
               />

@@ -18,6 +18,7 @@ import { Card } from "../common/Card";
 export interface DiceRollerProps {
   visible: boolean;
   checkRequest: DiceCheckRequest | null;
+  fatePoints: number; // Current fate points available
   onRoll: (result: DiceResult) => void;
   onCancel: () => void;
 }
@@ -69,12 +70,14 @@ const IdleState: React.FC = () => {
 export const DiceRoller: React.FC<DiceRollerProps> = ({
   visible,
   checkRequest,
+  fatePoints,
   onRoll,
   onCancel,
 }) => {
   const { t, i18n } = useTranslation();
   const [result, setResult] = useState<DiceResult | null>(null);
   const [rolling, setRolling] = useState(false);
+  const [hasRerolled, setHasRerolled] = useState(false);
 
   const formula = checkRequest?.dice_formula ?? "2d6";
 
@@ -85,15 +88,29 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
     setRolling(false);
   }, [formula]);
 
+  const handleReroll = useCallback(() => {
+    if (fatePoints <= 0 || hasRerolled) return;
+    setHasRerolled(true);
+    setRolling(true);
+    const next = rollDice(formula);
+    setResult(next);
+    setRolling(false);
+  }, [formula, fatePoints, hasRerolled]);
+
   const handleSubmit = useCallback(() => {
     if (!result) return;
-    onRoll(result);
+    onRoll({
+      ...result,
+      fate_point_spent: hasRerolled,
+    });
     // Reset state after submitting
     setResult(null);
-  }, [onRoll, result]);
+    setHasRerolled(false);
+  }, [onRoll, result, hasRerolled]);
 
   const handleCancel = useCallback(() => {
     setResult(null);
+    setHasRerolled(false);
     onCancel();
   }, [onCancel]);
 
@@ -219,6 +236,24 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                 ✓ {t("common.confirm")}
               </Button>
             </div>
+            {/* Reroll button - appears after rolling if player has fate points and hasn't rerolled yet */}
+            {result && fatePoints > 0 && !hasRerolled && (
+              <Button
+                variant="secondary"
+                onClick={handleReroll}
+                loading={rolling}
+                size="md"
+                className="w-full bg-amber-500 hover:bg-amber-600 focus:ring-amber-500"
+              >
+                ✨ {t("dice.reroll", "消耗 1 命运点重投")} ({t("character.fatePoints")}: {fatePoints})
+              </Button>
+            )}
+            {/* Show fate point spent indicator */}
+            {hasRerolled && (
+              <p className="text-center text-xs text-amber-600 dark:text-amber-400">
+                {t("dice.fatePointSpent", "已消耗 1 命运点")}
+              </p>
+            )}
             <div>
               <Button variant="ghost" onClick={handleCancel} size="sm">
                 {t("common.cancel")}

@@ -149,6 +149,7 @@ export class GameWebSocketClient {
       all_rolls: result.all_rolls,
       kept_rolls: result.kept_rolls,
       outcome: result.outcome,
+      fate_point_spent: result.fate_point_spent ?? false,
     };
     this.ws.send(JSON.stringify(payload));
   }

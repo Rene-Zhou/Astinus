@@ -190,6 +190,7 @@ class DiceCheckResponse(BaseModel):
     1. Accept and roll (provides dice result)
     2. Argue for advantage (provides claim about how trait helps)
     3. Cancel the check
+    4. Spend a fate point to reroll (after rolling, if fate points available)
 
     Examples:
         >>> response = DiceCheckResponse(
@@ -200,6 +201,18 @@ class DiceCheckResponse(BaseModel):
         ...         "total": 11,
         ...         "outcome": "success"
         ...     }
+        ... )
+
+        >>> # Reroll with fate point
+        >>> response = DiceCheckResponse(
+        ...     action="roll",
+        ...     dice_result={
+        ...         "all_rolls": [6, 4],
+        ...         "kept_rolls": [6, 4],
+        ...         "total": 10,
+        ...         "outcome": "success"
+        ...     },
+        ...     fate_point_spent=True
         ... )
     """
 
@@ -212,4 +225,8 @@ class DiceCheckResponse(BaseModel):
     )
     trait_claimed: str | None = Field(
         default=None, description="Which trait player claims helps (if action='argue')"
+    )
+    fate_point_spent: bool = Field(
+        default=False,
+        description="Whether a fate point was spent to reroll this result",
     )
