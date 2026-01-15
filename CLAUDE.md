@@ -2,11 +2,8 @@
 
 ## Reference documentation
 
-- docs/GUIDE.md
+- AGENTS.md
 - docs/ARCHITECTURE.md
-- docs/PROGRESS.md
-- docs/WEB_FRONTEND_PLAN.md
-- docs/SETTINGS_SYSTEM_PLAN.md
 - docs/API_TYPES.ts
 
 ## Python Package Management
@@ -62,12 +59,8 @@
 ## Project Information
 
 - Project Type: AI-driven narrative TTRPG
-- Python Version: >=3.14
+- Python Version: >=3.13
 - Main Dependencies:
   - Backend: LangChain (AI framework), FastAPI (API framework), SQLite, ChromaDB
   - Frontend: React, Vite, TailwindCSS, Zustand
-  - Deprecated: Textual (TUI frontend - see `src/frontend/`)
 
-## Project Prototype
-
-This project is a refactoring of the **weave** project in `~/dev/cli-ttrpg`
