@@ -4,7 +4,22 @@
 
 ## OVERVIEW
 
-Star topology centered on **GM Agent**. GM orchestrates Rule/NPC/Lore agents via context slicing. Each agent uses LangChain ReAct loops with Jinja2 prompts.
+Star topology centered on **GMAgent** (1240 lines - refactor candidate). GM orchestrates Rule/NPC/Lore/Director agents via **Context Slicing** and a **ReAct Loop** (3-5 iterations).
+
+## CORE AGENTS
+
+- **GMAgent**: Central orchestrator. Parses intent, calls sub-agents, and synthesizes final narrative.
+- **DirectorAgent**: Hidden manager tracking narrative beats (hook, climax, etc.), pacing, and tension.
+- **RuleAgent**: Handles mechanics, generates dice checks, and processes results.
+- **NPCAgent**: Performs roleplay, manages NPC memory, and generates specific dialogue/actions.
+- **LoreAgent**: Provides world-building context via vector search.
+
+## KEY PATTERNS
+
+- **Two-Phase Narrative**: GM connects NPC dialogue/actions exactly as generated (no embellishment) to maintain character consistency.
+- **Context Slicing**: GM prepares precise, isolated context slices for sub-agents to prevent context bloat and leakage.
+- **Dice State Resumption**: ReAct loop saves state during dice checks, resuming only after result is returned.
+- **ReAct Loop**: GM iterates (max 3-5 times), using `CALL_AGENT` for sub-tasks and `RESPOND` for final output.
 
 ## STRUCTURE
 
@@ -12,34 +27,27 @@ Star topology centered on **GM Agent**. GM orchestrates Rule/NPC/Lore agents via
 agents/
 ├── prompts/           # Jinja2 templates (*.yaml) - NEVER hardcode
 │   ├── gm_agent.yaml
-│   ├── rule_agent.yaml
+│   ├── director_agent.yaml
 │   ├── npc_agent.yaml
-│   └── lore_agent.yaml
-├── __pycache__/
-└── (agent modules: gm.py, rule_agent.py, npc_agent.py, lore_agent.py)
+│   └── ...
+├── gm.py              # Main loop (Refactor needed: 328 lines at 4+ levels deep)
+├── director.py        # Narrative pacing and tension logic
+├── npc_agent.py       # Roleplay and character dialogue
+└── rule_agent.py      # Mechanical resolution
 ```
-
-## WHERE TO LOOK
-
-| Task | File |
-|------|------|
-| Modify GM behavior | `prompts/gm_agent.yaml` |
-| Change Rule logic | `prompts/rule_agent.yaml` |
-| NPC dialogue rules | `prompts/npc_agent.yaml` |
-| Lore retrieval | `prompts/lore_agent.yaml` |
-| Agent implementation | `*.py` (gm.py, rule_agent.py, etc.) |
 
 ## PROMPT CONVENTIONS
 
-- **ALL prompts** in `prompts/*.yaml` using Jinja2 syntax
-- Variables: `{{ variable_name }}`
-- System prompts: YAML `system:` field
-- NEVER edit prompts in Python files
+- **ALL prompts** in `prompts/*.yaml` using Jinja2 syntax (`{{ variable }}`).
+- **NEVER** edit prompts in Python files (use `PromptLoader`).
+- System prompts are defined in the `system:` field of YAML templates.
 
 ## ANTI-PATTERNS
 
 | Rule | Reason |
 |------|--------|
-| NO prompt strings in `.py` | All must be in `prompts/*.yaml` |
-| NO full history to sub-agents | Use context slices (GM prepares) |
-| NO agent name leakage | Output never shows "Rule Agent says..." |
+| **NO hardcoded prompts** | All must be in `prompts/*.yaml` for easier tuning |
+| **NO full history** | Use context slices to avoid sub-agent confusion/omniscience |
+| **NO agent name leaks** | Output never shows "Rule Agent", "Lore Agent", etc. |
+| **NO ID exposure** | Internal IDs (e.g., `room_402`) must never appear in narrative |
+| **NO NPC real names** | Never use NPC names until the player learns them |
