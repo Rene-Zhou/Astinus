@@ -73,9 +73,9 @@ export interface WorldPackSetting {
 }
 
 /**
- * World pack basic information
+ * World pack metadata
  */
-export interface WorldInfo {
+export interface WorldPackInfo {
   name: LocalizedString;
   description: LocalizedString;
   version?: string;
@@ -85,11 +85,121 @@ export interface WorldInfo {
 }
 
 /**
+ * A hierarchical region containing multiple locations
+ */
+export interface RegionData {
+  id: string;
+  name: LocalizedString;
+  description: LocalizedString;
+  narrative_tone?: LocalizedString;
+  atmosphere_keywords: string[];
+  location_ids: string[];
+  tags: string[];
+}
+
+/**
+ * A lore entry for world background information
+ */
+export interface LoreEntry {
+  uid: number;
+  key: string[];
+  secondary_keys: string[];
+  content: LocalizedString;
+  comment?: LocalizedString;
+  constant: boolean;
+  selective: boolean;
+  order: number;
+  visibility: "basic" | "detailed";
+  applicable_regions: string[];
+  applicable_locations: string[];
+}
+
+/**
+ * NPC narrative layer (The Soul) - determines how they speak
+ */
+export interface NPCSoul {
+  name: string;
+  description: LocalizedString;
+  appearance?: LocalizedString;
+  personality: string[];
+  speech_style: LocalizedString;
+  example_dialogue: Array<{ user: string; char: string }>;
+}
+
+/**
+ * NPC data layer (The Body) - structured state
+ */
+export interface NPCBody {
+  location: string;
+  inventory: string[];
+  relations: Record<string, number>;
+  tags: string[];
+  memory: Record<string, string[]>;
+  location_knowledge: Record<string, number[]>;
+}
+
+/**
+ * Complete NPC definition combining soul and body layers
+ */
+export interface NPCData {
+  id: string;
+  soul: NPCSoul;
+  body: NPCBody;
+}
+
+/**
+ * A location/scene in the world
+ */
+export interface LocationData {
+  id: string;
+  name: LocalizedString;
+  description: LocalizedString;
+  atmosphere?: LocalizedString;
+  connected_locations: string[];
+  present_npc_ids: string[];
+  items: string[];
+  tags: string[];
+  region_id?: string;
+  visible_items: string[];
+  hidden_items: string[];
+  lore_tags: string[];
+}
+
+/**
+ * Complete world pack containing all world data
+ */
+export interface WorldPack {
+  info: WorldPackInfo;
+  entries: Record<string, LoreEntry>;
+  npcs: Record<string, NPCData>;
+  locations: Record<string, LocationData>;
+  preset_characters: PresetCharacter[];
+  regions: Record<string, RegionData>;
+}
+
+/**
  * Response from GET /api/v1/game/world-pack/{pack_id}
  */
 export interface WorldPackDetailResponse {
-  info: WorldInfo;
+  id: string;
+  info: WorldPackInfo;
+  summary: {
+    locations: number;
+    npcs: number;
+    lore_entries: number;
+    preset_characters: number;
+  };
+  locations: Array<{ id: string; name: LocalizedString; tags: string[] }>;
+  npcs: Array<{ id: string; name: string; location: string }>;
   preset_characters: PresetCharacter[];
+}
+
+/**
+ * Response from GET /api/v1/game/world-packs
+ */
+export interface ListWorldPacksResponse {
+  world_packs: string[];
+  count: number;
 }
 
 // ============================================================================
@@ -107,19 +217,41 @@ export type GamePhase =
   | 'narrating';     // GM is narrating outcome
 
 /**
- * Current game state
+ * Current game state - GM Agent's world view
  */
 export interface GameState {
   session_id: string;
   world_pack_id: string;
-  player_name: string;          // Player (user) name - distinct from character name
-  player: PlayerCharacter;      // Player character data
+  player_name: string;
+  player: PlayerCharacter;
   current_location: string;
   active_npc_ids: string[];
   current_phase: GamePhase;
   turn_count: number;
   language: Language;
   messages: Message[];
+  // Missing fields from backend:
+  created_at?: string;
+  updated_at?: string;
+  next_agent?: string | null;
+  discovered_items?: string[];
+  flags?: string[];
+  game_time?: string;
+  temp_context?: Record<string, unknown>;
+  last_check_result?: Record<string, unknown> | null;
+  react_pending_state?: Record<string, unknown> | null;
+}
+
+/**
+ * Current scene/location details
+ */
+export interface CurrentScene {
+  location_name: LocalizedString;
+  description: LocalizedString;
+  items: string[];
+  connected_locations: string[];
+  npcs: Array<{ id: string; name: string }>;
+  atmosphere?: LocalizedString;
 }
 
 /**
@@ -147,12 +279,44 @@ export interface Message {
 export interface DiceCheckRequest {
   /** What the player is trying to do */
   intention: string;
-  /** Traits/tags affecting the roll */
-  influencing_factors: string[];
+  /** Traits/tags affecting the roll - dict with 'traits' and 'tags' arrays */
+  influencing_factors: {
+    traits: string[];
+    tags: string[];
+  };
   /** Dice notation (e.g., "2d6", "3d6kl2") */
   dice_formula: string;
   /** Explanation of modifiers */
-  instructions: string;
+  instructions: LocalizedString;
+}
+
+/**
+ * Result of a dice check after rolling
+ */
+export interface DiceCheckResult {
+  intention: string;
+  dice_formula: string;
+  dice_values: number[];
+  total: number;
+  threshold: number;
+  success: boolean;
+  critical: boolean;
+  modifiers: Array<{ source: string; effect: string }>;
+}
+
+/**
+ * Player's response to a dice check request
+ */
+export interface DiceCheckResponse {
+  action: "roll" | "argue" | "cancel";
+  dice_result?: {
+    all_rolls: number[];
+    kept_rolls: number[];
+    total: number;
+    outcome: DiceOutcome;
+  };
+  argument?: string;
+  trait_claimed?: string;
 }
 
 /**
@@ -175,27 +339,106 @@ export interface DiceResult {
 export type DiceOutcome = 'critical' | 'success' | 'partial' | 'failure';
 
 // ============================================================================
+// Narrative Types
+// ============================================================================
+
+/**
+ * Types of scenes in the narrative
+ */
+export type SceneType =
+  | "location"
+  | "encounter"
+  | "dialogue"
+  | "cutscene"
+  | "puzzle"
+  | "combat";
+
+/**
+ * Condition for scene transition
+ */
+export interface TransitionCondition {
+  type: string;
+  key: string;
+  value: unknown;
+}
+
+/**
+ * Transition from one scene to another
+ */
+export interface SceneTransition {
+  target_scene_id: string;
+  condition?: TransitionCondition;
+  description?: string;
+}
+
+/**
+ * A scene in the narrative graph
+ */
+export interface Scene {
+  id: string;
+  name: string;
+  type: SceneType;
+  description: string;
+  narrative_state: Record<string, unknown>;
+  active_npcs: string[];
+  available_actions: string[];
+  transitions: SceneTransition[];
+}
+
+/**
+ * Complete narrative graph for a world pack
+ */
+export interface NarrativeGraph {
+  world_pack_id: string;
+  scenes: Record<string, Scene>;
+  current_scene_id: string | null;
+  global_narrative_state: Record<string, unknown>;
+}
+
+// ============================================================================
 // REST API Types
 // ============================================================================
 
 // --- POST /api/v1/game/new ---
 
 export interface NewGameRequest {
-  world_pack_id?: string;         // Default: "demo_pack"
-  player_name?: string;           // Default: "玩家" - the user/player name (PL)
-  preset_character_id?: string;   // Selected preset character ID (if using presets)
-  player_concept?: string;        // Default: "冒险者" (only used if no preset selected)
+  world_pack_id?: string;
+  player_name?: string;
+  preset_character_id?: string | null;
 }
 
+/**
+ * Response from starting a new game
+ */
 export interface NewGameResponse {
   session_id: string;
-  player_name: string;     // Player (user) name
-  player: PlayerCharacter; // Character data
+  player: PlayerCharacter;
   game_state: {
     current_location: string;
     current_phase: GamePhase;
     turn_count: number;
     active_npc_ids: string[];
+  };
+  world_info: {
+    id: string;
+    name: LocalizedString;
+    description: LocalizedString;
+    version?: string;
+    author?: string;
+    setting?: WorldPackSetting;
+    player_hook?: LocalizedString;
+  };
+  starting_scene: {
+    location_id: string;
+    location_name: LocalizedString;
+    description: LocalizedString;
+    items: string[];
+    connected_locations: Array<{ id: string; name: LocalizedString }>;
+    npcs: Array<{
+      id: string;
+      appearance?: LocalizedString;
+    }>;
+    atmosphere?: LocalizedString;
   };
   message: string;
 }
@@ -221,7 +464,9 @@ export interface ActionResponse {
 
 // --- GET /api/v1/game/state ---
 
-export type GetGameStateResponse = GameState;
+export type GetGameStateResponse = GameState & {
+  current_scene?: CurrentScene;
+};
 
 // --- POST /api/v1/game/dice-result ---
 
@@ -274,6 +519,54 @@ export interface RootResponse {
 }
 
 // ============================================================================
+// Persistence/Storage Types
+// ============================================================================
+
+/**
+ * Game session database model
+ */
+export interface GameSession {
+  id: number;
+  session_id: string;
+  world_pack_id: string;
+  player_name: string;
+  player_data: PlayerCharacter | null;
+  current_location: string;
+  current_phase: GamePhase;
+  turn_count: number;
+  active_npc_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Message database model
+ */
+export interface MessageRecord {
+  id: number;
+  session_id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  turn: number;
+  extra_data: Record<string, unknown> | null;
+  created_at: string;
+}
+
+/**
+ * Save slot database model
+ */
+export interface SaveSlot {
+  id: number;
+  session_id: string;
+  slot_name: string;
+  game_state: Record<string, unknown>;
+  description: string | null;
+  is_auto_save: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
 // WebSocket Types
 // ============================================================================
 
@@ -281,14 +574,14 @@ export interface RootResponse {
  * WebSocket message types
  */
 export type WSMessageType =
-  | 'player_input'   // Client -> Server: Player action
-  | 'dice_result'    // Client -> Server: Dice roll result
-  | 'status'         // Server -> Client: Processing status
-  | 'content'        // Server -> Client: Streamed content chunk
-  | 'complete'       // Server -> Client: Final response
-  | 'dice_check'     // Server -> Client: Dice check required
-  | 'phase'          // Server -> Client: Phase change
-  | 'error';         // Server -> Client: Error message
+  | "player_input" // Client -> Server: Player action
+  | "dice_result" // Client -> Server: Dice roll result
+  | "status" // Server -> Client: Processing status
+  | "content" // Server -> Client: Streamed content chunk
+  | "complete" // Server -> Client: Final response
+  | "dice_check" // Server -> Client: Dice check required
+  | "phase" // Server -> Client: Phase change
+  | "error"; // Server -> Client: Error message
 
 /**
  * Base WebSocket message structure
@@ -300,15 +593,15 @@ export interface WSMessage<T extends WSMessageType = WSMessageType, D = unknown>
 
 // --- Client -> Server Messages ---
 
-export interface WSPlayerInputMessage extends WSMessage<'player_input'> {
-  type: 'player_input';
+export interface WSPlayerInputMessage extends WSMessage<"player_input"> {
+  type: "player_input";
   content: string;
   lang?: Language;
-  stream?: boolean;  // Default: true
+  stream?: boolean;
 }
 
-export interface WSDiceResultMessage extends WSMessage<'dice_result'> {
-  type: 'dice_result';
+export interface WSDiceResultMessage extends WSMessage<"dice_result"> {
+  type: "dice_result";
   result: number;
   all_rolls: number[];
   kept_rolls: number[];
@@ -319,16 +612,17 @@ export type WSClientMessage = WSPlayerInputMessage | WSDiceResultMessage;
 
 // --- Server -> Client Messages ---
 
-export interface WSStatusMessage extends WSMessage<'status'> {
-  type: 'status';
+export interface WSStatusMessage extends WSMessage<"status"> {
+  type: "status";
   data: {
     phase: string;
     message: string;
+    agent?: string;
   };
 }
 
-export interface WSContentMessage extends WSMessage<'content'> {
-  type: 'content';
+export interface WSContentMessage extends WSMessage<"content"> {
+  type: "content";
   data: {
     chunk: string;
     is_partial: boolean;
@@ -336,8 +630,8 @@ export interface WSContentMessage extends WSMessage<'content'> {
   };
 }
 
-export interface WSCompleteMessage extends WSMessage<'complete'> {
-  type: 'complete';
+export interface WSCompleteMessage extends WSMessage<"complete"> {
+  type: "complete";
   data: {
     content: string;
     metadata: Record<string, unknown>;
@@ -345,22 +639,22 @@ export interface WSCompleteMessage extends WSMessage<'complete'> {
   };
 }
 
-export interface WSDiceCheckMessage extends WSMessage<'dice_check'> {
-  type: 'dice_check';
+export interface WSDiceCheckMessage extends WSMessage<"dice_check"> {
+  type: "dice_check";
   data: {
     check_request: DiceCheckRequest;
   };
 }
 
-export interface WSPhaseMessage extends WSMessage<'phase'> {
-  type: 'phase';
+export interface WSPhaseMessage extends WSMessage<"phase"> {
+  type: "phase";
   data: {
     phase: GamePhase;
   };
 }
 
-export interface WSErrorMessage extends WSMessage<'error'> {
-  type: 'error';
+export interface WSErrorMessage extends WSMessage<"error"> {
+  type: "error";
   data: {
     error: string;
   };
@@ -373,6 +667,24 @@ export type WSServerMessage =
   | WSDiceCheckMessage
   | WSPhaseMessage
   | WSErrorMessage;
+
+// --- Observer WebSocket (Read-only) ---
+
+/**
+ * Observer mode - read-only streaming
+ */
+export interface WSObserverMessage extends WSMessage<"content" | "complete" | "status"> {
+  type: "content" | "complete" | "status";
+  data: {
+    chunk?: string;
+    content?: string;
+    message?: string;
+    is_partial?: boolean;
+    chunk_index?: number;
+    success?: boolean;
+    metadata?: Record<string, unknown>;
+  };
+}
 
 // ============================================================================
 // Connection State Types (for frontend state management)
@@ -508,4 +820,11 @@ export interface ProviderTypeInfo {
 
 export interface ProviderTypesResponse {
   types: ProviderTypeInfo[];
+}
+
+// --- POST /api/v1/settings/reload-agents ---
+
+export interface ReloadAgentsResponse {
+  success: boolean;
+  message: string;
 }
