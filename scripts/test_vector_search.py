@@ -60,7 +60,9 @@ def print_search_result(query: str, results: dict, lang: str = "cn") -> None:
             results["metadatas"][0][:3],
             results["distances"][0][:3]
         )):
-            similarity = 1.0 - min(distance, 1.0)
+            # Convert cosine distance to similarity
+            # Cosine distance range: [0, 2], where 0 = identical, 2 = opposite
+            similarity = 1.0 - distance
             print(f"   [{i+1}] ID: {doc_id}")
             print(f"       UID: {metadata.get('uid')}, 相似度: {similarity:.3f}")
             print(f"       关键字: {metadata.get('keys')}")

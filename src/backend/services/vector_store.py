@@ -14,6 +14,8 @@ from typing import Any
 import chromadb
 from chromadb.api.types import EmbeddingFunction
 
+from src.backend.services.embedding import QwenEmbeddingFunction
+
 
 class VectorStoreService:
     """
@@ -101,15 +103,27 @@ class VectorStoreService:
         """
         Get existing collection or create new one.
 
+        Uses Qwen3-Embedding-0.6B by default for multilingual support with
+        cosine distance metric for semantic similarity.
+
         Args:
             name: Collection name
-            metadata: Optional collection metadata
+            metadata: Optional collection metadata (will add hnsw:space="cosine")
             embedding_function: Optional custom embedding function
-                                (default: all-MiniLM-L6-v2)
+                                (default: Qwen3-Embedding-0.6B)
 
         Returns:
             ChromaDB collection
         """
+        # Use QwenEmbeddingFunction by default
+        if embedding_function is None:
+            embedding_function = QwenEmbeddingFunction()
+
+        # Configure cosine distance for normalized embeddings
+        if metadata is None:
+            metadata = {}
+        metadata["hnsw:space"] = "cosine"
+
         client = self._get_client()
         return client.get_or_create_collection(
             name=name,

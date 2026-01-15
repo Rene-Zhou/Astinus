@@ -9,6 +9,7 @@ This agent is responsible for:
 Based on GUIDE.md Section 4.3 (Lore Agent's retrieval strategy).
 """
 
+import jieba
 from typing import Any
 
 from langchain_core.messages import SystemMessage
@@ -18,8 +19,9 @@ from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
 
 # Hybrid search configuration
-KEYWORD_MATCH_WEIGHT = 1.0  # Strong signal from explicit keyword match
-VECTOR_MATCH_WEIGHT = 0.7  # Secondary signal from semantic similarity
+# Updated for Qwen3-Embedding which provides better multilingual semantic understanding
+KEYWORD_MATCH_WEIGHT = 1.5  # Strong signal from explicit keyword match
+VECTOR_MATCH_WEIGHT = 0.8  # Secondary signal from semantic similarity (improved model)
 DUAL_MATCH_BOOST = 1.5  # Boost for entries matching both keyword and vector
 
 
@@ -201,8 +203,9 @@ class LoreAgent(BaseAgent):
                     results["metadatas"][0], results["distances"][0], strict=True
                 ):
                     uid = metadata["uid"]
-                    # Convert distance to similarity (lower distance = higher similarity)
-                    similarity = 1.0 - min(distance, 1.0)
+                    # Convert cosine distance to similarity
+                    # Cosine distance range: [0, 2], where 0 = identical, 2 = opposite
+                    similarity = 1.0 - distance
                     vector_score = VECTOR_MATCH_WEIGHT * similarity
 
                     if uid in entry_scores:
@@ -353,7 +356,7 @@ class LoreAgent(BaseAgent):
 
     def _extract_search_terms(self, query: str) -> list[str]:
         """
-        Extract search terms from a query.
+        Extract search terms from a query using jieba for Chinese segmentation.
 
         Args:
             query: Player's query text
@@ -361,34 +364,39 @@ class LoreAgent(BaseAgent):
         Returns:
             List of relevant search terms
         """
-        # Simple keyword extraction - can be enhanced with NLP
-        # Split by common delimiters and filter out stop words
+        # Chinese stop words
         stop_words = {
-            "的",
-            "了",
-            "是",
-            "在",
-            "我",
-            "你",
-            "他",
-            "她",
-            "它",
-            "有",
-            "没有",
-            "什么",
-            "怎么",
-            "如何",
+            "的", "了", "是", "在", "我", "你", "他", "她", "它", "有", "没有",
+            "什么", "怎么", "如何", "这", "那", "就", "也", "都", "很", "非常",
+            "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+            "have", "has", "had", "do", "does", "did", "will", "would", "should",
         }
 
-        # Extract Chinese and English terms
+        # Use jieba for Chinese word segmentation
         terms = []
-        for word in query.split():
+        words = jieba.lcut(query)
+
+        for word in words:
             # Remove punctuation
-            clean_word = word.strip("，。！？：；''()（）[]【】")
-            if clean_word and clean_word not in stop_words and len(clean_word) > 1:
+            clean_word = word.strip("，。！？：；''()（）[]【】\"\"")
+            # Filter: must not be stop word, and length > 1
+            if (clean_word and
+                clean_word not in stop_words and
+                len(clean_word) > 1 and
+                not clean_word.isspace()):
                 terms.append(clean_word)
 
-        return terms[:5]  # Limit to 5 terms to avoid noise
+        # Remove duplicates and limit to 5 terms
+        seen = set()
+        unique_terms = []
+        for term in terms:
+            if term not in seen:
+                seen.add(term)
+                unique_terms.append(term)
+                if len(unique_terms) >= 5:
+                    break
+
+        return unique_terms
 
     def _format_lore(
         self,
