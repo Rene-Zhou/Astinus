@@ -8,15 +8,12 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.backend.agents.gm import GMAgent
-from src.backend.agents.lore import LoreAgent
 from src.backend.agents.npc import NPCAgent
 from src.backend.models.character import PlayerCharacter, Trait
 from src.backend.models.game_state import GameState
 from src.backend.models.i18n import LocalizedString
 from src.backend.models.world_pack import (
     LocalizedString as WPLocalizedString,
-)
-from src.backend.models.world_pack import (
     LoreEntry,
     NPCBody,
     NPCData,
@@ -26,6 +23,7 @@ from src.backend.models.world_pack import (
 )
 from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
+from src.backend.services.lore import LoreService
 
 # Set fake API key for tests
 os.environ["OPENAI_API_KEY"] = "sk-test-fake-key-for-testing"
