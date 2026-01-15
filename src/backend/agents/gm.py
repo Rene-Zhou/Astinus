@@ -213,7 +213,7 @@ class GMAgent(BaseAgent):
                 )
 
                 result = await self._invoke_sub_agent(agent_name, agent_context)
-                
+
                 # Record result
                 agent_results.append(
                     {
@@ -224,8 +224,8 @@ class GMAgent(BaseAgent):
                     }
                 )
 
-                # DO NOT clear dice_result here anymore. 
-                # It should persist through the turn's ReAct loop so the GM 
+                # DO NOT clear dice_result here anymore.
+                # It should persist through the turn's ReAct loop so the GM
                 # can see it in subsequent iterations even after calling an NPC.
                 iteration += 1
 
@@ -259,11 +259,11 @@ class GMAgent(BaseAgent):
         for i, msg in enumerate(recent_messages):
             role_label = "玩家" if msg.get("role") == "player" else "GM"
             content = msg.get("content", "")[:1000]
-            
+
             # Highlight current action if it's the last message and it's from player
             if i == len(recent_messages) - 1 and msg.get("role") == "player":
                 role_label = "【当前行动】玩家"
-            
+
             conversation_history.append({
                 "turn": msg.get("turn", 0),
                 "role": role_label,
@@ -723,11 +723,11 @@ class GMAgent(BaseAgent):
         for i, msg in enumerate(recent_messages):
             role_label = "玩家" if msg.get("role") == "player" else "GM"
             content = msg.get("content", "")[:1000]
-            
+
             # Highlight current action if it's the last message and it's from player
             if i == len(recent_messages) - 1 and msg.get("role") == "player":
                 role_label = "【当前行动】玩家"
-            
+
             conversation_history.append({
                 "turn": msg.get("turn", 0),
                 "role": role_label,

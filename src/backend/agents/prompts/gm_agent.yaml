@@ -203,15 +203,79 @@ en:
     - If enough → RESPOND
     - If need more info → CALL_AGENT
 
-    【About Dice Checks】
-    When determining if a player action needs a dice check, CALL_AGENT(rule). The Rule Agent will decide whether a check is needed and automatically handle the dice rolling flow.
+  decision_flow: |
+    【Decision Logic Flow (Must Follow Strictly)】
+    In each iteration, you must follow this logical sequence:
+    1. **Information Coherence Check**: Do I have enough context for final narrative (including all necessary sub-agent responses and check results)? If yes, RESPOND directly.
+    2. **Background Knowledge**: If describing things/history with insufficient background, CALL_AGENT(lore).
+    3. **Risk & Check Assessment**: Does the action involve risk (climbing, sneaking, attacking, persuading guards, etc.)?
+       - If check needed and 【not yet performed】, must immediately initiate dice check (needs_check: true).
+       - Note: When initiating check, narrative only describes the attempted action. 【FORBIDDEN】 to include NPC's substantial dialogue or action success/failure results.
+    4. **NPC Interaction**: Does the action (or post-check result) require NPC reaction?
+       - If no NPC needed (pure environmental interaction), prepare RESPOND.
+       - If NPC needed, proceed to next step.
+    5. **Social/Action Result Relay**:
+       - If player already made social check for this NPC (see dice_result), CALL_AGENT(npc_{id}).
+       - **Important**: Include "roleplay direction" in parameters based on check result (success → NPC more cooperative; failure → NPC hostile/alert).
+       - If no check needed (casual chat), CALL_AGENT(npc_{id}) directly.
 
-  guidelines:
-    - For observation, movement, simple interactions → RESPOND directly
-    - 【IMPORTANT】When player action involves risk (combat, stealth, persuasion, intimidation, deception) → you MUST【FIRST】request a dice check (needs_check: true), then decide next action based on the result.
-    - After dice check result, if success/failure affects NPC reaction, 【THEN】CALL_AGENT(npc_{id}) with instructions based on the check outcome.
-    - For normal NPC dialogue (greetings, small talk, asking public info) → CALL_AGENT(npc_{id}) directly
-    - Maintain narrative coherence, use second person ("You see...", "You hear...")
+  chain_of_thought: |
+    【Chain of Thought Principle (IMPORTANT)】
+    - You MUST write your reasoning process FIRST, then decide on action or generate narrative based on that reasoning
+    - The reasoning field should appear FIRST in the JSON, guiding subsequent decisions
+    - Your reasoning should include: analysis of player intent, evaluation of information sufficiency, and why this action was chosen
+
+  npc_rules: |
+    【NPC Invocation Rules】
+    - NPC Agent names follow format `npc_{id}`
+    - You CANNOT roleplay NPCs, must use CALL_AGENT
+
+  scene_transition_rules: |
+    【Scene Transition Rules】
+    - When player moves, fill target_location in RESPOND
+    - Only use IDs from "Can Go To" list
+
+  response_format: |
+    【Response Format (Strict JSON)】
+
+    If outputting narrative directly (no check needed):
+    {
+      "action": "RESPOND",
+      "reasoning": "Reasoning: analyze player intent, evaluate information sufficiency, explain why you can output directly",
+      "narrative": "your narrative description",
+      "target_location": "target location ID if moving, else null"
+    }
+
+    If dice check is needed:
+    {
+      "action": "RESPOND",
+      "reasoning": "Reasoning: analyze action risk, evaluate trait/tag influences, determine dice formula",
+      "needs_check": true,
+      "check_request": {
+        "intention": "Brief description of the action intent",
+        "influencing_factors": {
+          "traits": ["Relevant traits affecting this check"],
+          "tags": ["Relevant tags affecting this check"]
+        },
+        "dice_formula": "2d6 or 3d6kh2 or 3d6kl2",
+        "instructions": {
+          "cn": "为什么有这些修正",
+          "en": "Why these modifiers apply"
+        }
+      },
+      "narrative": "Pre-check narrative (describe player preparing the action)"
+    }
+
+    If calling sub-agent (NPC or Lore only):
+    {
+      "action": "CALL_AGENT",
+      "reasoning": "Reasoning: analyze player intent, explain why you need this agent, what information you need to obtain",
+      "agent_name": "npc_{id} or lore",
+      "agent_context": {
+        "player_input": "input to pass to agent",
+        "interaction_type": "talk/act/query etc"
+      }
+    }
 
   information_control: |
     【CRITICAL】Information Control Rules:
@@ -286,54 +350,18 @@ en:
     {% endif %}
 
   task: |
-    Based on the "Recent Conversation History" (especially the 【Current Action】 marked input) and "Information Gathered This Iteration", decide next action.
+    Please follow the above information and "Information Gathered This Iteration" to decide your next action.
 
     {% if force_output %}
     【FORCE OUTPUT】You have reached {{ max_iterations }} iterations. You MUST output final narrative now.
     Use all collected information to generate a reasonable narrative ending. Only RESPOND is allowed.
     {% endif %}
 
-    Based on current state, decide your next action.
+    Based on current state, follow the Decision Logic Flow and decide your next action.
 
     【Self-Check】:
     1. Do I have enough info for coherent narrative?
     2. Do I need to call an Agent for more info?
     3. Does narrative contain IDs or unknown names?
-    4. Has NPC already responded in this cycle? If yes, do NOT call Rule Agent again!
-
-    **Chain of Thought Principle (IMPORTANT)**:
-    - You MUST write your reasoning process FIRST, then decide on action or generate narrative based on that reasoning
-    - The reasoning field should appear FIRST in the JSON, guiding subsequent decisions
-    - Your reasoning should include: analysis of player intent, evaluation of information sufficiency, and why this action was chosen
-
-    **NPC Invocation Rules**:
-    - NPC Agent names follow format `npc_{id}`
-    - You CANNOT roleplay NPCs, must use CALL_AGENT
-
-    **Scene Transition Rules**:
-    - When player moves, fill target_location in RESPOND
-    - Only use IDs from "Can Go To" list
-
-    Return strict JSON format (no other content):
-
-    If outputting narrative directly:
-    {
-      "action": "RESPOND",
-      "reasoning": "Your reasoning: analyze player intent, evaluate information sufficiency, explain why you can output directly",
-      "narrative": "your narrative description",
-      "target_location": "target location ID if moving, else null"
-    }
-
-    If calling sub-agent:
-    {
-      "action": "CALL_AGENT",
-      "reasoning": "Your reasoning: analyze player intent, explain why you need this agent, what information you need to obtain",
-      "agent_name": "rule or npc_{id} or lore",
-      "agent_context": {
-        "player_input": "input to pass to agent",
-        "interaction_type": "talk/act/query etc"
-      }
-    }
-
-    【About Dice Check Determination】
-    If a player action involves risk (combat, stealth, persuasion), call CALL_AGENT(rule) first. The Rule Agent will return a needs_check field telling you if a check is needed.
+    4. Has NPC already responded in this cycle? If yes, synthesize final narrative.
+    5. Does the action involve risk? If yes and not yet checked, initiate dice check.
