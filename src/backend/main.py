@@ -12,7 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.backend.agents.gm import GMAgent
-from src.backend.agents.lore import LoreAgent
 from src.backend.agents.npc import NPCAgent
 from src.backend.api import websockets
 from src.backend.api.v1 import game, settings
@@ -22,6 +21,7 @@ from src.backend.models.character import PlayerCharacter, Trait
 from src.backend.models.game_state import GameState
 from src.backend.models.i18n import LocalizedString
 from src.backend.services.game_logger import init_game_logger, setup_unified_logging
+from src.backend.services.lore import LoreService
 from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
 
@@ -158,17 +158,12 @@ async def lifespan(app: FastAPI):
                 active_npc_ids=active_npc_ids,
             )
 
-            # Create sub-agents
-            lore_agent = LoreAgent(
-                llm=llm,
+            lore_service = LoreService(
                 world_pack_loader=world_pack_loader,
                 vector_store=vector_store,
             )
 
-            # Build sub_agents dictionary
-            sub_agents: dict = {
-                "lore": lore_agent,
-            }
+            sub_agents: dict = {}
 
             # Register a single NPC Agent (handles all NPCs via npc_id parameter)
             npc_agent = NPCAgent(
@@ -186,6 +181,7 @@ async def lifespan(app: FastAPI):
                 game_state=game_state,
                 world_pack_loader=world_pack_loader,
                 vector_store=vector_store,
+                lore_service=lore_service,
             )
 
             print("✅ Agents initialized")

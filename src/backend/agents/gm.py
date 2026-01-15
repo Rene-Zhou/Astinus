@@ -14,6 +14,7 @@ from src.backend.core.prompt_loader import get_prompt_loader
 from src.backend.models.game_state import GameState
 from src.backend.services.game_logger import get_game_logger
 from src.backend.services.location_context import LocationContextService
+from src.backend.services.lore import LoreService
 from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
 
@@ -21,6 +22,8 @@ from src.backend.services.world import WorldPackLoader
 class GMActionType(str, Enum):
     RESPOND = "RESPOND"
     CALL_AGENT = "CALL_AGENT"
+    SEARCH_LORE = "SEARCH_LORE"
+    REQUEST_CHECK = "REQUEST_CHECK"
 
 
 @dataclass
@@ -29,6 +32,7 @@ class GMAction:
     content: str = ""
     agent_name: str | None = None
     agent_context: dict[str, Any] = field(default_factory=dict)
+    check_request: dict[str, Any] | None = None
     reasoning: str = ""
 
 
@@ -58,6 +62,7 @@ class GMAgent(BaseAgent):
         game_state: GameState,
         world_pack_loader: WorldPackLoader | None = None,
         vector_store: VectorStoreService | None = None,
+        lore_service: LoreService | None = None,
     ):
         """
         Initialize GM Agent.
@@ -68,12 +73,14 @@ class GMAgent(BaseAgent):
             game_state: Global game state (owned by GM)
             world_pack_loader: Optional loader for world packs (for NPC data)
             vector_store: Optional VectorStoreService for conversation history retrieval
+            lore_service: Optional LoreService for background lore retrieval
         """
         super().__init__(llm, "gm_agent")
         self.sub_agents = sub_agents
         self.game_state = game_state
         self.world_pack_loader = world_pack_loader
         self.vector_store = vector_store
+        self.lore_service = lore_service
         self.prompt_loader = get_prompt_loader()
         self.status_callback: StatusCallback | None = None
 
@@ -155,36 +162,33 @@ class GMAgent(BaseAgent):
                 force_output=force_output,
             )
 
+            if action.action_type == GMActionType.REQUEST_CHECK:
+                check_request = action.check_request or {}
+                narrative = action.content
+
+                # Save ReAct state
+                self.game_state.save_react_state(
+                    iteration=iteration + 1,
+                    llm_messages=[],
+                    player_input=player_input,
+                    agent_results=agent_results,
+                )
+
+                from src.backend.models.game_state import GamePhase
+
+                self.game_state.set_phase(GamePhase.DICE_CHECK)
+
+                return AgentResponse(
+                    content=narrative,
+                    success=True,
+                    metadata={
+                        "agent": self.agent_name,
+                        "dice_check": check_request,
+                        "agents_called": agents_called,
+                    },
+                )
+
             if action.action_type == GMActionType.RESPOND:
-                # Check if dice check is needed
-                if action.agent_context.get("needs_check"):
-                    check_request = action.agent_context.get("check_request", {})
-                    narrative = action.content  # Pre-check narrative
-
-                    # Save ReAct state
-                    self.game_state.save_react_state(
-                        iteration=iteration + 1,
-                        llm_messages=[],
-                        player_input=player_input,
-                        agent_results=agent_results,
-                    )
-
-                    from src.backend.models.game_state import GamePhase
-
-                    self.game_state.set_phase(GamePhase.DICE_CHECK)
-
-                    return AgentResponse(
-                        content=narrative,
-                        success=True,
-                        metadata={
-                            "agent": self.agent_name,
-                            "needs_check": True,
-                            "dice_check": check_request,
-                            "agents_called": agents_called,
-                        },
-                    )
-
-                # Normal response (no check)
                 return self._finalize_response(
                     narrative=action.content,
                     player_input=player_input,
@@ -192,6 +196,39 @@ class GMAgent(BaseAgent):
                     target_location=action.agent_context.get("target_location"),
                     logger=logger,
                 )
+
+            elif action.action_type == GMActionType.SEARCH_LORE:
+                if not self.lore_service:
+                    iteration += 1
+                    continue
+
+                lore_query = action.content or ""
+                if not lore_query:
+                    iteration += 1
+                    continue
+
+                if self.status_callback:
+                    await self.status_callback("lore", "searching_lore")
+
+                lore_result = self.lore_service.search(
+                    query=lore_query,
+                    context=player_input,
+                    world_pack_id=self.game_state.world_pack_id,
+                    current_location=self.game_state.current_location,
+                    current_region=self._get_current_region_id(),
+                    lang=lang,
+                )
+
+                agent_results.append(
+                    {
+                        "agent": "lore",
+                        "content": lore_result,
+                        "metadata": {},
+                        "success": True,
+                    }
+                )
+
+                iteration += 1
 
             elif action.action_type == GMActionType.CALL_AGENT:
                 agent_name = action.agent_name

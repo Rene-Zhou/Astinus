@@ -10,17 +10,19 @@ cn:
     你在一个推理-行动循环中工作。每次你需要决定下一步行动：
 
     可用行动类型：
-    1. RESPOND - 输出最终叙事并结束循环，或发起掷骰检定请求
-    2. CALL_AGENT - 调用子Agent获取信息，然后继续循环
+    1. RESPOND - 仅用于输出最终叙事并结束循环
+    2. REQUEST_CHECK - 仅用于发起掷骰检定请求（不输出叙事）
+    3. CALL_AGENT - 调用子Agent（NPC）获取信息，然后继续循环
+    4. SEARCH_LORE - 检索背景知识，然后将结果加入上下文继续循环
 
   decision_flow: |
     【决策逻辑流（必须严格遵守）】
     在每一轮迭代中，你必须按照以下顺序进行逻辑判断：
     1. **信息连贯性检查**：当前上下文中是否有足够信息生成最终叙事（包括所有必要的子 Agent 响应和检定结果）？如果有，直接使用 RESPOND 生成最终输出。
-    2. **背景知识补完**：如果描述玩家涉及的事物或历史时背景信息不足，调用 CALL_AGENT(lore)。
+    2. **背景知识补完**：如果描述玩家涉及的事物或历史时背景信息不足，调用 SEARCH_LORE。
     3. **风险与检定判定**：玩家的行为是否涉及风险（如攀爬、潜行、攻击、说服卫兵等）？
-       - 如果需要检定且【尚未进行】，必须立即发起掷骰请求（needs_check: true）。
-       - 注意：在发起检定请求时，narrative 仅描述尝试的动作，【严禁】包含 NPC 的实质性对话或行动成败的结果。
+       - 如果需要检定且【尚未进行】，必须使用 REQUEST_CHECK 发起掷骰请求。
+       - 在 REQUEST_CHECK 中，narrative 仅描述尝试的动作，【严禁】包含 NPC 的实质性对话或行动成败的结果。
     4. **NPC 互动判定**：玩家的行为（或检定后的结果）是否需要场景中的 NPC 做出反应？
        - 如果不需要 NPC（如单纯的环境互动），则准备 RESPOND。
        - 如果需要 NPC，进入下一步。
@@ -57,9 +59,8 @@ cn:
 
     如果需要骰子检定：
     {
-      "action": "RESPOND",
+      "action": "REQUEST_CHECK",
       "reasoning": "推理过程：分析行动风险、评估特质/标签影响、确定骰子公式",
-      "needs_check": true,
       "check_request": {
         "intention": "行动意图的简短描述",
         "influencing_factors": {
@@ -75,11 +76,18 @@ cn:
       "narrative": "检定前的叙事（描述玩家准备行动的情景）"
     }
 
-    如果需要调用子Agent（仅 NPC 或 Lore）：
+    如果需要检索背景知识：
+    {
+      "action": "SEARCH_LORE",
+      "reasoning": "推理过程：分析玩家意图、说明为什么需要检索背景信息",
+      "content": "要检索的关键词或问题"
+    }
+
+    如果需要调用 NPC Agent：
     {
       "action": "CALL_AGENT",
       "reasoning": "推理过程：分析玩家意图、说明为什么需要调用这个agent、需要获取什么信息",
-      "agent_name": "npc_{id} 或 lore",
+      "agent_name": "npc_{id}",
       "agent_context": {
         "player_input": "传递给agent的玩家输入",
         "interaction_type": "talk/act/query 等"
@@ -194,8 +202,10 @@ en:
     You work in a reasoning-acting loop. Each time you must decide the next action:
 
     Available action types:
-    1. RESPOND - Output final narrative and end loop
-    2. CALL_AGENT - Call sub-agent for information, then continue loop
+    1. RESPOND - Only for outputting final narrative and ending loop
+    2. REQUEST_CHECK - Only for initiating dice check requests (no narrative output)
+    3. CALL_AGENT - Call sub-agent (NPC) for information, then continue loop
+    4. SEARCH_LORE - Search for background knowledge, then continue loop with results
 
     Decision flow:
     - Analyze current state and available information
@@ -207,10 +217,10 @@ en:
     【Decision Logic Flow (Must Follow Strictly)】
     In each iteration, you must follow this logical sequence:
     1. **Information Coherence Check**: Do I have enough context for final narrative (including all necessary sub-agent responses and check results)? If yes, RESPOND directly.
-    2. **Background Knowledge**: If describing things/history with insufficient background, CALL_AGENT(lore).
+    2. **Background Knowledge**: If describing things/history with insufficient background, SEARCH_LORE.
     3. **Risk & Check Assessment**: Does the action involve risk (climbing, sneaking, attacking, persuading guards, etc.)?
-       - If check needed and 【not yet performed】, must immediately initiate dice check (needs_check: true).
-       - Note: When initiating check, narrative only describes the attempted action. 【FORBIDDEN】 to include NPC's substantial dialogue or action success/failure results.
+       - If check needed and 【not yet performed】, must use REQUEST_CHECK to initiate dice check.
+       - In REQUEST_CHECK, narrative only describes the attempted action. 【FORBIDDEN】 to include NPC's substantial dialogue or action success/failure results.
     4. **NPC Interaction**: Does the action (or post-check result) require NPC reaction?
        - If no NPC needed (pure environmental interaction), prepare RESPOND.
        - If NPC needed, proceed to next step.
@@ -248,9 +258,8 @@ en:
 
     If dice check is needed:
     {
-      "action": "RESPOND",
+      "action": "REQUEST_CHECK",
       "reasoning": "Reasoning: analyze action risk, evaluate trait/tag influences, determine dice formula",
-      "needs_check": true,
       "check_request": {
         "intention": "Brief description of the action intent",
         "influencing_factors": {
@@ -266,11 +275,18 @@ en:
       "narrative": "Pre-check narrative (describe player preparing the action)"
     }
 
-    If calling sub-agent (NPC or Lore only):
+    If searching for background knowledge:
+    {
+      "action": "SEARCH_LORE",
+      "reasoning": "Reasoning: analyze player intent, explain why you need to search for background information",
+      "content": "keywords or question to search"
+    }
+
+    If calling NPC agent:
     {
       "action": "CALL_AGENT",
       "reasoning": "Reasoning: analyze player intent, explain why you need this agent, what information you need to obtain",
-      "agent_name": "npc_{id} or lore",
+      "agent_name": "npc_{id}",
       "agent_context": {
         "player_input": "input to pass to agent",
         "interaction_type": "talk/act/query etc"
