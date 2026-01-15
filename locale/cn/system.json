@@ -1,12 +1,18 @@
 {
-  "dice": {
-    "outcome": {
-      "critical": "大成功",
-      "success": "成功",
-      "partial": "部分成功",
-      "failure": "失败"
-    },
-    "modifier": {
+    "dice": {
+      "outcome": {
+        "critical": "大成功",
+        "success": "成功",
+        "partial": "部分成功",
+        "failure": "失败"
+      },
+      "outcome_explanation": {
+        "critical": "【大成功】玩家的行动完美达成，甚至超出预期。应该给予额外的正面效果或意外收获。",
+        "success": "【成功】玩家的行动顺利达成目标，没有负面后果或代价。",
+        "partial": "【部分成功】玩家达成了目标，但伴随代价、复杂情况或不完美的结果。",
+        "failure": "【失败】玩家的行动未能达成目标，应该引入负面后果或新的困境。"
+      },
+      "modifier": {
       "bonus": "优势",
       "penalty": "劣势",
       "advantage": "优势",

@@ -167,6 +167,7 @@ cn:
     === 本次循环已获得的信息 (按时间顺序) ===
     {% if dice_result %}
     【掷骰检定】意图: {{ dice_result.intention }} | 结果: {{ dice_result.total }} ({{ dice_result.outcome }})
+    {{ dice_result.outcome_explanation }}
     {% endif %}
     {% if agent_results %}
     {% for result in agent_results %}

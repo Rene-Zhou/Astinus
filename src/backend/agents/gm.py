@@ -9,6 +9,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.core.config import get_settings
+from src.backend.core.i18n import get_i18n
 from src.backend.core.prompt_loader import get_prompt_loader
 from src.backend.models.game_state import GameState
 from src.backend.services.game_logger import get_game_logger
@@ -329,7 +330,16 @@ class GMAgent(BaseAgent):
             "conversation_history": conversation_history,
             "player_input": player_input,
             "agent_results": formatted_agent_results if formatted_agent_results else [],
-            "dice_result": dice_result,
+            "dice_result": (
+                {
+                    **dice_result,
+                    "outcome_explanation": get_i18n().get(
+                        f"system.dice.outcome_explanation.{dice_result.get('outcome', 'unknown')}",
+                        lang=lang
+                    ),
+                }
+                if dice_result else None
+            ),
             "force_output": force_output,
             "player_character": {
                 "name": self.game_state.player.name,

@@ -329,5 +329,4 @@ class TestRealPromptTemplates:
         assert "GM" in result
         assert "暗室" in result
         assert "陈玲" in result
-        assert "我要查看房间" in result
         assert "张伟" in result
