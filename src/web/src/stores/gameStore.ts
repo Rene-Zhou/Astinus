@@ -62,6 +62,7 @@ export interface GameStoreState {
   loadWorldPackDetail: (packId: string) => Promise<WorldPackDetailResponse | null>;
   setSelectedWorldPackId: (packId: string) => void;
   setPlayerName: (name: string) => void;
+  spendFatePoint: () => void;
   startNewGame: (opts?: {
     worldPackId?: string;
     playerName?: string;
@@ -168,6 +169,7 @@ const initialState = (): Omit<
   | "loadWorldPackDetail"
   | "setSelectedWorldPackId"
   | "setPlayerName"
+  | "spendFatePoint"
   | "startNewGame"
   | "sendPlayerInput"
   | "submitDiceResult"
@@ -230,6 +232,13 @@ export const useGameStore = create<GameStoreState>()(
     setPlayerName: (name: string) =>
       set((state) => {
         state.playerName = name;
+      }),
+
+    spendFatePoint: () =>
+      set((state) => {
+        if (state.player && state.player.fate_points > 0) {
+          state.player = { ...state.player, fate_points: state.player.fate_points - 1 };
+        }
       }),
 
     startNewGame: async (opts) => {

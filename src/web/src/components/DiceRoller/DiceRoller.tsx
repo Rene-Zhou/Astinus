@@ -14,6 +14,7 @@ import {
 } from "../../utils/dice";
 import Button from "../common/Button";
 import { Card } from "../common/Card";
+import { useGameStore } from "../../stores/gameStore";
 
 export interface DiceRollerProps {
   visible: boolean;
@@ -75,6 +76,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
   onCancel,
 }) => {
   const { t, i18n } = useTranslation();
+  const spendFatePoint = useGameStore((state) => state.spendFatePoint);
   const [result, setResult] = useState<DiceResult | null>(null);
   const [rolling, setRolling] = useState(false);
   const [hasRerolled, setHasRerolled] = useState(false);
@@ -90,12 +92,13 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
 
   const handleReroll = useCallback(() => {
     if (fatePoints <= 0 || hasRerolled) return;
+    spendFatePoint();
     setHasRerolled(true);
     setRolling(true);
     const next = rollDice(formula);
     setResult(next);
     setRolling(false);
-  }, [formula, fatePoints, hasRerolled]);
+  }, [formula, fatePoints, hasRerolled, spendFatePoint]);
 
   const handleSubmit = useCallback(() => {
     if (!result) return;
