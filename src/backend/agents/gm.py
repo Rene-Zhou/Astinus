@@ -264,11 +264,13 @@ class GMAgent(BaseAgent):
             if i == len(recent_messages) - 1 and msg.get("role") == "player":
                 role_label = "【当前行动】玩家"
 
-            conversation_history.append({
-                "turn": msg.get("turn", 0),
-                "role": role_label,
-                "content": content,
-            })
+            conversation_history.append(
+                {
+                    "turn": msg.get("turn", 0),
+                    "role": role_label,
+                    "content": content,
+                }
+            )
 
         def _format_agent_result(r: dict[str, Any]) -> dict[str, Any]:
             """Format agent result for GM prompt - parse NPC metadata for clarity."""
@@ -335,10 +337,11 @@ class GMAgent(BaseAgent):
                     **dice_result,
                     "outcome_explanation": get_i18n().get(
                         f"system.dice.outcome_explanation.{dice_result.get('outcome', 'unknown')}",
-                        lang=lang
+                        lang=lang,
                     ),
                 }
-                if dice_result else None
+                if dice_result
+                else None
             ),
             "force_output": force_output,
             "player_character": {
@@ -728,11 +731,13 @@ class GMAgent(BaseAgent):
             if i == len(recent_messages) - 1 and msg.get("role") == "player":
                 role_label = "【当前行动】玩家"
 
-            conversation_history.append({
-                "turn": msg.get("turn", 0),
-                "role": role_label,
-                "content": content,
-            })
+            conversation_history.append(
+                {
+                    "turn": msg.get("turn", 0),
+                    "role": role_label,
+                    "content": content,
+                }
+            )
 
         # Prepare template variables with hierarchical context
         template_vars = {
