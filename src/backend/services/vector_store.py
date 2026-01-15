@@ -81,6 +81,7 @@ class VectorStoreService:
 
         # Lazy initialization - client created on first use
         self._client = None
+        self._cached_embedding_function: EmbeddingFunction | None = None
         self._initialized = True
 
     def _get_client(self) -> chromadb.PersistentClient:
@@ -106,18 +107,22 @@ class VectorStoreService:
         Uses Qwen3-Embedding-0.6B by default for multilingual support with
         cosine distance metric for semantic similarity.
 
+        The embedding function is cached to prevent repeatedly loading the model.
+
         Args:
             name: Collection name
             metadata: Optional collection metadata (will add hnsw:space="cosine")
             embedding_function: Optional custom embedding function
-                                (default: Qwen3-Embedding-0.6B)
+                                (default: Qwen3-Embedding-0.6B, cached)
 
         Returns:
             ChromaDB collection
         """
-        # Use QwenEmbeddingFunction by default
+        # Use cached QwenEmbeddingFunction by default to avoid reloading the model
         if embedding_function is None:
-            embedding_function = QwenEmbeddingFunction()
+            if self._cached_embedding_function is None:
+                self._cached_embedding_function = QwenEmbeddingFunction()
+            embedding_function = self._cached_embedding_function
 
         # Configure cosine distance for normalized embeddings
         if metadata is None:
@@ -265,6 +270,8 @@ class VectorStoreService:
             if cls._instance._client is not None:
                 # ChromaDB client doesn't need explicit close
                 cls._instance._client = None
+            # Clear cached embedding function to free memory
+            cls._instance._cached_embedding_function = None
             cls._instance = None
 
 
