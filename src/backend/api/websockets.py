@@ -450,6 +450,7 @@ async def _handle_dice_result(
     response_metadata = {
         "dice_result": dice_result,
         "phase": "narrating",
+        "player": gm_agent.game_state.player.model_dump(),
     }
     response_metadata.update(gm_response.metadata)
 

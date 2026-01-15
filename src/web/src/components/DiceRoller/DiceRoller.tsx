@@ -224,7 +224,12 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
           {/* Action buttons */}
           <div className="mt-auto flex flex-col gap-2 pt-2">
             <div className="grid grid-cols-2 gap-2">
-              <Button onClick={handleRoll} loading={rolling} size="md">
+              <Button
+                onClick={handleRoll}
+                loading={rolling}
+                size="md"
+                disabled={result !== null}
+              >
                 🎲 {t("dice.roll")}
               </Button>
               <Button

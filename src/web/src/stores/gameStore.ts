@@ -327,6 +327,9 @@ export const useGameStore = create<GameStoreState>()(
               state.processingStatus = null;
               state.processingAgent = null;
               state.streamingContent = "";
+              if (msg.data.metadata?.player) {
+                state.player = msg.data.metadata.player as GameStoreState["player"];
+              }
               state.messages.push({
                 role: "assistant",
                 content: msg.data.content,
