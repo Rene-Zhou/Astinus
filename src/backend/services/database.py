@@ -17,6 +17,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.backend.models.persistence import (
@@ -232,7 +233,7 @@ class DatabaseService:
             result = await session.execute(
                 delete(GameSessionModel).where(GameSessionModel.session_id == session_id)
             )
-            return result.rowcount > 0
+            return bool(result.rowcount)  # type: ignore[attr-defined]
 
     async def list_game_sessions(
         self,
@@ -451,7 +452,7 @@ class DatabaseService:
                     SaveSlotModel.slot_name == slot_name,
                 )
             )
-            return result.rowcount > 0
+            return bool(result.rowcount)  # type: ignore[attr-defined]
 
     async def auto_save(
         self,
