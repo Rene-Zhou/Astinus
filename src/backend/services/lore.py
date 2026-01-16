@@ -1,96 +1,99 @@
 """
-Lore Agent - retrieves and provides world lore information.
+Lore Service - world lore retrieval service.
 
-This agent is responsible for:
-- Querying world packs for lore entries
-- Filtering relevant lore based on context
-- Formatting lore for inclusion in agent prompts
+This service provides hybrid search (keyword + vector) for world lore entries.
+It's a pure logic service without LLM reasoning, designed to be used as a tool by GM Agent.
 
-Based on GUIDE.md Section 4.3 (Lore Agent's retrieval strategy).
+Refactored from LoreAgent to separate deterministic retrieval from AI agent orchestration.
 """
 
-from typing import Any
+import jieba
 
-from langchain_core.messages import SystemMessage
-
-from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
 
 # Hybrid search configuration
-KEYWORD_MATCH_WEIGHT = 1.0  # Strong signal from explicit keyword match
-VECTOR_MATCH_WEIGHT = 0.7  # Secondary signal from semantic similarity
+# Updated for Qwen3-Embedding which provides better multilingual semantic understanding
+KEYWORD_MATCH_WEIGHT = 2.0  # Strong signal from explicit primary keyword match
+KEYWORD_SECONDARY_WEIGHT = 1.0  # Lower weight for secondary keyword matches
+VECTOR_MATCH_WEIGHT = 0.8  # Secondary signal from semantic similarity (improved model)
 DUAL_MATCH_BOOST = 1.5  # Boost for entries matching both keyword and vector
 
 
-class LoreAgent(BaseAgent):
+class LoreService:
     """
-    Lore Agent - world lore retrieval specialist.
+    Lore Service - world lore retrieval specialist.
 
     Responsibilities:
     - Query world packs for relevant lore entries
-    - Search by keywords with context filtering
-    - Format lore for use in other agents' prompts
-    - Provide background information for scenes
+    - Hybrid search combining keyword matching and vector similarity
+    - Filter results by location/region context
+    - Format lore for use in GM Agent prompts
+
+    This is a pure service class (no LLM), designed to be called directly
+    by GM Agent as a tool function.
 
     Examples:
-        >>> agent = LoreAgent(llm, world_pack_loader)
-        >>> result = await agent.process({
-        ...     "query": "暴风城的历史",
-        ...     "context": "玩家询问暴风城的背景"
-        ... })
+        >>> lore_service = LoreService(world_pack_loader, vector_store)
+        >>> result = lore_service.search(
+        ...     query="暴风城的历史",
+        ...     context="玩家询问暴风城的背景",
+        ...     world_pack_id="demo_pack",
+        ...     current_location="stormwind_square",
+        ...     current_region="stormwind",
+        ...     lang="cn"
+        ... )
+        >>> print(result)
     """
 
     def __init__(
         self,
-        llm,
         world_pack_loader: WorldPackLoader,
         vector_store: VectorStoreService | None = None,
     ):
         """
-        Initialize Lore Agent.
+        Initialize Lore Service.
 
         Args:
-            llm: Language model instance
             world_pack_loader: Service for loading world packs
             vector_store: Optional VectorStoreService for semantic search
         """
-        super().__init__(llm, "lore_agent")
         self.world_pack_loader = world_pack_loader
         self.vector_store = vector_store
 
-    async def process(self, input_data: dict[str, Any]) -> AgentResponse:
+    def search(
+        self,
+        query: str,
+        context: str = "",
+        world_pack_id: str = "demo_pack",
+        current_location: str | None = None,
+        current_region: str | None = None,
+        lang: str = "cn",
+    ) -> str:
         """
-        Process a lore query.
+        Search for relevant lore entries and return formatted result.
+
+        This is the main entry point for GM Agent to query lore.
 
         Args:
-            input_data: Must contain:
-                - query: What the player is asking about
-                - context: Current game context
-                - world_pack_id: Optional specific pack to query
-                - current_location: (Optional) Current location ID for filtering
-                - current_region: (Optional) Current region ID for filtering
+            query: What player is asking about
+            context: Current game context
+            world_pack_id: Specific pack to query
+            current_location: (Optional) Current location ID for filtering
+            current_region: (Optional) Current region ID for filtering
+            lang: Language code ("cn" or "en")
 
         Returns:
-            AgentResponse with lore information
-        """
-        # Extract parameters
-        query = input_data.get("query", "")
-        context = input_data.get("context", "")
-        world_pack_id = input_data.get("world_pack_id", "demo_pack")
-        current_location = input_data.get("current_location")
-        current_region = input_data.get("current_region")
+            Formatted lore text string
 
+        Raises:
+            Exception: If world pack loading fails
+        """
         if not query:
-            return AgentResponse(
-                content="",
-                success=False,
-                error="Lore Agent: No query provided",
-                metadata={"agent": self.agent_name},
-            )
+            return f"{'未提供查询内容。' if lang == 'cn' else 'No query provided.'}"
 
         try:
-            # Load the world pack
+            # Load world pack
             world_pack = self.world_pack_loader.load(world_pack_id)
 
             # Search for relevant lore entries with location filtering
@@ -98,32 +101,18 @@ class LoreAgent(BaseAgent):
                 world_pack, query, context, current_location, current_region
             )
 
-            # Format the lore for use
-            formatted_lore = self._format_lore(lore_entries, query, context)
+            # Format lore for use
+            formatted_lore = self._format_lore(lore_entries, query, context, lang)
 
-            return AgentResponse(
-                content=formatted_lore,
-                metadata={
-                    "agent": self.agent_name,
-                    "query": query,
-                    "entries_found": len(lore_entries),
-                    "world_pack_id": world_pack_id,
-                    "current_location": current_location,
-                    "current_region": current_region,
-                },
-                success=True,
-            )
+            return formatted_lore
 
         except Exception as exc:
-            return AgentResponse(
-                content="",
-                success=False,
-                error=f"Lore Agent error: {str(exc)}",
-                metadata={
-                    "agent": self.agent_name,
-                    "query": query,
-                },
-            )
+            # Return error message instead of raising
+            # This allows GM Agent to continue gracefully
+            if lang == "cn":
+                return f"检索背景信息时出错: {str(exc)}"
+            else:
+                return f"Error retrieving lore: {str(exc)}"
 
     def _search_lore(
         self,
@@ -144,7 +133,7 @@ class LoreAgent(BaseAgent):
 
         Args:
             world_pack: WorldPack instance
-            query: What the player is asking about
+            query: What player is asking about
             context: Current game context
             current_location: (Optional) Current location ID for filtering
             current_region: (Optional) Current region ID for filtering
@@ -164,13 +153,14 @@ class LoreAgent(BaseAgent):
         # Hybrid search: combine keyword and vector scores
         entry_scores = {}
 
-        # Step 1: Keyword matching
+        # Step 1: Keyword matching (with different weights for primary vs secondary)
         search_terms = self._extract_search_terms(query)
         keyword_matched_uids = set()
 
         for term in search_terms:
-            matches = world_pack.search_entries_by_keyword(term, include_secondary=True)
-            for entry in matches:
+            # First, check primary keywords (higher weight)
+            primary_matches = world_pack.search_entries_by_keyword(term, include_secondary=False)
+            for entry in primary_matches:
                 keyword_matched_uids.add(entry.uid)
                 if entry.uid not in entry_scores:
                     entry_scores[entry.uid] = {
@@ -180,10 +170,25 @@ class LoreAgent(BaseAgent):
                         "vector_match": False,
                     }
 
+            # Then, check secondary keywords (lower weight, only if not already matched)
+            secondary_matches = world_pack.search_entries_by_keyword(term, include_secondary=True)
+            for entry in secondary_matches:
+                # Skip if this was already a primary match
+                if entry.uid in keyword_matched_uids:
+                    continue
+                keyword_matched_uids.add(entry.uid)
+                if entry.uid not in entry_scores:
+                    entry_scores[entry.uid] = {
+                        "entry": entry,
+                        "score": KEYWORD_SECONDARY_WEIGHT,
+                        "keyword_match": True,
+                        "vector_match": False,
+                    }
+
         # Step 2: Vector similarity search
         try:
             # Determine language for search
-            lang = "cn" if any("\u4e00" <= c <= "\u9fff" for c in query) else "en"
+            search_lang = "cn" if any("\u4e00" <= c <= "\u9fff" for c in query) else "en"
             collection_name = f"lore_entries_{world_pack.pack_info.id}"
 
             # Search for similar documents (top 10)
@@ -191,7 +196,7 @@ class LoreAgent(BaseAgent):
                 collection_name=collection_name,
                 query_text=query,
                 n_results=10,
-                where={"lang": lang},
+                where={"lang": search_lang},
                 include=["metadatas", "distances"],
             )
 
@@ -201,12 +206,13 @@ class LoreAgent(BaseAgent):
                     results["metadatas"][0], results["distances"][0], strict=True
                 ):
                     uid = metadata["uid"]
-                    # Convert distance to similarity (lower distance = higher similarity)
-                    similarity = 1.0 - min(distance, 1.0)
+                    # Convert cosine distance to similarity
+                    # Cosine distance range: [0, 2], where 0 = identical, 2 = opposite
+                    similarity = 1.0 - distance
                     vector_score = VECTOR_MATCH_WEIGHT * similarity
 
                     if uid in entry_scores:
-                        # Dual match: boost the score
+                        # Dual match: boost score
                         entry_scores[uid]["score"] *= DUAL_MATCH_BOOST
                         entry_scores[uid]["vector_match"] = True
                     else:
@@ -240,10 +246,7 @@ class LoreAgent(BaseAgent):
         )
 
         # Step 5: Sort by score (desc), then by order (asc)
-        sorted_entries = sorted(
-            filtered_scores,
-            key=lambda x: (-x["score"], x["entry"].order),
-        )
+        sorted_entries = sorted(filtered_scores, key=lambda x: (-x["score"], x["entry"].order))
 
         # Return top 5
         return [item["entry"] for item in sorted_entries[:5]]
@@ -353,7 +356,7 @@ class LoreAgent(BaseAgent):
 
     def _extract_search_terms(self, query: str) -> list[str]:
         """
-        Extract search terms from a query.
+        Extract search terms from a query using jieba for Chinese segmentation.
 
         Args:
             query: Player's query text
@@ -361,8 +364,7 @@ class LoreAgent(BaseAgent):
         Returns:
             List of relevant search terms
         """
-        # Simple keyword extraction - can be enhanced with NLP
-        # Split by common delimiters and filter out stop words
+        # Chinese stop words
         stop_words = {
             "的",
             "了",
@@ -378,24 +380,63 @@ class LoreAgent(BaseAgent):
             "什么",
             "怎么",
             "如何",
+            "这",
+            "那",
+            "就",
+            "也",
+            "都",
+            "很",
+            "非常",
+            "a",
+            "an",
+            "the",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "should",
         }
 
-        # Extract Chinese and English terms
+        # Use jieba for Chinese word segmentation
         terms = []
-        for word in query.split():
+        words = jieba.lcut(query)
+
+        for word in words:
             # Remove punctuation
-            clean_word = word.strip("，。！？：；''()（）[]【】")
-            if clean_word and clean_word not in stop_words and len(clean_word) > 1:
+            clean_word = word.strip("，。！？：；''()（）[]【】\"\"")
+            # Filter: must not be stop word, and length > 1
+            if (
+                clean_word
+                and clean_word not in stop_words
+                and len(clean_word) > 1
+                and not clean_word.isspace()
+            ):
                 terms.append(clean_word)
 
-        return terms[:5]  # Limit to 5 terms to avoid noise
+        # Remove duplicates and limit to 5 terms
+        seen = set()
+        unique_terms = []
+        for term in terms:
+            if term not in seen:
+                seen.add(term)
+                unique_terms.append(term)
+                if len(unique_terms) >= 5:
+                    break
 
-    def _format_lore(
-        self,
-        entries: list,
-        query: str,
-        context: str,
-    ) -> str:
+        return unique_terms
+
+    def _format_lore(self, entries: list, query: str, context: str, lang: str = "cn") -> str:
         """
         Format lore entries for use in prompts.
 
@@ -403,19 +444,23 @@ class LoreAgent(BaseAgent):
             entries: List of lore entries
             query: Original query
             context: Game context
+            lang: Language code
 
         Returns:
             Formatted lore string
         """
         if not entries:
-            return f"没有找到与'{query}'相关的背景信息。"
+            if lang == "cn":
+                return f"没有找到与'{query}'相关的背景信息。"
+            else:
+                return f"No background information found related to '{query}'."
 
         # Format each entry
         formatted_parts = []
 
         for entry in entries:
-            # Get Chinese content (default)
-            content = entry.content.get("cn") or entry.content.get("en", "")
+            # Get content in the requested language
+            content = entry.content.get(lang) or entry.content.get("en", "")
 
             # Add to formatted parts
             if entry.key:
@@ -427,20 +472,10 @@ class LoreAgent(BaseAgent):
         # Join all entries
         lore_text = "\n\n".join(formatted_parts)
 
-        # Add header
-        header = f"与'{query}'相关的背景信息：\n"
+        # Add header based on language
+        if lang == "cn":
+            header = f"与'{query}'相关的背景信息：\n"
+        else:
+            header = f"Background information related to '{query}':\n"
+
         return header + lore_text
-
-    def _build_prompt(self, input_data: dict[str, Any]) -> list[SystemMessage]:
-        """
-        Build prompt for LLM (not used in current implementation).
-
-        Args:
-            input_data: Input data (unused)
-
-        Returns:
-            Empty list (Lore Agent uses direct search, not LLM)
-        """
-        # Lore Agent uses direct search rather than LLM generation
-        # This method is required by BaseAgent but not used
-        return []

@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from src.backend.services.embedding import QwenEmbeddingFunction
 from src.backend.services.vector_store import VectorStoreService, get_vector_store
 
 
@@ -71,11 +72,13 @@ class TestVectorStoreServiceUnit:
             collection = store.get_or_create_collection("test_collection")
 
             assert collection is mock_collection
-            mock_client.get_or_create_collection.assert_called_once_with(
-                name="test_collection",
-                metadata=None,
-                embedding_function=None,
-            )
+            # Verify the call was made with correct parameters
+            call_args = mock_client.get_or_create_collection.call_args
+            assert call_args[1]["name"] == "test_collection"
+            # Metadata should include hnsw:space=cosine configuration
+            assert call_args[1]["metadata"] == {"hnsw:space": "cosine"}
+            # embedding_function should be a QwenEmbeddingFunction instance (cached)
+            assert isinstance(call_args[1]["embedding_function"], QwenEmbeddingFunction)
 
     @patch("src.backend.services.vector_store.chromadb.PersistentClient")
     def test_add_documents_with_ids(self, mock_client_class):

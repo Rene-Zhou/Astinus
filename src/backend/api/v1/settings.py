@@ -381,20 +381,20 @@ async def reload_agents():
     try:
         import src.backend.main as main_module
         from src.backend.agents.gm import GMAgent
-        from src.backend.agents.lore import LoreAgent
         from src.backend.agents.npc import NPCAgent
         from src.backend.core.config import get_settings
         from src.backend.core.llm_provider import create_llm_from_settings
         from src.backend.models.character import PlayerCharacter, Trait
         from src.backend.models.game_state import GameState
         from src.backend.models.i18n import LocalizedString
+        from src.backend.services.lore import LoreService
 
         settings = get_settings()
 
         if not settings.is_new_format():
             return ReloadAgentsResponse(
                 success=False,
-                message="Settings format is outdated. Please restart the backend.",
+                message="Settings format is outdated. Please restart backend.",
             )
 
         if settings.agents is None:
@@ -413,7 +413,7 @@ async def reload_agents():
         if main_module.world_pack_loader is None:
             return ReloadAgentsResponse(
                 success=False,
-                message="World pack loader not initialized. Please restart the backend.",
+                message="World pack loader not initialized. Please restart backend.",
             )
 
         default_pack_id = "demo_pack"
@@ -462,15 +462,7 @@ async def reload_agents():
             active_npc_ids=active_npc_ids,
         )
 
-        lore_agent = LoreAgent(
-            llm=llm,
-            world_pack_loader=main_module.world_pack_loader,
-            vector_store=main_module.vector_store,
-        )
-
-        sub_agents: dict = {
-            "lore": lore_agent,
-        }
+        sub_agents: dict = {}
 
         for npc_id in active_npc_ids:
             npc_data = world_pack.get_npc(npc_id)
@@ -479,12 +471,18 @@ async def reload_agents():
                 agent_key = f"npc_{npc_id}"
                 sub_agents[agent_key] = npc_agent
 
+        lore_service = LoreService(
+            world_pack_loader=main_module.world_pack_loader,
+            vector_store=main_module.vector_store,
+        )
+
         main_module.gm_agent = GMAgent(
             llm=llm,
             sub_agents=sub_agents,
             game_state=game_state,
             world_pack_loader=main_module.world_pack_loader,
             vector_store=main_module.vector_store,
+            lore_service=lore_service,
         )
 
         provider_info = f"{settings.agents.gm.provider_id}/{settings.agents.gm.model}"

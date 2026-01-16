@@ -310,8 +310,7 @@ async def _handle_player_input(
     phase = gm_agent.game_state.current_phase.value
     await manager.send_phase_change(session_id, phase)
 
-    # Check if dice check is needed
-    if result.metadata.get("needs_check") and result.metadata.get("dice_check"):
+    if result.metadata.get("dice_check"):
         # Store the dice check context for later use when processing result
         dice_check = result.metadata["dice_check"]
         gm_agent.game_state.temp_context["pending_dice_check"] = dice_check

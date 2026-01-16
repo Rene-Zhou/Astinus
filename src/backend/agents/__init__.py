@@ -3,7 +3,6 @@
 from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.agents.director import DirectorAgent
 from src.backend.agents.gm import GMAgent
-from src.backend.agents.lore import LoreAgent
 from src.backend.agents.npc import NPCAgent
 
 __all__ = [
@@ -11,6 +10,5 @@ __all__ = [
     "BaseAgent",
     "DirectorAgent",
     "GMAgent",
-    "LoreAgent",
     "NPCAgent",
 ]

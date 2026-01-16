@@ -14,6 +14,8 @@ from typing import Any
 import chromadb
 from chromadb.api.types import EmbeddingFunction
 
+from src.backend.services.embedding import QwenEmbeddingFunction
+
 
 class VectorStoreService:
     """
@@ -79,6 +81,7 @@ class VectorStoreService:
 
         # Lazy initialization - client created on first use
         self._client = None
+        self._cached_embedding_function: EmbeddingFunction | None = None
         self._initialized = True
 
     def _get_client(self) -> chromadb.PersistentClient:
@@ -101,15 +104,31 @@ class VectorStoreService:
         """
         Get existing collection or create new one.
 
+        Uses Qwen3-Embedding-0.6B by default for multilingual support with
+        cosine distance metric for semantic similarity.
+
+        The embedding function is cached to prevent repeatedly loading the model.
+
         Args:
             name: Collection name
-            metadata: Optional collection metadata
+            metadata: Optional collection metadata (will add hnsw:space="cosine")
             embedding_function: Optional custom embedding function
-                                (default: all-MiniLM-L6-v2)
+                                (default: Qwen3-Embedding-0.6B, cached)
 
         Returns:
             ChromaDB collection
         """
+        # Use cached QwenEmbeddingFunction by default to avoid reloading the model
+        if embedding_function is None:
+            if self._cached_embedding_function is None:
+                self._cached_embedding_function = QwenEmbeddingFunction()
+            embedding_function = self._cached_embedding_function
+
+        # Configure cosine distance for normalized embeddings
+        if metadata is None:
+            metadata = {}
+        metadata["hnsw:space"] = "cosine"
+
         client = self._get_client()
         return client.get_or_create_collection(
             name=name,
@@ -210,6 +229,23 @@ class VectorStoreService:
         with contextlib.suppress(ValueError):
             client.delete_collection(name=collection_name)
 
+    def get_collection_metadata(self, collection_name: str) -> dict[str, Any] | None:
+        """
+        Get metadata for an existing collection.
+
+        Args:
+            collection_name: Name of the collection
+
+        Returns:
+            Collection metadata dict, or None if collection doesn't exist
+        """
+        client = self._get_client()
+        try:
+            collection = client.get_collection(name=collection_name)
+            return collection.metadata
+        except Exception:
+            return None
+
     def list_collections(self) -> list[str]:
         """
         List all collection names.
@@ -246,12 +282,21 @@ class VectorStoreService:
         Reset singleton instance (useful for testing).
 
         Warning: This will close the current client and reset the singleton.
+        Explicitly deletes the ML model to free memory (important for testing).
         """
         if cls._instance is not None:
             if cls._instance._client is not None:
                 # ChromaDB client doesn't need explicit close
                 cls._instance._client = None
+            # Explicitly delete embedding function to free ML model memory
+            if cls._instance._cached_embedding_function is not None:
+                del cls._instance._cached_embedding_function
+                cls._instance._cached_embedding_function = None
             cls._instance = None
+        # Force garbage collection to release large model memory
+        import gc
+
+        gc.collect()
 
 
 # Global singleton accessor

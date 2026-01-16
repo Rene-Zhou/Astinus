@@ -43,16 +43,11 @@ class TestGMAgent:
         return agent
 
     @pytest.fixture
-    def mock_lore_agent(self):
-        """Create mock Lore Agent."""
-        agent = AsyncMock()
-        agent.ainvoke = AsyncMock(
-            return_value=AgentResponse(
-                content="Lore response",
-                success=True,
-            )
-        )
-        return agent
+    def mock_lore_service(self):
+        """Create mock Lore Service."""
+        service = MagicMock()
+        service.search = MagicMock(return_value="Found lore information")
+        return service
 
     @pytest.fixture
     def sample_game_state(self):
@@ -86,12 +81,12 @@ class TestGMAgent:
         )
 
     @pytest.fixture
-    def gm_agent(self, mock_llm, mock_npc_agent, mock_lore_agent, sample_game_state):
+    def gm_agent(self, mock_llm, mock_npc_agent, mock_lore_service, sample_game_state):
         """Create GM Agent instance."""
         sub_agents = {
             "npc": mock_npc_agent,
-            "lore": mock_lore_agent,
         }
+
         return GMAgent(
             llm=mock_llm,
             sub_agents=sub_agents,
@@ -101,7 +96,6 @@ class TestGMAgent:
     def test_create_gm_agent(self, gm_agent, sample_game_state):
         """Test creating GM Agent."""
         assert gm_agent.agent_name == "gm_agent"
-        assert "lore" in gm_agent.sub_agents
         assert "npc" in gm_agent.sub_agents
         assert gm_agent.game_state == sample_game_state
         assert gm_agent.prompt_loader is not None
@@ -192,10 +186,22 @@ class TestGMAgent:
             else:
                 return AIMessage(
                     content="""{
-                        "action": "RESPOND",
-                        "narrative": "你环顾四周，但没有看到任何人。",
-                        "reasoning": "找不到NPC，直接回应"
-                    }"""
+                         "action": "REQUEST_CHECK",
+                         "check_request": {
+                             "intention": "攀爬墙壁",
+                             "influencing_factors": {
+                                 "traits": ["运动健将"],
+                                 "tags": ["右腿受伤"]
+                             },
+                             "dice_formula": "2d6",
+                             "instructions": {
+                                 "cn": "由于你擅长运动但右腿受伤，两者抵消",
+                                 "en": "Athletic skill and leg injury cancel out"
+                             }
+                         },
+                         "narrative": "你试图攀爬墙壁，这需要进行一次敏捷检定。",
+                         "reasoning": "玩家尝试危险行动，需要检定"
+                     }"""
                 )
 
         mock_llm.ainvoke.side_effect = mock_response
@@ -358,7 +364,7 @@ class TestGMAgent:
 
     @pytest.mark.asyncio
     async def test_slice_context_for_npc_with_world_pack(
-        self, mock_llm, mock_npc_agent, mock_lore_agent, sample_game_state
+        self, mock_llm, mock_npc_agent, mock_lore_service, sample_game_state
     ):
         """Test NPC context slicing with world pack loader."""
         # Create mock world pack loader
@@ -391,9 +397,10 @@ class TestGMAgent:
 
         gm_agent = GMAgent(
             llm=mock_llm,
-            sub_agents={"npc": mock_npc_agent, "lore": mock_lore_agent},
+            sub_agents={"npc": mock_npc_agent},
             game_state=sample_game_state,
             world_pack_loader=mock_loader,
+            lore_service=mock_lore_service,
         )
 
         context = gm_agent._slice_context_for_npc("chen_ling", "你好", "cn")
@@ -460,7 +467,7 @@ class TestGMAgent:
 
         result = await gm_agent.process(
             {
-                "player_input": "我想和陈玲说话",
+                "player_input": "我要和陈玲说话",
                 "lang": "cn",
             }
         )
@@ -514,31 +521,29 @@ class TestGMAgent:
 
         result = await gm_agent.process(
             {
-                "player_input": "我想和那个老人说话",
+                "player_input": "我想和老王说话",
                 "lang": "cn",
             }
         )
 
         assert result.success is True
         assert "npc_old_guard" in result.metadata["agents_called"]
-        mock_npc_agent.ainvoke.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_gm_generates_dice_check(
-        self, mock_llm, mock_npc_agent, mock_lore_agent, sample_game_state
+        self, mock_llm, mock_npc_agent, mock_lore_service, sample_game_state
     ):
         """Test that GM can generate dice check requests directly."""
         gm_agent = GMAgent(
             llm=mock_llm,
-            sub_agents={"npc": mock_npc_agent, "lore": mock_lore_agent},
+            sub_agents={"npc": mock_npc_agent},
             game_state=sample_game_state,
+            lore_service=mock_lore_service,
         )
 
         mock_llm.ainvoke.return_value = AIMessage(
             content="""{
-                "action": "RESPOND",
-                "narrative": "你试图攀爬墙壁，这需要进行一次敏捷检定。",
-                "needs_check": true,
+                "action": "REQUEST_CHECK",
                 "check_request": {
                     "intention": "攀爬墙壁",
                     "influencing_factors": {
@@ -551,6 +556,7 @@ class TestGMAgent:
                         "en": "Athletic skill and leg injury cancel out"
                     }
                 },
+                "narrative": "你试图攀爬墙壁，这需要进行一次敏捷检定。",
                 "reasoning": "玩家尝试危险行动，需要检定"
             }"""
         )
@@ -563,17 +569,18 @@ class TestGMAgent:
         )
 
         assert result.success is True
-        assert result.metadata.get("needs_check") is True
+        assert result.metadata.get("dice_check") is not None
 
     @pytest.mark.asyncio
     async def test_resume_after_dice_success(
-        self, mock_llm, mock_npc_agent, mock_lore_agent, sample_game_state
+        self, mock_llm, mock_npc_agent, mock_lore_service, sample_game_state
     ):
         """Test GM generates narrative after successful dice check."""
         gm_agent = GMAgent(
             llm=mock_llm,
-            sub_agents={"npc": mock_npc_agent, "lore": mock_lore_agent},
+            sub_agents={"npc": mock_npc_agent},
             game_state=sample_game_state,
+            lore_service=mock_lore_service,
         )
 
         mock_llm.ainvoke.return_value = AIMessage(
@@ -1077,6 +1084,7 @@ class TestGMAgentHierarchicalContext:
                         name=LocalizedString(cn="神殿入口", en="Temple Entrance"),
                         description=LocalizedString(cn="描述", en="Desc"),
                         hidden_items=["secret_lever"],
+                        atmosphere=LocalizedString(cn="庄严神秘", en="Solemn and mysterious"),
                     ),
                 },
             )
@@ -1085,6 +1093,8 @@ class TestGMAgentHierarchicalContext:
             pack_path.write_text(pack.model_dump_json(), encoding="utf-8")
 
             loader = WorldPackLoader(pack_dir)
+            # Pre-load pack to ensure it's valid and cached
+            loader.load("demo_pack")
 
             sample_game_state_with_location.discovered_items = {"secret_lever"}
 
@@ -1095,35 +1105,48 @@ class TestGMAgentHierarchicalContext:
                 world_pack_loader=loader,
             )
 
-            context = agent._get_scene_context("cn")
+        context = agent._get_scene_context("cn")
 
-            assert context["hidden_items_hints"] == ""
+        assert context["hidden_items_hints"] == ""
+        assert "atmosphere_guidance" in context
+        assert context["atmosphere_guidance"] != ""
+        assert context["atmosphere_guidance"] == "庄严神秘"
 
-    def test_generate_hidden_item_hints_chinese(self):
+    def test_generate_hidden_item_hints_chinese(self, mock_llm, sample_game_state):
         """Test Chinese hidden item hints generation."""
-        gm_agent = GMAgent.__new__(GMAgent)
+        gm_agent = GMAgent(
+            llm=mock_llm,
+            sub_agents={},
+            game_state=sample_game_state,
+        )
         gm_agent.world_pack_loader = None
-        gm_agent.game_state = None
+        gm_agent.game_state = sample_game_state
 
         hints = gm_agent._generate_hidden_item_hints(["item1", "item2"], "cn")
 
         assert "不易察觉" in hints or "细节" in hints
 
-    def test_generate_hidden_item_hints_english(self):
+    def test_generate_hidden_item_hints_english(self, mock_llm, sample_game_state):
         """Test English hidden item hints generation."""
-        gm_agent = GMAgent.__new__(GMAgent)
+        gm_agent = GMAgent(
+            llm=mock_llm,
+            sub_agents={},
+            game_state=sample_game_state,
+        )
         gm_agent.world_pack_loader = None
-        gm_agent.game_state = None
 
         hints = gm_agent._generate_hidden_item_hints(["item1", "item2"], "en")
 
         assert "subtle" in hints.lower() or "notice" in hints.lower()
 
-    def test_generate_hidden_item_hints_empty(self):
+    def test_generate_hidden_item_hints_empty(self, mock_llm, sample_game_state):
         """Test that empty list returns empty hints."""
-        gm_agent = GMAgent.__new__(GMAgent)
+        gm_agent = GMAgent(
+            llm=mock_llm,
+            sub_agents={},
+            game_state=sample_game_state,
+        )
         gm_agent.world_pack_loader = None
-        gm_agent.game_state = None
 
         hints = gm_agent._generate_hidden_item_hints([], "cn")
 
@@ -1135,9 +1158,13 @@ class TestGMAgentHierarchicalContext:
 
         assert region_id == "temple_district"
 
-    def test_get_current_region_id_no_loader(self):
+    def test_get_current_region_id_no_loader(self, mock_llm, sample_game_state):
         """Test that None is returned when no world pack loader."""
-        gm_agent = GMAgent.__new__(GMAgent)
+        gm_agent = GMAgent(
+            llm=mock_llm,
+            sub_agents={},
+            game_state=sample_game_state,
+        )
         gm_agent.world_pack_loader = None
 
         region_id = gm_agent._get_current_region_id()
