@@ -17,7 +17,6 @@ from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import delete, select
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.backend.models.persistence import (
