@@ -4,6 +4,7 @@ World Pack loading and management service.
 Provides functionality to load, validate, and query world packs from JSON files.
 """
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -122,11 +123,52 @@ class WorldPackLoader:
         self._cache[pack_id] = pack
         return pack
 
+    def _compute_pack_hash(self, pack: WorldPack) -> str:
+        """
+        Compute hash of world pack content for change detection.
+
+        Args:
+            pack: WorldPack instance
+
+        Returns:
+            SHA256 hash string
+        """
+        # Create normalized dict for hashing
+        pack_dict = {
+            "info": pack.info.model_dump(mode="json"),
+            "entries": {
+                uid: entry.model_dump(mode="json")
+                for uid, entry in sorted(pack.entries.items())
+            },
+        }
+
+        # Use canonical JSON representation (sorted keys) for consistency
+        canonical_json = json.dumps(pack_dict, sort_keys=True, ensure_ascii=False)
+        return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+
+    def _get_stored_hash(self, collection_name: str) -> str | None:
+        """
+        Get stored hash from vector store collection metadata.
+
+        Args:
+            collection_name: Name of the collection
+
+        Returns:
+            Stored hash string, or None if not found
+        """
+        if self.vector_store is None:
+            return None
+        metadata = self.vector_store.get_collection_metadata(collection_name)
+        if metadata:
+            return metadata.get("pack_hash")
+        return None
+
     def _index_lore_entries(self, pack_id: str, pack: WorldPack) -> None:
         """
         Index lore entries for vector search.
 
         Creates separate documents for Chinese and English versions of each entry.
+        Uses hash detection to automatically rebuild index when world pack changes.
 
         Args:
             pack_id: World pack identifier
@@ -136,6 +178,30 @@ class WorldPackLoader:
             return
 
         collection_name = f"lore_entries_{pack_id}"
+        current_hash = self._compute_pack_hash(pack)
+        stored_hash = self._get_stored_hash(collection_name)
+
+        # Check if reindexing is needed
+        needs_reindex = False
+
+        if stored_hash is None:
+            # First time indexing
+            needs_reindex = True
+            print(f"   → 首次索引 lore entries ({len(pack.entries)} entries)")
+        elif stored_hash != current_hash:
+            # World pack has been updated
+            needs_reindex = True
+            print(f"   → 检测到世界包更新，重建索引 (hash: {current_hash[:8]}...)")
+
+        if not needs_reindex:
+            print(f"   → Lore 索引已是最新 (hash: {current_hash[:8]}...)")
+            return
+
+        # Prepare for reindexing - delete old collection if exists
+        try:
+            self.vector_store.delete_collection(collection_name)
+        except Exception:
+            pass  # Collection doesn't exist, ignore error
 
         # Prepare documents and metadata
         documents = []
@@ -177,13 +243,35 @@ class WorldPackLoader:
             )
             ids.append(f"{pack_id}_lore_{entry.uid}_en")
 
-        # Add to vector store
-        self.vector_store.add_documents(
-            collection_name=collection_name,
-            documents=documents,
-            metadatas=metadatas,
-            ids=ids,
-        )
+        # Create new collection and add documents with hash metadata
+        try:
+            collection = self.vector_store.get_or_create_collection(
+                collection_name,
+                metadata={"pack_hash": current_hash, "pack_id": pack_id}
+            )
+            collection.add(
+                documents=documents,
+                metadatas=metadatas,
+                ids=ids,
+            )
+            print(f"   ✅ 索引完成: {len(ids)} 个文档")
+        except Exception as exc:
+            if "dimension" in str(exc).lower():
+                # Embedding dimension mismatch (model upgrade), force rebuild
+                print(f"   ⚠️ 检测到 embedding 维度不匹配，重建索引...")
+                self.vector_store.delete_collection(collection_name)
+                collection = self.vector_store.get_or_create_collection(
+                    collection_name,
+                    metadata={"pack_hash": current_hash, "pack_id": pack_id}
+                )
+                collection.add(
+                    documents=documents,
+                    metadatas=metadatas,
+                    ids=ids,
+                )
+                print(f"   ✅ 索引完成: {len(ids)} 个文档")
+            else:
+                raise
 
     def _migrate_pack_to_hierarchical(self, pack: WorldPack) -> None:
         """

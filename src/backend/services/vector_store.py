@@ -229,6 +229,23 @@ class VectorStoreService:
         with contextlib.suppress(ValueError):
             client.delete_collection(name=collection_name)
 
+    def get_collection_metadata(self, collection_name: str) -> dict[str, Any] | None:
+        """
+        Get metadata for an existing collection.
+
+        Args:
+            collection_name: Name of the collection
+
+        Returns:
+            Collection metadata dict, or None if collection doesn't exist
+        """
+        client = self._get_client()
+        try:
+            collection = client.get_collection(name=collection_name)
+            return collection.metadata
+        except Exception:
+            return None
+
     def list_collections(self) -> list[str]:
         """
         List all collection names.
