@@ -94,32 +94,6 @@ class TestGMAgent:
             sub_agents=sub_agents,
             game_state=mock_npc_agent,
         )
-            ],
-            tags=["右腿受伤"],
-        )
-
-        return GameState(
-            session_id="test-session",
-            world_pack_id="demo-pack",
-            player=character,
-            current_location="暗室",
-            active_npc_ids=["chen_ling"],
-        )
-
-    @pytest.fixture
-    def gm_agent(self, mock_llm):
-        """Create GM Agent instance."""
-        sub_agents = {
-            "npc": AsyncMock(),
-        }
-
-        return GMAgent(
-            llm=mock_llm,
-            sub_agents=sub_agents,
-            game_state=None,
-        )
-        )
-        return agent
 
     @pytest.fixture
     def mock_lore_agent(self):
@@ -1191,11 +1165,10 @@ class TestGMAgentHierarchicalContext:
 
         context = agent._get_scene_context("cn")
 
-        assert "hidden_items_hints"] == ""
+        assert context["hidden_items_hints"] == ""
         assert "atmosphere_guidance" in context
         assert context["atmosphere_guidance"] != ""
         assert context["atmosphere_guidance"] == "庄严神秘"
-        assert "atmosphere_guidance" in context
 
     def test_generate_hidden_item_hints_chinese(self):
         """Test Chinese hidden item hints generation."""

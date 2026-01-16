@@ -444,6 +444,19 @@ class GMAgent(BaseAgent):
                 agent_context=result.get("agent_context", {}),
                 reasoning=result.get("reasoning", ""),
             )
+        elif action_str == "REQUEST_CHECK":
+            return GMAction(
+                action_type=GMActionType.REQUEST_CHECK,
+                content="",
+                check_request=result.get("check_request"),
+                reasoning=result.get("reasoning", ""),
+            )
+        elif action_str == "SEARCH_LORE":
+            return GMAction(
+                action_type=GMActionType.SEARCH_LORE,
+                content=result.get("content", ""),
+                reasoning=result.get("reasoning", ""),
+            )
         else:
             return GMAction(
                 action_type=GMActionType.RESPOND,
