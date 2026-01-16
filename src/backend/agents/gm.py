@@ -164,7 +164,8 @@ class GMAgent(BaseAgent):
 
             if action.action_type == GMActionType.REQUEST_CHECK:
                 check_request = action.check_request or {}
-                narrative = action.content
+                # REQUEST_CHECK does not include narrative - only the dice check request
+                narrative = ""
 
                 # Save ReAct state
                 self.game_state.save_react_state(

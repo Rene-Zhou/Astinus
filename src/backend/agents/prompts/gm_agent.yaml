@@ -22,7 +22,7 @@ cn:
     2. **背景知识补完**：如果描述玩家涉及的事物或历史时背景信息不足，调用 SEARCH_LORE。
     3. **风险与检定判定**：玩家的行为是否涉及风险（如攀爬、潜行、攻击、说服卫兵等）？
        - 如果需要检定且【尚未进行】，必须使用 REQUEST_CHECK 发起掷骰请求。
-       - 在 REQUEST_CHECK 中，narrative 仅描述尝试的动作，【严禁】包含 NPC 的实质性对话或行动成败的结果。
+       - REQUEST_CHECK 不包含 narrative，只返回掷骰请求，instructions 字段已包含足够的说明。
     4. **NPC 互动判定**：玩家的行为（或检定后的结果）是否需要场景中的 NPC 做出反应？
        - 如果不需要 NPC（如单纯的环境互动），则准备 RESPOND。
        - 如果需要 NPC，进入下一步。
@@ -72,8 +72,7 @@ cn:
           "cn": "为什么有这些修正",
           "en": "Why these modifiers apply"
         }
-      },
-      "narrative": "检定前的叙事（描述玩家准备行动的情景）"
+      }
     }
 
     如果需要检索背景知识：
@@ -220,7 +219,7 @@ en:
     2. **Background Knowledge**: If describing things/history with insufficient background, SEARCH_LORE.
     3. **Risk & Check Assessment**: Does the action involve risk (climbing, sneaking, attacking, persuading guards, etc.)?
        - If check needed and 【not yet performed】, must use REQUEST_CHECK to initiate dice check.
-       - In REQUEST_CHECK, narrative only describes the attempted action. 【FORBIDDEN】 to include NPC's substantial dialogue or action success/failure results.
+       - REQUEST_CHECK does NOT include narrative, only the dice check request. The instructions field contains sufficient explanation.
     4. **NPC Interaction**: Does the action (or post-check result) require NPC reaction?
        - If no NPC needed (pure environmental interaction), prepare RESPOND.
        - If NPC needed, proceed to next step.
@@ -271,8 +270,7 @@ en:
           "cn": "为什么有这些修正",
           "en": "Why these modifiers apply"
         }
-      },
-      "narrative": "Pre-check narrative (describe player preparing the action)"
+      }
     }
 
     If searching for background knowledge:
