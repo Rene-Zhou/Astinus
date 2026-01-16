@@ -137,8 +137,7 @@ class WorldPackLoader:
         pack_dict = {
             "info": pack.info.model_dump(mode="json"),
             "entries": {
-                uid: entry.model_dump(mode="json")
-                for uid, entry in sorted(pack.entries.items())
+                uid: entry.model_dump(mode="json") for uid, entry in sorted(pack.entries.items())
             },
         }
 
@@ -246,8 +245,7 @@ class WorldPackLoader:
         # Create new collection and add documents with hash metadata
         try:
             collection = self.vector_store.get_or_create_collection(
-                collection_name,
-                metadata={"pack_hash": current_hash, "pack_id": pack_id}
+                collection_name, metadata={"pack_hash": current_hash, "pack_id": pack_id}
             )
             collection.add(
                 documents=documents,
@@ -258,11 +256,10 @@ class WorldPackLoader:
         except Exception as exc:
             if "dimension" in str(exc).lower():
                 # Embedding dimension mismatch (model upgrade), force rebuild
-                print(f"   ⚠️ 检测到 embedding 维度不匹配，重建索引...")
+                print("   ⚠️ 检测到 embedding 维度不匹配，重建索引...")
                 self.vector_store.delete_collection(collection_name)
                 collection = self.vector_store.get_or_create_collection(
-                    collection_name,
-                    metadata={"pack_hash": current_hash, "pack_id": pack_id}
+                    collection_name, metadata={"pack_hash": current_hash, "pack_id": pack_id}
                 )
                 collection.add(
                     documents=documents,

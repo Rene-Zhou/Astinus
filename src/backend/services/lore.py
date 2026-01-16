@@ -8,7 +8,6 @@ Refactored from LoreAgent to separate deterministic retrieval from AI agent orch
 """
 
 import jieba
-from typing import Any
 
 from src.backend.services.vector_store import VectorStoreService
 from src.backend.services.world import WorldPackLoader
@@ -160,9 +159,7 @@ class LoreService:
 
         for term in search_terms:
             # First, check primary keywords (higher weight)
-            primary_matches = world_pack.search_entries_by_keyword(
-                term, include_secondary=False
-            )
+            primary_matches = world_pack.search_entries_by_keyword(term, include_secondary=False)
             for entry in primary_matches:
                 keyword_matched_uids.add(entry.uid)
                 if entry.uid not in entry_scores:
@@ -174,9 +171,7 @@ class LoreService:
                     }
 
             # Then, check secondary keywords (lower weight, only if not already matched)
-            secondary_matches = world_pack.search_entries_by_keyword(
-                term, include_secondary=True
-            )
+            secondary_matches = world_pack.search_entries_by_keyword(term, include_secondary=True)
             for entry in secondary_matches:
                 # Skip if this was already a primary match
                 if entry.uid in keyword_matched_uids:
@@ -251,9 +246,7 @@ class LoreService:
         )
 
         # Step 5: Sort by score (desc), then by order (asc)
-        sorted_entries = sorted(
-            filtered_scores, key=lambda x: (-x["score"], x["entry"].order)
-        )
+        sorted_entries = sorted(filtered_scores, key=lambda x: (-x["score"], x["entry"].order))
 
         # Return top 5
         return [item["entry"] for item in sorted_entries[:5]]
@@ -423,7 +416,12 @@ class LoreService:
             # Remove punctuation
             clean_word = word.strip("，。！？：；''()（）[]【】\"\"")
             # Filter: must not be stop word, and length > 1
-            if clean_word and clean_word not in stop_words and len(clean_word) > 1 and not clean_word.isspace():
+            if (
+                clean_word
+                and clean_word not in stop_words
+                and len(clean_word) > 1
+                and not clean_word.isspace()
+            ):
                 terms.append(clean_word)
 
         # Remove duplicates and limit to 5 terms
@@ -438,9 +436,7 @@ class LoreService:
 
         return unique_terms
 
-    def _format_lore(
-        self, entries: list, query: str, context: str, lang: str = "cn"
-    ) -> str:
+    def _format_lore(self, entries: list, query: str, context: str, lang: str = "cn") -> str:
         """
         Format lore entries for use in prompts.
 

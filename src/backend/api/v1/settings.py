@@ -381,13 +381,13 @@ async def reload_agents():
     try:
         import src.backend.main as main_module
         from src.backend.agents.gm import GMAgent
-        from src.backend.services.lore import LoreService
-        from src.backend.services.world import WorldPackLoader
+        from src.backend.agents.npc import NPCAgent
         from src.backend.core.config import get_settings
         from src.backend.core.llm_provider import create_llm_from_settings
         from src.backend.models.character import PlayerCharacter, Trait
         from src.backend.models.game_state import GameState
         from src.backend.models.i18n import LocalizedString
+        from src.backend.services.lore import LoreService
 
         settings = get_settings()
 
@@ -483,114 +483,6 @@ async def reload_agents():
             world_pack_loader=main_module.world_pack_loader,
             vector_store=main_module.vector_store,
             lore_service=lore_service,
-        )
-
-        provider_info = f"{settings.agents.gm.provider_id}/{settings.agents.gm.model}"
-
-        return ReloadAgentsResponse(
-            success=True,
-            message=f"Agents reloaded successfully. Using provider: {provider_info}",
-        )
-
-    except ImportError as exc:
-        return ReloadAgentsResponse(
-            success=False,
-            message=f"Failed to import required modules: {exc}",
-        )
-    except Exception as exc:
-        return ReloadAgentsResponse(
-            success=False,
-            message=f"Failed to reload agents: {exc}",
-        )
-
-        if settings.agents is None:
-            return ReloadAgentsResponse(
-                success=False,
-                message="Agents not configured. Please configure agents in settings.",
-            )
-
-        validation_errors = settings.validate_agent_provider_references()
-        if validation_errors:
-            return ReloadAgentsResponse(
-                success=False,
-                message=f"Configuration errors: {'; '.join(validation_errors)}",
-            )
-
-        if main_module.world_pack_loader is None:
-            return ReloadAgentsResponse(
-                success=False,
-                message="World pack loader not initialized. Please restart the backend.",
-            )
-
-        default_pack_id = "demo_pack"
-        world_pack = main_module.world_pack_loader.load(default_pack_id)
-        starting_location_id: str = "unknown"
-        active_npc_ids: list[str] = []
-
-        for loc_id, loc in world_pack.locations.items():
-            if "starting_area" in loc.tags:
-                starting_location_id = loc_id
-                break
-
-        if starting_location_id == "unknown" and world_pack.locations:
-            starting_location_id = next(iter(world_pack.locations.keys()))
-
-        if starting_location_id in world_pack.locations:
-            active_npc_ids = world_pack.locations[starting_location_id].present_npc_ids or []
-
-        llm = create_llm_from_settings("gm")
-
-        default_character = PlayerCharacter(
-            name="玩家",
-            concept=LocalizedString(
-                cn="冒险者",
-                en="Adventurer",
-            ),
-            traits=[
-                Trait(
-                    name=LocalizedString(cn="勇敢", en="Brave"),
-                    description=LocalizedString(
-                        cn="面对困难不退缩",
-                        en="Faces difficulties without retreat",
-                    ),
-                    positive_aspect=LocalizedString(cn="勇敢", en="Brave"),
-                    negative_aspect=LocalizedString(cn="鲁莽", en="Rash"),
-                )
-            ],
-            tags=[],
-        )
-
-        game_state = GameState(
-            session_id="default-session",
-            world_pack_id=default_pack_id,
-            player=default_character,
-            current_location=starting_location_id,
-            active_npc_ids=active_npc_ids,
-        )
-
-        lore_agent = LoreAgent(
-            llm=llm,
-            world_pack_loader=main_module.world_pack_loader,
-            vector_store=main_module.vector_store,
-        )
-
-        sub_agents: dict = {
-            "lore": lore_agent,
-        }
-
-        for npc_id in active_npc_ids:
-            npc_data = world_pack.get_npc(npc_id)
-            if npc_data:
-                npc_agent = NPCAgent(llm=llm, vector_store=main_module.vector_store)
-                agent_key = f"npc_{npc_id}"
-                sub_agents[agent_key] = npc_agent
-
-        main_module.gm_agent = GMAgent(
-            llm=llm,
-            sub_agents=sub_agents,
-            game_state=game_state,
-            world_pack_loader=main_module.world_pack_loader,
-            vector_store=main_module.vector_store,
         )
 
         provider_info = f"{settings.agents.gm.provider_id}/{settings.agents.gm.model}"
