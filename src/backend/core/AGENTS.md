@@ -1,39 +1,41 @@
-# CORE - Foundational Services
+# CORE - Infrastructure Layer
 
-**Scope:** Localization, Prompt Management, and Configuration
+**Scope:** Settings, Logging, i18n, and Prompt Loading.
 
 ## OVERVIEW
 
-Foundational services providing i18n support, Jinja2-based prompt orchestration, and Pydantic-driven settings.
+The Core module provides the foundational infrastructure for the Astinus engine. It handles centralized configuration management, internationalization (i18n) support, dynamic prompt orchestration, and unified logging settings. 
+
+By centralizing these services, this layer ensures that all high-level agents (GM, Rule, NPC, Lore) remain decoupled from environment-specific details, file paths, and hardcoded string literals. It serves as the "source of truth" for the application's runtime behavior and localization state.
 
 ## WHERE TO LOOK
 
 | Component | File | Role |
 |-----------|------|------|
-| **I18nService** | `i18n.py` | Centralized localization with dot-notation keys and fallback to CN |
-| **PromptLoader** | `prompt_loader.py` | Jinja2 prompt template manager with multi-language support |
-| **Settings** | `config.py` | Pydantic configuration with YAML loading and legacy migration |
-| **LLMProvider** | `llm_provider.py` | Unified factory for OpenAI, Anthropic, Google, and Ollama |
-| **LocalizedString** | `models/i18n.py` | Foundational utility for multi-language string storage/fallback |
+| **Settings** | `config.py` | Pydantic-driven configuration with YAML support and legacy migration logic. |
+| **I18nService** | `i18n.py` | Centralized localization using dot-notation keys with automatic fallback to default language. |
+| **PromptLoader** | `prompt_loader.py` | Jinja2-based prompt template manager supporting multi-language blocks and versioning. |
+| **LLMProvider** | `llm_provider.py` | Unified factory for initializing various LLM providers (OpenAI, Anthropic, Google, Ollama). |
+| **Logging Config** | `config.py` | Definition of logging formats, file paths, and levels applied globally across the backend. |
 
 ## CONVENTIONS
 
-- **I18n-First**: Never hardcode user-facing strings; use `get_i18n().get()`
-- **Prompt Isolation**: All prompts in `agents/prompts/*.yaml`; load via `PromptLoader`
-- **Strict Configuration**: Use Pydantic `Settings` for all environment/config variables
-- **Lazy Initialization**: Services use `get_*()` functions for singleton access
+- **Settings Injection**: Never access `os.environ` or hardcode file paths directly. All configurations must be mapped in `config.py` and accessed via the `get_settings()` singleton.
+- **I18n-First (No Raw Strings)**: User-facing text must never be hardcoded as raw strings. Always use `get_i18n().get("namespace.key")` to ensure support for both Chinese and English.
+- **Lazy Singleton Pattern**: Infrastructure services use lazy initialization. Access them through `get_*()` functions (e.g., `get_i18n()`) rather than importing instances directly.
+- **Prompt Isolation**: Prompts must be stored as YAML templates in `src/backend/agents/prompts/` and rendered dynamically via `PromptLoader` to allow for easy tweaking without code changes.
 
 ## ANTI-PATTERNS
 
 | Rule | Reason |
 |------|--------|
-| NO inline prompt strings | Breaks maintainability and multi-language support |
-| NO hardcoded paths | Use `find_config_file()` and `Path` objects |
-| NO environment access | All env vars must be mapped in `Settings` (config.py) |
-| NO direct model instantiation | Use `get_llm()` factory for consistent configuration |
+| **NO Hardcoded Configs** | Storing API keys or environment paths in code breaks portability and security. |
+| **NO Inline Prompts** | Writing prompt strings inside agent logic makes them hard to update and localize. |
+| **NO Direct LLM Init** | Manually creating model objects bypasses the unified configuration and factory logic. |
+| **NO Raw Print()** | Using `print()` bypasses the structured logging system, making debugging in production difficult. |
 
 ## NOTES
 
-- **Fallback Chain**: i18n defaults to `cn` if requested language key is missing.
-- **Legacy Support**: `config.py` includes migration logic from old `llm` format.
-- **Jinja2 Strictness**: `PromptLoader` uses `StrictUndefined` to catch missing variables early.
+- **Fallback Chain**: The i18n service uses a strict fallback chain: Requested Lang -> Default (cn) -> Missing Placeholder.
+- **Jinja2 Strictness**: The `PromptLoader` environment is configured with `StrictUndefined` to catch missing template variables early during the ReAct loop.
+- **Legacy Migration**: `config.py` automatically migrates old configuration formats to the new provider-based schema upon loading.

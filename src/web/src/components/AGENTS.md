@@ -1,49 +1,39 @@
 # COMPONENTS - React UI
 
-**Scope:** Frontend React components
+**Generated:** 2026-01-16
+**Branch:** main
+**Stack:** React 19 (Functional) + TailwindCSS + i18next
 
 ## OVERVIEW
 
-React + TailwindCSS ecosystem. Priority on mobile-first responsive design. All UI text managed via i18n bundles. Touch-friendly interactions with bottom-sliding panels for mobile.
+This directory houses the modular UI components for the Astinus web interface. Components are organized by feature-specific folders or as shared primitives in the `common/` directory. All components are built with React 19, emphasizing a premium, responsive, and accessible TTRPG experience.
 
 ## STRUCTURE
 
 ```
-components/
-├── ChatBox/           # Narrative flow, streaming text, typewriter effects
-├── DiceRoller/        # 3D/Visual dice, roll submission, result display
-├── Layout/            # Responsive app shell, sidebars, mobile navigation
-├── Settings/          # Configuration panels, theme toggles
-├── StatBlock/         # Dynamic character stats, attributes, health bars
-└── common/            # Atomic UI components (Button, Input, Modal, etc.)
+src/web/src/components/
+├── ChatBox/           # Narrative flow & streaming typewriter effects
+├── DiceRoller/        # Visual dice rolling & result submission
+├── Layout/            # Responsive shell & navigation components
+├── Settings/          # Configuration cards & modal editors
+├── StatBlock/         # Dynamic character attribute displays
+└── common/            # Shared primitives (Button, Card, Input, etc.)
 ```
-
-## WHERE TO LOOK
-
-| Task | Location |
-|------|----------|
-| Narrative/Chat | `ChatBox/` |
-| Dice Mechanics | `DiceRoller/` |
-| Global Layout | `Layout/` |
-| Settings/Config | `Settings/` |
-| Character UI | `StatBlock/` |
-| Base Components| `common/` |
 
 ## CONVENTIONS
 
-- **Mobile-First**: Design for touch (44px min targets), bottom panels
-- **i18n Mandatory**: Zero hardcoded strings. Use `useTranslation()`
-- **Tailwind-Only**: Use utility classes. NO custom CSS or inline styles
-- **Responsive**: 3-column layout (desktop) -> bottom-panel view (mobile)
-- **Typing**: Strict TypeScript interfaces for all component props
-- **Accessibility**: ARIA labels, semantic HTML, keyboard support
+- **React 19 Hooks**: Use functional components and modern hooks (e.g., `useMemo`, `useCallback`) to ensure optimal performance.
+- **Strict Props**: Define explicit TypeScript interfaces for all component props to ensure type safety.
+- **Tailwind CSS ONLY**: Use utility classes exclusively for styling. Custom CSS files or `<style>` blocks are strictly prohibited.
+- **i18n Integration**: Mandatory use of the `useTranslation` hook for ALL user-facing text content.
+- **Mobile-First**: Prioritize touch-friendly interactions (min 44px targets) and responsive layouts for all UI elements.
 
 ## ANTI-PATTERNS
 
 | Rule | Reason |
 |------|--------|
-| NO hardcoded strings | Localization failure; breaks i18n support |
-| NO inline styles | Prevents theme overrides; hard to maintain |
-| NO fixed dimensions | Breaks layout on diverse screen sizes |
-| NO hover-dependence | Blocks functionality on touch-only mobile devices |
-| NO complex state | Keep components stateless; use Zustand stores |
+| **No Inline Styles** | Prevents consistent theming and complicates maintenance. |
+| **No Hardcoded Text** | Blocks localization; all text must reside in i18n bundles. |
+| **No Logic in Components** | Components should remain "dumb" presenters; use hooks or stores for logic. |
+| **No Complex State** | Keep components stateless where possible to improve reusability and testing. |
+| **No Prop Drilling** | Leverage Zustand stores or Context for deeply nested state requirements. |
