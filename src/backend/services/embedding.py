@@ -64,6 +64,19 @@ class QwenEmbeddingFunction(EmbeddingFunction):
         )
         return embeddings.tolist()
 
+    def cleanup(self) -> None:
+        """
+        Explicitly clean up the model to free memory.
+
+        Useful for testing scenarios where multiple instances are created.
+        Forces garbage collection to ensure the ML model memory is released.
+        """
+        if hasattr(self, "model"):
+            del self.model
+        import gc
+
+        gc.collect()
+
 
 class DefaultEmbeddingFunction(EmbeddingFunction):
     """
@@ -75,7 +88,9 @@ class DefaultEmbeddingFunction(EmbeddingFunction):
     Only use this if Qwen3-Embedding is not available.
     """
 
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2", device: str | None = None):
+    def __init__(
+        self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2", device: str | None = None
+    ):
         """
         Initialize the default embedding function.
 

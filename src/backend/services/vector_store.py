@@ -282,14 +282,21 @@ class VectorStoreService:
         Reset singleton instance (useful for testing).
 
         Warning: This will close the current client and reset the singleton.
+        Explicitly deletes the ML model to free memory (important for testing).
         """
         if cls._instance is not None:
             if cls._instance._client is not None:
                 # ChromaDB client doesn't need explicit close
                 cls._instance._client = None
-            # Clear cached embedding function to free memory
-            cls._instance._cached_embedding_function = None
+            # Explicitly delete embedding function to free ML model memory
+            if cls._instance._cached_embedding_function is not None:
+                del cls._instance._cached_embedding_function
+                cls._instance._cached_embedding_function = None
             cls._instance = None
+        # Force garbage collection to release large model memory
+        import gc
+
+        gc.collect()
 
 
 # Global singleton accessor
