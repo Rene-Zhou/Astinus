@@ -1,43 +1,30 @@
-# API - REST Endpoints + WebSocket
+# API - Interface Layer
 
-**Scope:** FastAPI endpoints and real-time communication
+**Scope:** FastAPI Routers, WebSocket endpoint, and Request/Response models.
 
 ## OVERVIEW
 
-REST API for game operations, settings, and WebSocket for streaming narrative. Endpoints follow a modular router pattern, with core logic delegated to services.
-
-## STRUCTURE
-
-```
-api/
-├── v1/                    # Router modules
-│   ├── game.py           # Game state, actions (Complexity Hotspot)
-│   └── settings.py       # LLM Provider & Agent settings
-└── websockets.py         # Real-time streaming (Star Topology hub)
-```
+The API layer serves as the entry point for all client interactions, bridging the React frontend with the multi-agent backend. It focuses on request validation, session management, and real-time narrative streaming.
 
 ## WHERE TO LOOK
 
-| Task | File |
-|------|------|
-| Game Session/Actions | `v1/game.py` |
-| LLM/Agent Config | `v1/settings.py` |
-| Real-time Streaming | `websockets.py` |
-| Router Registration | `src/backend/main.py` |
+| Task | Location | Role |
+|------|----------|------|
+| **Game Actions** | `src/backend/api/v1/game.py` | REST endpoints for state and character management. |
+| **WebSocket Hub** | `src/backend/api/websockets.py` | Real-time streaming (typewriter effect) and status. |
+| **Settings** | `src/backend/api/v1/settings.py` | Provider and Agent configuration endpoints. |
+| **Router Registry** | `src/backend/main.py` | Main app initialization and router mounting. |
 
 ## CONVENTIONS
 
-- **Router Pattern**: Each module exports an `APIRouter`, included in `main.py`.
-- **Pydantic**: Strict use of Pydantic models for all Request/Response bodies.
-- **Service-Only**: NO direct database or vector store access in endpoints.
-- **Async**: All endpoints and WebSocket handlers must be `async`.
+- **Thin Routers**: Routers MUST be kept lean. Their sole responsibility is to validate input, call the appropriate service (usually `GMAgent`), and format the output.
+- **Pydantic Validation**: All API surface areas use Pydantic for strict type checking and auto-documentation (Swagger).
+- **Async/Await**: Every endpoint and WebSocket operation is asynchronous to handle long-running LLM tasks without blocking.
+- **Session Mapping**: WebSocket connections are mapped to unique `session_id`s for targeted narrative delivery.
 
-## NOTES
+## ANTI-PATTERNS
 
-- **Complexity Hotspot**: `v1/game.py` (~630 lines) acts as a fat controller.
-  - `start_new_game`: ~210 lines handling world loading, NPC agent registration, and state initialization. Refactoring candidate.
-- **WebSocket Streaming**: 
-  - Supports typewriter effect with chunked content delivery.
-  - Handles two-way game flow: `DICE_CHECK` requests from server -> `DICE_RESULT` from client.
-  - Broadcasts phase changes (e.g., `processing` -> `narrating` -> `waiting_input`).
-- **Error Handling**: Standardized via FastAPI `HTTPException` returning JSON details.
+- **Fat Controllers**: Moving game logic, dice rolling, or lore retrieval into the router modules.
+- **Direct Resource Access**: Accessing `vector_store` or `SQLite` directly from endpoints; use services instead.
+- **Unstructured JSON**: Returning raw dictionaries instead of defined Pydantic response models.
+- **Meta-data Exposure**: Leaking internal agent names or hidden world flags to the player interface.

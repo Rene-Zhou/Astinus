@@ -24,7 +24,7 @@ Astinus/
 │   │   │   ├── gm.py         # GM Agent (Central Orchestrator)
 │   │   │   ├── npc.py        # NPC Agent (Soul/Body split)
 │   │   │   ├── rule.py       # Rule Agent (2d6 Mechanics)
-│   │   │   ├── lore.py       # Lore Agent (RAG)
+│   │   │   ├── lore.py       # Lore Tools (RAG Function)
 │   │   │   └── director.py   # Director Agent (Pacing & Tension)
 │   │   ├── api/              # API Routers
 │   │   │   ├── v1/
@@ -104,14 +104,14 @@ The **GM Agent** acts as the central orchestrator. It is the only agent that int
 ### 5.2 ReAct Loop
 The GM Agent operates in a ReAct (Reasoning + Acting) loop:
 1. **Analyze**: Understand player intent.
-2. **Call Agent**: GM prepares a **Context Slice** for a sub-agent (Rule, NPC, or Lore).
-3. **Synthesize**: Integrate sub-agent output into the narrative.
+2. **Call Agent/Tool**: GM prepares a **Context Slice** for a sub-agent (Rule, NPC) or invokes a **Function Call** (Lore).
+3. **Synthesize**: Integrate sub-agent/tool output into the narrative.
 4. **Iterate**: Repeat 3-5 times if needed before responding.
 
-### 5.3 Specialized Agents
+### 5.3 Specialized Agents & Tools
 - **Rule Agent**: Calculates deterministic outcomes (2d6 pool). Does not "guess" rules.
 - **NPC Agent**: Handles character-specific dialogue using the NPC's "Soul".
-- **Lore Agent**: Performs RAG against World Pack lore entries.
+- **Lore Retrieval**: Now implemented as a **Function Call** (Tool) rather than a standalone agent. Performs RAG against World Pack lore entries directly within the GM's loop.
 - **Director Agent**: A hidden agent that tracks narrative beats, pacing, and tension to guide the GM's tone.
 
 ### 5.4 Context Slicing & Narrative Consistency

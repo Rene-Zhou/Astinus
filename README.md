@@ -108,7 +108,7 @@ uv run mypy src/
   - GM Agent - 核心协调者，星型拓扑中心
   - Rule Agent - 规则裁判，生成骰子检定
   - NPC Agent - 角色对话，情感与关系系统
-  - Lore Agent - 世界观检索，背景信息提供
+  - Lore Search - 通过 Function Call 直接检索世界观与背景信息
 - 🧠 **智能向量检索** - ChromaDB 语义搜索
   - Lore 混合搜索：关键词 + 向量语义匹配
   - NPC 记忆检索：语义检索相关记忆
@@ -183,13 +183,13 @@ Astinus 提供现代化的 Web 界面，可在任何现代浏览器中运行，�
 graph TD
     GM[GM Agent<br/>核心协调者] --> R[Rule Agent<br/>规则裁判]
     GM --> N[NPC Agent<br/>角色对话]
-    GM --> L[Lore Agent<br/>世界观检索]
+    GM --> L[Lore Tool<br/>世界观检索]
     GM --> O[其他 Agent<br/>可扩展]
 
     style GM fill:#e1f5fe,stroke:#01579b,color:#000000
     style R fill:#f3e5f5,stroke:#4a148c,color:#000000
     style N fill:#f3e5f5,stroke:#4a148c,color:#000000
-    style L fill:#f3e5f5,stroke:#4a148c,color:#000000
+    style L fill:#fff9c4,stroke:#f57f17,color:#000000
     style O fill:#f3e5f5,stroke:#4a148c,color:#000000
 ```
 
@@ -208,7 +208,7 @@ graph TD
 
     GM_Analyze -->|需要规则判定| Rule[Rule Agent<br/>生成骰子检定]
     GM_Analyze -->|NPC 对话| NPC[NPC Agent<br/>角色扮演]
-    GM_Analyze -->|查询背景| Lore[Lore Agent<br/>向量检索]
+    GM_Analyze -->|查询背景| Lore[Lore Function<br/>向量检索]
     GM_Analyze -->|简单行动| Direct[直接响应]
 
     Rule --> GM_Synthesize[GM 综合响应]
@@ -237,7 +237,7 @@ graph TD
     style GM_Narrate fill:#e1f5fe,stroke:#01579b,color:#000000
     style Rule fill:#f3e5f5,stroke:#4a148c,color:#000000
     style NPC fill:#f3e5f5,stroke:#4a148c,color:#000000
-    style Lore fill:#f3e5f5,stroke:#4a148c,color:#000000
+    style Lore fill:#fff9c4,stroke:#f57f17,color:#000000
     style Direct fill:#fff9c4,stroke:#f57f17,color:#000000
     style Rule_Process fill:#f3e5f5,stroke:#4a148c,color:#000000
     style Stream fill:#fff3e0,stroke:#e65100,color:#000000
@@ -253,7 +253,7 @@ graph TD
 3. **Agent 协作处理**:
    - **Rule Agent**: 判断是否需要骰子检定，生成检定请求
    - **NPC Agent**: 处理 NPC 对话，维护角色记忆和关系
-   - **Lore Agent**: 检索相关世界观背景信息
+   - **Lore Function**: 通过工具调用检索相关世界观背景信息
    - **Direct**: 简单行动直接响应，无需调用子 Agent
 4. **GM 综合响应**: 整合所有 Agent 的输出，生成连贯叙事
 5. **流式输出**: 通过 WebSocket 实时推送内容到前端

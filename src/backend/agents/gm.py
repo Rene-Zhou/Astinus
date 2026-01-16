@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from src.backend.agents.base import AgentResponse, BaseAgent
 from src.backend.core.config import get_settings
@@ -1097,7 +1097,7 @@ class GMAgent(BaseAgent):
             # Fail gracefully - return recent messages
             return all_messages[-n_results:]
 
-    def _build_prompt(self, input_data: dict[str, Any]) -> list[SystemMessage]:
+    def _build_prompt(self, input_data: dict[str, Any]) -> list[BaseMessage]:
         """
         Build prompt for LLM.
 

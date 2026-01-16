@@ -247,11 +247,12 @@ class WorldPackLoader:
             collection = self.vector_store.get_or_create_collection(
                 collection_name, metadata={"pack_hash": current_hash, "pack_id": pack_id}
             )
-            collection.add(
-                documents=documents,
-                metadatas=metadatas,
-                ids=ids,
-            )
+            if collection is not None:
+                collection.add(
+                    documents=documents,
+                    metadatas=metadatas,
+                    ids=ids,
+                )
             print(f"   ✅ 索引完成: {len(ids)} 个文档")
         except Exception as exc:
             if "dimension" in str(exc).lower():
@@ -261,11 +262,12 @@ class WorldPackLoader:
                 collection = self.vector_store.get_or_create_collection(
                     collection_name, metadata={"pack_hash": current_hash, "pack_id": pack_id}
                 )
-                collection.add(
-                    documents=documents,
-                    metadatas=metadatas,
-                    ids=ids,
-                )
+                if collection is not None:
+                    collection.add(
+                        documents=documents,
+                        metadatas=metadatas,
+                        ids=ids,
+                    )
                 print(f"   ✅ 索引完成: {len(ids)} 个文档")
             else:
                 raise
