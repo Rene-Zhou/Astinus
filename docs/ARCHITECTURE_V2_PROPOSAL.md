@@ -66,7 +66,9 @@ We replace Pydantic with **Zod**. Zod schemas compile to both runtime validators
 
 ### 3.3 Embedded AI Memory (LanceDB)
 - **LanceDB**: Replaces chroma-client. It runs in-process and stores vectors in local files.
-- **Embeddings**: Uses **Transformers.js** (`@xenova/transformers`) to generate embeddings locally using ONNX models (e.g. `all-MiniLM-L6-v2`), removing the need for Python.
+- **Embeddings**: Uses **Transformers.js** (`@xenova/transformers`) to generate embeddings locally using ONNX models.
+  - Model: **Qwen3-Embedding-0.6B-ONNX** for native Chinese support and multilingual capabilities.
+  - Removing the need for Python.
 
 ## 4. AI & Agent Architecture (Vercel AI SDK)
 

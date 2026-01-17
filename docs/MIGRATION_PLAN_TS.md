@@ -19,6 +19,7 @@ The primary goal of this migration is to transform **Astinus** into a truly port
 | **Embeddings** | SentenceTransformers | **Transformers.js** | Runs ONNX models directly in Node, zero Python dependency. |
 | **Models** | Pydantic | **Zod** | Runtime validation + Static type inference in one. |
 | **NLP/Tokenization** | Jieba | **Intl.Segmenter** / **nodejieba** | Native browser/Node APIs. |
+| **Embedding Model** | N/A | **Qwen3-Embedding-0.6B-ONNX** | Native Chinese support, multilingual via Transformers.js. |
 
 ### 2.1 Communication
 The architecture remains **Client-Server**. The Frontend (React/Vite) will continue to communicate with the Backend via REST and WebSockets.
@@ -87,8 +88,34 @@ The migration will be performed in phases to ensure stability.
 2.  **Embedding Differences**: Transformers.js (ONNX) outputs might vary slightly from PyTorch outputs.
     *   *Mitigation*: Acceptable for game lore semantic search; exact float precision is not required for this use case.
 
-## 7. Next Steps
+## 7. Gap Clarifications
+
+Based on analysis of the existing configuration system, the following approach is confirmed:
+
+### 7.1 Data Migration Strategy
+- **Decision**: Rebuild LanceDB vectors from scratch; no migration from ChromaDB.
+- **Rationale**: Existing ChromaDB data is demo-only; rebuilding allows validation of the new embedding pipeline.
+
+### 7.2 Testing Strategy
+- **Approach**: Build a new TDD test system for TypeScript backend.
+- **Coverage**: Unit tests for services, integration tests for API endpoints, agent behavior validation.
+
+### 7.3 Environment Configuration
+- **Backend**: Continue using `config/settings.yaml` with Zod schema validation (replacing Pydantic).
+- **Frontend**: Continue using Zustand store + REST API for settings management.
+- **API Contract**: Maintain parity with existing `/api/settings` endpoints.
+
+### 7.4 Performance Benchmarks
+- **Phase 1-5**: Focus on functionality; make it work first.
+- **Phase 6+**: Profile embedding generation speed, set optimization targets if needed.
+
+### 7.5 Rollback Plan
+- Keep Python backend (`src/backend/`) operational until TypeScript backend is fully verified.
+- Frontend can switch between backends via API base URL configuration.
+
+## 8. Next Steps
 
 1.  Create `src/backend-ts` structure.
 2.  Install dependencies: `hono`, `zod`, `drizzle-orm`, `ai` (Vercel SDK), `@xenova/transformers`.
-3.  Port the `WorldPackLoader` as a proof-of-concept for the new data layer.
+3.  Verify `Qwen3-Embedding-0.6B-ONNX` availability in Transformers.js model hub.
+4.  Port the `WorldPackLoader` as a proof-of-concept for the new data layer.
