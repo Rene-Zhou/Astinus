@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { getAppContext } from "../../index";
-import type { GameState, PlayerCharacter, Trait, Message } from "../../schemas";
+import type { GameState, PlayerCharacter, Trait } from "../../schemas";
 
 const NewGameRequestSchema = z.object({
   world_pack_id: z.string().default("demo_pack"),
@@ -69,24 +69,24 @@ gameRouter.post(
       }
 
       if (!startingLocationId && Object.keys(worldPack.locations).length > 0) {
-        startingLocationId = Object.keys(worldPack.locations)[0];
-        startingLocation = worldPack.locations[startingLocationId];
+        startingLocationId = Object.keys(worldPack.locations)[0] || null;
+        startingLocation = startingLocationId ? worldPack.locations[startingLocationId] : null;
       }
 
       if (!startingLocation) {
         return c.json({ error: "World pack has no locations defined" }, 400);
       }
 
-      const activeNpcIds = startingLocation.present_npc_ids || [];
+      const activeNpcIds = startingLocation.presentNpcIds || [];
 
       let playerCharacter: PlayerCharacter;
 
       if (request.preset_character_id) {
-        const preset = worldPack.preset_characters?.find(
-          (p) => p.id === request.preset_character_id
+        const preset = worldPack.presetCharacters?.find(
+          (p: any) => p.id === request.preset_character_id
         );
         if (!preset) {
-          const availableIds = worldPack.preset_characters?.map((p) => p.id) || [];
+          const availableIds = worldPack.presetCharacters?.map((p: any) => p.id) || [];
           return c.json(
             {
               error: `Preset character not found: ${request.preset_character_id}. Available: ${availableIds.join(", ")}`,
@@ -98,6 +98,7 @@ gameRouter.post(
           name: preset.name,
           concept: preset.concept,
           traits: preset.traits,
+          fatePoints: 3,
           tags: [],
         };
       } else {
@@ -107,29 +108,39 @@ gameRouter.post(
             cn: "面对困难不退缩",
             en: "Faces difficulties without retreat",
           },
-          positive_aspect: { cn: "勇敢", en: "Brave" },
-          negative_aspect: { cn: "鲁莽", en: "Rash" },
+          positiveAspect: { cn: "勇敢", en: "Brave" },
+          negativeAspect: { cn: "鲁莽", en: "Rash" },
         };
 
         playerCharacter = {
-          name: { cn: "冒险者", en: "Adventurer" },
+          name: request.player_name || "冒险者",
           concept: { cn: "冒险者", en: "Adventurer" },
           traits: [defaultTrait],
+          fatePoints: 3,
           tags: [],
         };
       }
 
       const gameState: GameState = {
-        session_id: sessionId,
-        world_pack_id: request.world_pack_id,
-        phase: "waiting_input",
-        turn_number: 0,
-        current_location: startingLocationId,
-        active_npc_ids: activeNpcIds,
-        character: playerCharacter,
+        sessionId: sessionId,
+        playerName: request.player_name || "玩家",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        player: playerCharacter,
+        currentPhase: "waiting_input",
+        nextAgent: null,
+        worldPackId: request.world_pack_id,
+        currentLocation: startingLocationId || "",
+        activeNpcIds: activeNpcIds,
+        discoveredItems: [],
+        flags: [],
+        gameTime: "00:00",
+        turnCount: 0,
         messages: [],
-        flags: {},
-        react_pending_state: null,
+        tempContext: {},
+        lastCheckResult: null,
+        reactPendingState: null,
+        language: "cn",
       };
 
       const lang = "cn";
@@ -141,21 +152,21 @@ gameRouter.post(
         "";
 
       const worldInfo = {
-        pack_id: worldPack.pack_info.id,
-        name: worldPack.pack_info.name[lang] || worldPack.pack_info.name.en,
+        pack_id: request.world_pack_id,
+        name: worldPack.info.name[lang] || worldPack.info.name.en,
         description:
-          worldPack.pack_info.description?.[lang] ||
-          worldPack.pack_info.description?.en ||
+          worldPack.info.description?.[lang] ||
+          worldPack.info.description?.en ||
           "",
-        author: worldPack.pack_info.author || "Unknown",
+        author: worldPack.info.author || "Unknown",
       };
 
       const startingScene = {
         location_id: startingLocationId,
         location_name: locationName,
         location_description: locationDesc,
-        present_npcs: activeNpcIds.map((npcId) => {
-          const npc = worldPack.npcs?.find((n) => n.id === npcId);
+        present_npcs: activeNpcIds.map((npcId: any) => {
+          const npc = Object.values(worldPack.npcs || {}).find((n: any) => n.id === npcId);
           if (npc) {
             return {
               id: npc.id,
@@ -166,7 +177,7 @@ gameRouter.post(
           }
           return { id: npcId, name: npcId, description: "" };
         }),
-        visible_items: startingLocation.visible_items || [],
+        visible_items: startingLocation.visibleItems || [],
       };
 
       return c.json({
@@ -277,19 +288,19 @@ gameRouter.get("/game/state/:sessionId", async (c) => {
     return c.json({ error: "Game engine not initialized" }, 503);
   }
 
-  const gameState = ctx.gmAgent.gameState;
+  const gameState = ctx.gmAgent.getGameState();
 
-  if (gameState.session_id !== sessionId) {
+  if (gameState.sessionId !== sessionId) {
     return c.json({ error: "Session not found" }, 404);
   }
 
   return c.json({
-    session_id: gameState.session_id,
-    phase: gameState.phase,
-    turn_number: gameState.turn_number,
-    current_location: gameState.current_location,
-    active_npc_ids: gameState.active_npc_ids,
-    character: gameState.character,
+    session_id: gameState.sessionId,
+    phase: gameState.currentPhase,
+    turn_number: gameState.turnCount,
+    current_location: gameState.currentLocation,
+    active_npc_ids: gameState.activeNpcIds,
+    player: gameState.player,
   });
 });
 
@@ -322,18 +333,18 @@ gameRouter.get("/world-packs/:packId", async (c) => {
     const lang = (c.req.query("lang") as "cn" | "en") || "cn";
 
     return c.json({
-      id: worldPack.pack_info.id,
-      name: worldPack.pack_info.name[lang] || worldPack.pack_info.name.en,
+      id: packId,
+      name: worldPack.info.name[lang] || worldPack.info.name.en,
       description:
-        worldPack.pack_info.description?.[lang] ||
-        worldPack.pack_info.description?.en ||
+        worldPack.info.description?.[lang] ||
+        worldPack.info.description?.en ||
         "",
-      author: worldPack.pack_info.author,
-      version: worldPack.pack_info.version,
+      author: worldPack.info.author,
+      version: worldPack.info.version,
       locations: Object.keys(worldPack.locations).length,
       npcs: worldPack.npcs?.length || 0,
-      lore_entries: worldPack.lore?.length || 0,
-      preset_characters: worldPack.preset_characters?.length || 0,
+      lore_entries: Object.keys(worldPack.entries).length,
+      preset_characters: worldPack.presetCharacters?.length || 0,
     });
   } catch (error) {
     return c.json({ error: `World pack not found: ${packId}` }, 404);

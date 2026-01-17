@@ -12,8 +12,6 @@ import { getVectorStoreService } from "./lib/lance";
 import { WorldPackLoader } from "./services/world";
 import { LoreService } from "./services/lore";
 import { GMAgent } from "./agents/gm";
-import { NPCAgent } from "./agents/npc";
-import type { GameState, PlayerCharacter, Trait } from "./schemas";
 
 export interface AppContext {
   gmAgent: GMAgent | null;

@@ -7,6 +7,7 @@ interface VectorRecord {
   text: string;
   vector: number[];
   metadata?: Record<string, string | number | boolean>;
+  [key: string]: unknown; // Index signature for LanceDB compatibility
 }
 
 interface SearchResult {
@@ -66,7 +67,7 @@ export class LanceDBService {
     }
 
     const emptySchema: VectorRecord[] = [];
-    return await this.connection.createTable(tableName, emptySchema);
+    return await this.connection.createTable({ name: tableName, data: emptySchema });
   }
 
   public async addDocuments(
@@ -90,9 +91,9 @@ export class LanceDBService {
     const embeddings = await this.embedder.embedBatch(documents, "document");
 
     const records: VectorRecord[] = documents.map((text, i) => ({
-      id: ids[i],
+      id: ids[i]!,
       text,
-      vector: embeddings[i],
+      vector: embeddings[i]!,
       metadata: metadatas?.[i],
     }));
 
@@ -120,9 +121,9 @@ export class LanceDBService {
       query = query.where(filter);
     }
 
-    const results = await query.execute();
+    const results = await query.toArray();
 
-    return results.map((row) => ({
+    return results.map((row: any) => ({
       id: row.id as string,
       text: row.text as string,
       distance: row._distance as number,

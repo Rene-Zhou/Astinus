@@ -133,7 +133,7 @@ export function createWebSocketHandler(
     const sessionId = c.req.param("sessionId");
 
     return {
-      onOpen(evt, ws) {
+      onOpen(_evt, ws) {
         console.log(`[WebSocket] Client connected: ${sessionId}`);
         manager.connect(sessionId, ws);
         manager.sendStatus(sessionId, "connected", "WebSocket connected");
@@ -206,13 +206,13 @@ export function createWebSocketHandler(
         }
       },
 
-      onClose(evt, ws) {
+      onClose(_evt, _ws) {
         console.log(`[WebSocket] Client disconnected: ${sessionId}`);
         manager.disconnect(sessionId);
       },
 
-      onError(evt, ws) {
-        console.error(`[WebSocket] Error for ${sessionId}:`, evt);
+      onError(_evt, _ws) {
+        console.error(`[WebSocket] Error for ${sessionId}:`, _evt);
         manager.disconnect(sessionId);
       },
     };

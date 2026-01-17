@@ -1,4 +1,4 @@
-import { Outcome, DiceResult } from '../schemas';
+import type { Outcome, DiceResult } from '../schemas';
 
 export class DicePool {
   constructor(

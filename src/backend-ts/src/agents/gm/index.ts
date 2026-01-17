@@ -1,6 +1,6 @@
-import { generateObject, generateText, streamText } from "ai";
+import { generateObject, generateText } from "ai";
 import type { LanguageModel } from "ai";
-import type { GameState, DiceCheckRequest } from "../../schemas";
+import type { GameState } from "../../schemas";
 import { z } from "zod";
 
 const GMActionTypeSchema = z.enum([
@@ -20,7 +20,6 @@ const GMActionSchema = z.object({
 });
 
 type GMAction = z.infer<typeof GMActionSchema>;
-type GMActionType = z.infer<typeof GMActionTypeSchema>;
 
 type StatusCallback = (agentName: string, status: string | null) => Promise<void>;
 
@@ -55,13 +54,15 @@ export class GMAgent {
     private llm: LanguageModel,
     private subAgents: Record<string, SubAgent>,
     private gameState: GameState,
-    private worldPackLoader?: any,
-    private vectorStore?: any,
     private loreService?: any
   ) {}
 
   setStatusCallback(callback: StatusCallback): void {
     this.statusCallback = callback;
+  }
+
+  getGameState(): GameState {
+    return this.gameState;
   }
 
   async process(inputData: GMProcessInput): Promise<AgentResponse> {
@@ -82,9 +83,10 @@ export class GMAgent {
     }
 
     this.gameState.messages.push({
-      role: "player",
+      role: "user",
       content: playerInput,
       timestamp: new Date().toISOString(),
+      turn: this.gameState.turnCount,
     });
 
     return this.runReActLoop({
@@ -100,7 +102,7 @@ export class GMAgent {
     diceResult: Record<string, unknown>,
     lang: "cn" | "en" = "cn"
   ): Promise<AgentResponse> {
-    const pendingState = this.gameState.react_pending_state;
+      const pendingState = this.gameState.reactPendingState;
 
     if (!pendingState) {
       return {
@@ -117,7 +119,7 @@ export class GMAgent {
       Record<string, unknown>
     >;
 
-    this.gameState.react_pending_state = null;
+          this.gameState.reactPendingState = null;
 
     return this.runReActLoop({
       playerInput,
@@ -162,8 +164,8 @@ export class GMAgent {
           const loreResult = await this.loreService.search({
             query: action.content,
             context: playerInput,
-            worldPackId: this.gameState.world_pack_id,
-            currentLocation: this.gameState.current_location,
+            worldPackId: this.gameState.worldPackId,
+            currentLocation: this.gameState.currentLocation,
             currentRegion: this.getCurrentRegion(),
             lang,
           });
@@ -185,7 +187,7 @@ export class GMAgent {
         break;
 
       case "REQUEST_CHECK":
-        this.gameState.react_pending_state = {
+        this.gameState.reactPendingState = {
           player_input: playerInput,
           iteration: iteration + 1,
           agent_results: agentResults,
@@ -209,9 +211,12 @@ export class GMAgent {
 
           agentsCalled.push(action.agent_name);
 
-          const subAgentResponse = await this.subAgents[
-            action.agent_name
-          ].process(action.agent_context);
+          const subAgent = this.subAgents[action.agent_name];
+          if (!subAgent) {
+            throw new Error(`Sub-agent not found: ${action.agent_name}`);
+          }
+
+          const subAgentResponse = await subAgent.process(action.agent_context);
 
           agentResults.push({
             agent: action.agent_name,
@@ -272,6 +277,7 @@ export class GMAgent {
       role: "assistant",
       content: text,
       timestamp: new Date().toISOString(),
+      turn: this.gameState.turnCount,
     });
 
     return {
@@ -295,16 +301,14 @@ export class GMAgent {
     parts.push(`Iteration: ${iteration}`);
 
     parts.push(`\nGame State:`);
-    parts.push(`  Phase: ${this.gameState.phase}`);
-    parts.push(`  Turn: ${this.gameState.turn_number}`);
-    parts.push(`  Location: ${this.gameState.current_location}`);
+    parts.push(`  Phase: ${this.gameState.currentPhase}`);
+    parts.push(`  Turn: ${this.gameState.turnCount}`);
+    parts.push(`  Location: ${this.gameState.currentLocation}`);
 
-    if (this.gameState.character) {
-      parts.push(`\nCharacter:`);
-      parts.push(
-        `  Name: ${this.gameState.character.name[lang] || this.gameState.character.name.en}`
-      );
-      parts.push(`  Traits: ${this.gameState.character.traits.length}`);
+    if (this.gameState.player) {
+      parts.push(`  Player:`);
+      parts.push(`  Name: ${this.gameState.player.name}`);
+      parts.push(`  Traits: ${this.gameState.player.traits.length}`);
     }
 
     if (agentResults.length > 0) {

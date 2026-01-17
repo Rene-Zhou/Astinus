@@ -48,6 +48,7 @@ export class LoreService {
         worldPack,
         query,
         context,
+        worldPackId,
         currentLocation,
         currentRegion
       );
@@ -64,7 +65,8 @@ export class LoreService {
   private async searchLore(
     worldPack: WorldPack,
     query: string,
-    context: string,
+    _context: string,
+    worldPackId: string,
     currentLocation?: string,
     currentRegion?: string
   ): Promise<LoreEntry[]> {
@@ -83,7 +85,7 @@ export class LoreService {
     const entryScores = new Map<string, EntryScore>();
 
     const searchTerms = this.extractSearchTerms(query);
-    const keywordMatchedUids = new Set<string>();
+    const keywordMatchedUids = new Set<number>();
 
     for (const term of searchTerms) {
       const primaryMatches = this.searchEntriesByKeyword(
@@ -93,8 +95,8 @@ export class LoreService {
       );
       for (const entry of primaryMatches) {
         keywordMatchedUids.add(entry.uid);
-        if (!entryScores.has(entry.uid)) {
-          entryScores.set(entry.uid, {
+        if (!entryScores.has(String(entry.uid))) {
+          entryScores.set(String(entry.uid), {
             entry,
             score: KEYWORD_MATCH_WEIGHT,
             keywordMatch: true,
@@ -113,8 +115,8 @@ export class LoreService {
           continue;
         }
         keywordMatchedUids.add(entry.uid);
-        if (!entryScores.has(entry.uid)) {
-          entryScores.set(entry.uid, {
+        if (!entryScores.has(String(entry.uid))) {
+          entryScores.set(String(entry.uid), {
             entry,
             score: KEYWORD_SECONDARY_WEIGHT,
             keywordMatch: true,
@@ -126,7 +128,7 @@ export class LoreService {
 
     try {
       const searchLang = this.detectLanguage(query);
-      const collectionName = `lore_entries_${worldPack.pack_info.id}`;
+      const collectionName = `lore_entries_${worldPackId}`;
 
       const results = await this.vectorStore.search(
         collectionName,
@@ -136,19 +138,19 @@ export class LoreService {
       );
 
       for (const result of results) {
-        const uid = result.id;
+        const uid = parseInt(result.id, 10);
         const distance = result.distance;
         const similarity = 1.0 - distance;
         const vectorScore = VECTOR_MATCH_WEIGHT * similarity;
 
-        const existingScore = entryScores.get(uid);
+        const existingScore = entryScores.get(String(uid));
         if (existingScore) {
           existingScore.score *= DUAL_MATCH_BOOST;
           existingScore.vectorMatch = true;
         } else {
           const entry = this.getEntry(worldPack, uid);
           if (entry) {
-            entryScores.set(uid, {
+            entryScores.set(String(uid), {
               entry,
               score: vectorScore,
               keywordMatch: false,
@@ -162,8 +164,8 @@ export class LoreService {
     }
 
     for (const entry of constantEntries) {
-      if (!entryScores.has(entry.uid)) {
-        entryScores.set(entry.uid, {
+      if (!entryScores.has(String(entry.uid))) {
+        entryScores.set(String(entry.uid), {
           entry,
           score: 2.0,
           keywordMatch: false,
@@ -201,18 +203,18 @@ export class LoreService {
       }
 
       if (
-        entry.applicable_locations &&
-        entry.applicable_locations.length > 0 &&
+        entry.applicableLocations &&
+        entry.applicableLocations.length > 0 &&
         (!currentLocation ||
-          !entry.applicable_locations.includes(currentLocation))
+          !entry.applicableLocations.includes(currentLocation))
       ) {
         return false;
       }
 
       if (
-        entry.applicable_regions &&
-        entry.applicable_regions.length > 0 &&
-        (!currentRegion || !entry.applicable_regions.includes(currentRegion))
+        entry.applicableRegions &&
+        entry.applicableRegions.length > 0 &&
+        (!currentRegion || !entry.applicableRegions.includes(currentRegion))
       ) {
         return false;
       }
@@ -238,7 +240,7 @@ export class LoreService {
 
     const uniqueEntries = new Map<string, LoreEntry>();
     for (const entry of [...constantEntries, ...matchedEntries]) {
-      uniqueEntries.set(entry.uid, entry);
+      uniqueEntries.set(String(entry.uid), entry);
     }
 
     const filtered = Array.from(uniqueEntries.values()).filter((entry) => {
@@ -247,18 +249,18 @@ export class LoreService {
       }
 
       if (
-        entry.applicable_locations &&
-        entry.applicable_locations.length > 0 &&
+        entry.applicableLocations &&
+        entry.applicableLocations.length > 0 &&
         (!currentLocation ||
-          !entry.applicable_locations.includes(currentLocation))
+          !entry.applicableLocations.includes(currentLocation))
       ) {
         return false;
       }
 
       if (
-        entry.applicable_regions &&
-        entry.applicable_regions.length > 0 &&
-        (!currentRegion || !entry.applicable_regions.includes(currentRegion))
+        entry.applicableRegions &&
+        entry.applicableRegions.length > 0 &&
+        (!currentRegion || !entry.applicableRegions.includes(currentRegion))
       ) {
         return false;
       }
@@ -347,7 +349,7 @@ export class LoreService {
   private formatLore(
     entries: LoreEntry[],
     query: string,
-    context: string,
+    _context: string,
     lang: "cn" | "en"
   ): string {
     if (entries.length === 0) {
@@ -378,7 +380,7 @@ export class LoreService {
   }
 
   private getConstantEntries(worldPack: WorldPack): LoreEntry[] {
-    return worldPack.lore.filter((entry) => entry.constant);
+    return Object.values(worldPack.entries).filter((entry: any) => entry.constant);
   }
 
   private searchEntriesByKeyword(
@@ -386,8 +388,8 @@ export class LoreService {
     keyword: string,
     includeSecondary: boolean
   ): LoreEntry[] {
-    return worldPack.lore.filter((entry) => {
-      const primaryMatch = entry.key.some((k) =>
+    return Object.values(worldPack.entries).filter((entry: any) => {
+      const primaryMatch = entry.key.some((k: any) =>
         k.toLowerCase().includes(keyword.toLowerCase())
       );
 
@@ -395,8 +397,8 @@ export class LoreService {
         return true;
       }
 
-      if (includeSecondary && entry.secondary_keys) {
-        return entry.secondary_keys.some((k) =>
+      if (includeSecondary && entry.secondaryKeys) {
+        return entry.secondaryKeys.some((k: any) =>
           k.toLowerCase().includes(keyword.toLowerCase())
         );
       }
@@ -405,8 +407,8 @@ export class LoreService {
     });
   }
 
-  private getEntry(worldPack: WorldPack, uid: string): LoreEntry | undefined {
-    return worldPack.lore.find((entry) => entry.uid === uid);
+  private getEntry(worldPack: WorldPack, uid: number): LoreEntry | undefined {
+    return Object.values(worldPack.entries).find((entry: any) => entry.uid === uid);
   }
 
   private detectLanguage(text: string): "cn" | "en" {

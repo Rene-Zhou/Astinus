@@ -146,13 +146,13 @@ export class QwenEmbedding {
       {
         // Progress callback wrapper
         progress_callback: onProgress
-          ? (progress) => {
+          ? (progress: any) => {
               onProgress({
                 status: progress.status as "progress" | "ready" | "done",
-                file: progress.file,
-                loaded: progress.loaded,
-                total: progress.total,
-                progress: progress.progress,
+                file: progress.file || "",
+                loaded: progress.loaded || 0,
+                total: progress.total || 0,
+                progress: progress.progress || 0,
               });
             }
           : undefined,

@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { WorldPack, WorldPackSchema, LoreEntry, NPCData, LocationData, RegionData } from '../schemas';
+import { WorldPackSchema } from '../schemas';
+import type { WorldPack, LoreEntry, NPCData, LocationData, RegionData } from '../schemas';
 
 export class WorldPackLoader {
   private packsDir: string;
@@ -88,7 +89,6 @@ export class WorldPackLoader {
     locationId: string,
     visibility: string = 'basic'
   ): LoreEntry[] {
-    const location = this.getLocation(pack, locationId);
     const region = this.getLocationRegion(pack, locationId);
 
     const matches: LoreEntry[] = [];

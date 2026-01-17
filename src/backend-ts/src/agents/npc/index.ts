@@ -2,8 +2,6 @@ import { generateObject } from "ai";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
 import type { NPCData } from "../../schemas";
-import type { LanceDBService } from "../../lib/lance";
-import type { WorldPackLoader } from "../../services/world";
 
 const NPCResponseSchema = z.object({
   response: z.string(),
@@ -12,8 +10,6 @@ const NPCResponseSchema = z.object({
   relation_change: z.number().default(0),
   new_memory: z.string().optional(),
 });
-
-type NPCResponse = z.infer<typeof NPCResponseSchema>;
 
 interface AgentResponse {
   content: string;
@@ -33,9 +29,7 @@ interface NPCProcessInput {
 
 export class NPCAgent {
   constructor(
-    private llm: LanguageModel,
-    private vectorStore?: LanceDBService,
-    private worldPackLoader?: WorldPackLoader
+    private llm: LanguageModel
   ) {}
 
   async process(inputData: NPCProcessInput): Promise<AgentResponse> {
@@ -129,34 +123,10 @@ export class NPCAgent {
     }
   }
 
-  private async retrieveRelevantMemories(
-    npcId: string,
-    playerInput: string,
-    allMemories: Record<string, string[]>,
-    nResults: number = 3
-  ): Promise<string[]> {
-    if (!this.vectorStore || Object.keys(allMemories).length === 0) {
-      return [];
-    }
-
-    try {
-      const collectionName = `npc_memories_${npcId}`;
-      const results = await this.vectorStore.search(
-        collectionName,
-        playerInput,
-        nResults
-      );
-
-      return results.map((r) => r.text);
-    } catch (error) {
-      return [];
-    }
-  }
-
   private buildSystemPrompt(
     npc: NPCData,
-    playerInput: string,
-    context: Record<string, unknown>,
+    _playerInput: string,
+    _context: Record<string, unknown>,
     lang: "cn" | "en",
     narrativeStyle: "brief" | "detailed",
     roleplayDirection?: string
@@ -175,12 +145,11 @@ export class NPCAgent {
       lines.push(`## 性格特征: ${soul.personality.join(", ")}`);
       lines.push("");
       lines.push("## 说话风格");
-      lines.push(soul.speech_style.cn || soul.speech_style.en);
-
-      if (soul.example_dialogue && soul.example_dialogue.length > 0) {
-        lines.push("");
-        lines.push("## 对话示例");
-        for (const example of soul.example_dialogue) {
+      lines.push(soul.speechStyle.cn || soul.speechStyle.en);
+      lines.push("");
+      if (soul.exampleDialogue && soul.exampleDialogue.length > 0) {
+        lines.push("示例对话:");
+        for (const example of soul.exampleDialogue) {
           lines.push(`玩家：${example.user}`);
           lines.push(`${soul.name}：${example.char}`);
         }
@@ -242,12 +211,11 @@ export class NPCAgent {
       lines.push(`## Personality: ${soul.personality.join(", ")}`);
       lines.push("");
       lines.push("## Speech Style");
-      lines.push(soul.speech_style.en || soul.speech_style.cn);
-
-      if (soul.example_dialogue && soul.example_dialogue.length > 0) {
-        lines.push("");
-        lines.push("## Example Dialogue");
-        for (const example of soul.example_dialogue) {
+      lines.push(soul.speechStyle.en || soul.speechStyle.cn);
+      lines.push("");
+      if (soul.exampleDialogue && soul.exampleDialogue.length > 0) {
+        lines.push("Example Dialogue:");
+        for (const example of soul.exampleDialogue) {
           lines.push(`Player: ${example.user}`);
           lines.push(`${soul.name}: ${example.char}`);
         }
