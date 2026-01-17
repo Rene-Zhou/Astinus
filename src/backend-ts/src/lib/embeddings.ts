@@ -21,7 +21,7 @@ import {
 } from "@huggingface/transformers";
 
 // Configure Transformers.js environment
-env.cacheDir = "./data/.cache/transformers"; // Store models in data directory
+env.cacheDir = "../../data/.cache/transformers"; // Store models in data directory
 env.allowLocalModels = false; // Always download from HuggingFace
 env.allowRemoteModels = true;
 

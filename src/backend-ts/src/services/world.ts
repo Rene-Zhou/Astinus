@@ -16,16 +16,19 @@ export class WorldPackLoader {
       return this.loadedPacks.get(packId)!;
     }
 
-    const packPath = path.join(this.packsDir, packId, 'pack.json');
+    const packPath = path.join(this.packsDir, `${packId}.json`);
     
     try {
       const content = await fs.readFile(packPath, 'utf-8');
       const rawData = JSON.parse(content);
+      console.log(`[WorldPackLoader] Parsing pack: ${packId}`);
       const worldPack = WorldPackSchema.parse(rawData);
-      
+      console.log(`[WorldPackLoader] Pack validated successfully`);
+
       this.loadedPacks.set(packId, worldPack);
       return worldPack;
     } catch (error) {
+      console.error(`[WorldPackLoader] Error loading pack "${packId}":`, error);
       if (error instanceof Error) {
         throw new Error(`Failed to load world pack "${packId}": ${error.message}`);
       }
@@ -37,19 +40,20 @@ export class WorldPackLoader {
     try {
       const entries = await fs.readdir(this.packsDir, { withFileTypes: true });
       const packIds: string[] = [];
-      
+
       for (const entry of entries) {
-        if (entry.isDirectory()) {
-          const packPath = path.join(this.packsDir, entry.name, 'pack.json');
+        if (entry.isFile() && entry.name.endsWith('.json')) {
+          const packPath = path.join(this.packsDir, entry.name);
           try {
             await fs.access(packPath);
-            packIds.push(entry.name);
+            const packId = entry.name.replace(/\.json$/, '');
+            packIds.push(packId);
           } catch {
             continue;
           }
         }
       }
-      
+
       return packIds;
     } catch {
       return [];

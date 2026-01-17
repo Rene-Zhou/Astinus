@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 
-const dbPath = process.env.DATABASE_PATH || './data/astinus.db';
+const dbPath = process.env.DATABASE_PATH || '../../data/astinus.db';
 
 const sqlite = new Database(dbPath);
 sqlite.pragma('journal_mode = WAL');

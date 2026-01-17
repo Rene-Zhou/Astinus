@@ -465,7 +465,7 @@ export const NPCSoulSchema = z.object({
   description: LocalizedStringSchema,
   appearance: LocalizedStringSchema.optional(),
   personality: z.array(z.string()).min(1).max(5),
-  speechStyle: LocalizedStringSchema,
+  speechStyle: LocalizedStringSchema.optional(),
   exampleDialogue: z
     .array(
       z.object({

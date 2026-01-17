@@ -143,9 +143,8 @@ export class NPCAgent {
       lines.push(soul.description.cn || soul.description.en);
       lines.push("");
       lines.push(`## 性格特征: ${soul.personality.join(", ")}`);
-      lines.push("");
-      lines.push("## 说话风格");
-      lines.push(soul.speechStyle.cn || soul.speechStyle.en);
+      const speechStyle = soul.speechStyle;
+      lines.push(speechStyle?.cn || speechStyle?.en || "");
       lines.push("");
       if (soul.exampleDialogue && soul.exampleDialogue.length > 0) {
         lines.push("示例对话:");
@@ -211,7 +210,8 @@ export class NPCAgent {
       lines.push(`## Personality: ${soul.personality.join(", ")}`);
       lines.push("");
       lines.push("## Speech Style");
-      lines.push(soul.speechStyle.en || soul.speechStyle.cn);
+      const speechStyle = soul.speechStyle;
+      lines.push(speechStyle?.en || speechStyle?.cn || "");
       lines.push("");
       if (soul.exampleDialogue && soul.exampleDialogue.length > 0) {
         lines.push("Example Dialogue:");

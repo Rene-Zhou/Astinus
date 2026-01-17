@@ -23,7 +23,7 @@ export class LanceDBService {
   private embedder: QwenEmbedding | null = null;
   private initPromise: Promise<void> | null = null;
 
-  private static readonly DB_PATH = "./data/lancedb";
+  private static readonly DB_PATH = "../../data/lancedb";
 
   private constructor() {}
 

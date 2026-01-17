@@ -111,7 +111,7 @@ async function initializeServices(): Promise<void> {
 
   try {
     console.log("📦 Initializing world pack loader...");
-    appContext.worldPackLoader = new WorldPackLoader("./data/packs");
+    appContext.worldPackLoader = new WorldPackLoader("../../data/packs");
     const packs = await appContext.worldPackLoader.listAvailable();
     console.log(`✅ World pack loader ready (packs: ${packs.join(", ")})`);
   } catch (error) {
