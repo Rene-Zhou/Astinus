@@ -1,4 +1,5 @@
-import lancedb, { type Connection, type Table } from "vectordb";
+import * as lancedb from "@lancedb/lancedb";
+import type { Connection, Table } from "@lancedb/lancedb";
 import { getEmbeddingService, QwenEmbedding } from "./embeddings";
 
 interface VectorRecord {

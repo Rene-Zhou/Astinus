@@ -40,24 +40,30 @@ src/
 ### Install Dependencies
 
 ```bash
-# Using npm
 npm install
-
-# Using bun (recommended for performance)
-bun install
 ```
 
 ### Development
 
 ```bash
-# Watch mode with hot reload
+# Start dev server with hot reload
 npm run dev
 
+# The server will start on http://localhost:3000
+# API docs: http://localhost:3000/health
+```
+
+### Type Checking & Linting
+
+```bash
 # Type checking
 npm run typecheck
 
 # Linting
 npm run lint
+
+# Format code
+npm run format
 ```
 
 ### Database
@@ -164,10 +170,25 @@ This backend is a TypeScript port of the original Python/FastAPI backend (`src/b
 
 The TypeScript backend maintains **API parity** with the Python backend to ensure zero frontend changes.
 
-- **POST /api/game/chat**: Main loop entry
-- **WS /api/ws/game**: Real-time stream (Narrative tokens, State updates)
-- **GET /api/game/state**: Current game state
-- **POST /api/game/dice-result**: Submit dice roll results
+#### Game Endpoints
+- **POST /api/v1/game/new**: Start new game session
+- **POST /api/v1/game/action**: Process player action
+- **POST /api/v1/game/dice-result**: Submit dice roll result
+- **GET /api/v1/game/state/:sessionId**: Get game state
+
+#### World Pack Endpoints
+- **GET /api/v1/world-packs**: List available world packs
+- **GET /api/v1/world-packs/:packId**: Get world pack info
+
+#### Settings Endpoints
+- **GET /api/v1/settings**: Get all settings
+- **PUT /api/v1/settings**: Update settings
+- **POST /api/v1/settings/test-connection**: Test provider connection
+
+#### WebSocket
+- **WS /ws/game/:sessionId**: Real-time bidirectional game communication
+  - Client → Server: `player_action`, `dice_result`, `ping`
+  - Server → Client: `status`, `content`, `complete`, `error`, `phase`, `dice_check`
 
 ## Development Workflow
 
