@@ -155,6 +155,45 @@ export function createTestApp(options: TestAppOptions = {}) {
         return c.json({ error: 'World pack has no locations defined' }, 400);
       }
 
+      const startingScene = {
+        location_id: startingLocationId,
+        location_name: startingLocation.name.cn,
+        location_description: startingLocation.description?.cn || '',
+        present_npcs: [], // Populated below
+        visible_items: startingLocation.visible_items || [],
+        connected_locations: [], // Populated below
+      };
+
+      // Populate connected locations
+      if (startingLocation.connected_locations) {
+        for (const locId of startingLocation.connected_locations) {
+          const connectedLoc = worldPack.locations[locId];
+          if (connectedLoc) {
+            (startingScene.connected_locations as any[]).push({
+              id: locId,
+              name: connectedLoc.name.cn || connectedLoc.name.en || locId,
+            });
+          }
+        }
+      }
+
+      // Populate NPCs - Hide names to prevent metagaming
+      const activeNpcIds = startingLocation.present_npc_ids || [];
+      for (const npcId of activeNpcIds) {
+        const npc = Object.values(worldPack.npcs || {}).find((n: any) => n.id === npcId);
+        if (npc) {
+            const npcInfo: any = { id: npcId };
+            const soul = (npc as any).soul;
+            if (soul.appearance && soul.appearance.cn) {
+                npcInfo.appearance = soul.appearance.cn;
+            } else {
+                const desc = soul.description.cn || soul.description.en || "";
+                npcInfo.appearance = desc.split(/[.!?。！？]/)[0];
+            }
+            (startingScene.present_npcs as any[]).push(npcInfo);
+        }
+      }
+
       const sessionId = `test-session-${Date.now()}`;
 
       let player = mockGameState.player;
@@ -188,15 +227,10 @@ export function createTestApp(options: TestAppOptions = {}) {
           description: worldPack.info.description?.cn || '',
           author: worldPack.info.author || 'Unknown',
         },
-        starting_scene: {
-          location_id: startingLocationId,
-          location_name: startingLocation.name.cn,
-          location_description: startingLocation.description?.cn || '',
-          present_npcs: [],
-          visible_items: startingLocation.visible_items || [],
-        },
-        message: `游戏开始！欢迎来到${startingLocation.name.cn}。`,
+        starting_scene: startingScene,
+        message: "Game session created successfully",
       });
+
     } catch (error) {
       return c.json({ error: `Failed to start game: ${error}` }, 500);
     }

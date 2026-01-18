@@ -1,5 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import type { LanguageModelV1 } from 'ai';
 import type { AgentConfig, ProviderConfig } from '../schemas/config.js';
 
@@ -45,7 +46,11 @@ export class LLMFactory {
         return ollama(agentConfig.model) as unknown as LanguageModelV1;
         
       case 'google':
-        throw new Error('Google provider not yet installed. Please install @ai-sdk/google');
+        const google = createGoogleGenerativeAI({
+          apiKey,
+          baseURL: baseUrl,
+        });
+        return google(agentConfig.model) as unknown as LanguageModelV1;
 
       default:
         // Try to treat unknown providers as OpenAI-compatible if they have a base URL

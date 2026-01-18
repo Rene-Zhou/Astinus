@@ -6,7 +6,6 @@ import { getAppContext } from "../../index";
 import type { GameState, PlayerCharacter, Trait } from "../../schemas";
 import { GMAgent } from "../../agents/gm";
 import { NPCAgent } from "../../agents/npc";
-import { mockLanguageModel } from "../../lib/mock-llm";
 import { ConfigService } from "../../services/config";
 import { LLMFactory } from "../../lib/llm-factory";
 
@@ -83,6 +82,28 @@ gameRouter.post(
       }
 
       const activeNpcIds = startingLocation.present_npc_ids || [];
+      const config = ConfigService.getInstance().get();
+      
+      // Initialize Agents - Require LLM configuration
+      if (!config.agents || !config.providers || config.providers.length === 0) {
+        return c.json(
+          { error: "Game engine not initialized. Configure LLM settings first." },
+          503
+        );
+      }
+
+      let gmModel, npcModel;
+      try {
+        gmModel = LLMFactory.createModel(config.agents.gm, config.providers);
+        npcModel = LLMFactory.createModel(config.agents.npc, config.providers);
+        console.log("🤖 Agents initialized with real LLM configuration");
+      } catch (err) {
+        console.error("❌ Failed to create LLM models:", err);
+        return c.json(
+          { error: `Failed to initialize AI models: ${err}` },
+          503
+        );
+      }
 
       let playerCharacter: PlayerCharacter;
 
@@ -170,53 +191,43 @@ gameRouter.post(
         location_id: startingLocationId,
         location_name: locationName,
         location_description: locationDesc,
-        present_npcs: activeNpcIds.map((npcId: any) => {
-          const npc = Object.values(worldPack.npcs || {}).find((n: any) => n.id === npcId);
-          if (npc) {
-            return {
-              id: npc.id,
-              name: npc.soul.name,
-              description:
-                npc.soul.description[lang] || npc.soul.description.en || "",
-            };
-          }
-          return { id: npcId, name: npcId, description: "" };
-        }),
-        visible_items: startingLocation.visible_items || [],
+        items: startingLocation.items || [],
+        connected_locations: [], // Populated below
+        npcs: [], // Populated below
       };
 
-      const message =
-        lang === "cn"
-          ? `游戏开始！欢迎来到${locationName}。`
-          : `Game started! Welcome to ${locationName}.`;
-
-      gameState.messages.push({
-        role: "assistant",
-        content: message,
-        timestamp: new Date().toISOString(),
-        turn: 0,
-      });
-
-      // Initialize Agents
-      const config = ConfigService.getInstance().get();
-      let gmModel, npcModel;
-
-      if (config.agents && config.providers && config.providers.length > 0) {
-        try {
-          gmModel = LLMFactory.createModel(config.agents.gm, config.providers);
-          npcModel = LLMFactory.createModel(config.agents.npc, config.providers);
-          console.log("🤖 Agents initialized with real LLM configuration");
-        } catch (err) {
-          console.error("❌ Failed to create LLM models:", err);
-          console.warn("⚠️ Falling back to Mock LLM");
-          gmModel = mockLanguageModel;
-          npcModel = mockLanguageModel;
+      // Populate connected locations
+      if (startingLocation.connected_locations) {
+        for (const locId of startingLocation.connected_locations) {
+          const connectedLoc = worldPack.locations[locId];
+          if (connectedLoc) {
+            (startingScene.connected_locations as any[]).push({
+              id: locId,
+              name: connectedLoc.name[lang] || connectedLoc.name.en || locId,
+            });
+          }
         }
-      } else {
-        console.warn("⚠️ LLM not configured in settings.yaml - Using Mock LLM");
-        gmModel = mockLanguageModel;
-        npcModel = mockLanguageModel;
       }
+
+      // Populate NPCs - Hide names to prevent metagaming
+      for (const npcId of activeNpcIds) {
+        const npc = Object.values(worldPack.npcs || {}).find((n: any) => n.id === npcId);
+        if (npc) {
+            const npcInfo: any = { id: npcId };
+            // Use appearance if available, otherwise fallback to description
+            const soul = (npc as any).soul;
+            if (soul.appearance && (soul.appearance[lang] || soul.appearance.en)) {
+                npcInfo.appearance = soul.appearance[lang] || soul.appearance.en;
+            } else {
+                // Fallback: use first sentence of description
+                const desc = soul.description[lang] || soul.description.en || "";
+                npcInfo.appearance = desc.split(/[.!?。！？]/)[0];
+            }
+            (startingScene.npcs as any[]).push(npcInfo);
+        }
+      }
+
+      // NO message push to gameState.messages - Python backend starts empty
 
       const npcAgent = new NPCAgent(npcModel as any);
       const subAgents = {
@@ -233,10 +244,15 @@ gameRouter.post(
       return c.json({
         session_id: sessionId,
         player: playerCharacter,
-        game_state: gameState,
+        game_state: {
+            ...gameState,
+            current_phase: gameState.current_phase,
+            turn_count: gameState.turn_count,
+            active_npc_ids: activeNpcIds,
+        },
         world_info: worldInfo,
         starting_scene: startingScene,
-        message: message,
+        message: "Game session created successfully",
       });
     } catch (error) {
       console.error("Error starting new game:", error);
