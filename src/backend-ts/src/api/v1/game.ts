@@ -346,13 +346,14 @@ gameRouter.get("/game/state/:sessionId", async (c) => {
 
     return c.json({
       id: packId,
-      name: worldPack.info.name[lang] || worldPack.info.name.en,
-      description:
-        worldPack.info.description?.[lang] ||
-        worldPack.info.description?.en ||
-        "",
-      author: worldPack.info.author || "Unknown",
-      version: worldPack.info.version,
+      info: {
+        name: worldPack.info.name,
+        description: worldPack.info.description,
+        version: worldPack.info.version,
+        author: worldPack.info.author,
+        setting: worldPack.info.setting,
+        player_hook: worldPack.info.player_hook,
+      },
       summary: {
         locations: Object.keys(worldPack.locations).length,
         npcs: Object.keys(worldPack.npcs || {}).length,
