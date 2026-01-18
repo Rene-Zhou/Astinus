@@ -1,7 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import type { LanguageModelV1 } from 'ai';
+import type { LanguageModel } from 'ai';
 import type { AgentConfig, ProviderConfig } from '../schemas/config.js';
 
 export class LLMFactory {
@@ -11,7 +11,7 @@ export class LLMFactory {
   public static createModel(
     agentConfig: AgentConfig, 
     providers: ProviderConfig[]
-  ): LanguageModelV1 {
+  ): LanguageModel {
     const providerConfig = providers.find(p => p.id === agentConfig.provider_id);
     
     if (!providerConfig) {
@@ -27,14 +27,14 @@ export class LLMFactory {
           apiKey,
           baseURL: baseUrl,
         });
-        return openai(agentConfig.model) as unknown as LanguageModelV1;
+        return openai(agentConfig.model);
 
       case 'anthropic':
         const anthropic = createAnthropic({
           apiKey,
           baseURL: baseUrl,
         });
-        return anthropic(agentConfig.model) as unknown as LanguageModelV1;
+        return anthropic(agentConfig.model);
 
       case 'ollama':
         // Ollama usually provides an OpenAI-compatible API
@@ -43,7 +43,7 @@ export class LLMFactory {
           apiKey: 'ollama', // often not needed but required by types
           baseURL: baseUrl || 'http://localhost:11434/v1',
         });
-        return ollama(agentConfig.model) as unknown as LanguageModelV1;
+        return ollama(agentConfig.model);
         
       case 'google':
         console.log(`[LLMFactory] Creating Google model: ${agentConfig.model} with base_url: ${baseUrl || 'default'}`);
@@ -51,7 +51,7 @@ export class LLMFactory {
           apiKey,
           baseURL: baseUrl,
         });
-        return google(agentConfig.model) as unknown as LanguageModelV1;
+        return google(agentConfig.model);
 
       default:
         // Try to treat unknown providers as OpenAI-compatible if they have a base URL
@@ -60,7 +60,7 @@ export class LLMFactory {
             apiKey,
             baseURL: baseUrl,
           });
-          return custom(agentConfig.model) as unknown as LanguageModelV1;
+          return custom(agentConfig.model);
         }
         throw new Error(`Unsupported provider type: ${providerConfig.type}`);
     }

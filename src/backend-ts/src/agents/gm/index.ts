@@ -1,5 +1,5 @@
 import { generateObject, generateText } from "ai";
-import type { LanguageModelV1 } from "ai";
+import type { LanguageModel } from "ai";
 import type { GameState } from "../../schemas";
 import { z } from "zod";
 import { LocationContextService } from "../../services/location-context";
@@ -54,7 +54,7 @@ export class GMAgent {
   private locationContextService?: LocationContextService;
 
   constructor(
-    private llm: LanguageModelV1,
+    private llm: LanguageModel,
     private subAgents: Record<string, SubAgent>,
     private gameState: GameState,
     private loreService?: any,

@@ -29,7 +29,7 @@
     "@hono/zod-validator": "^0.4.1",
     "@huggingface/transformers": "^3.2.3",
     "@lancedb/lancedb": "^0.23.0",
-    "ai": "^4.0.28",
+    "ai": "^6.0.39",
     "better-sqlite3": "^11.8.1",
     "drizzle-orm": "^0.37.0",
     "hono": "^4.7.11",

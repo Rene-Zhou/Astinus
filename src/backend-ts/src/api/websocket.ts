@@ -174,15 +174,39 @@ export function createWebSocketHandler(
 
       async onMessage(evt, ws) {
         try {
-          const data = JSON.parse(evt.data.toString());
+          const rawData = evt.data.toString();
+          console.log(`[WebSocket] Received raw message: ${rawData}`);
+          
+          const data = JSON.parse(rawData);
           const messageType = data.type as string;
+          console.log(`[WebSocket] Parsed message type: ${messageType}`);
 
-          if (messageType === "player_action") {
-            const playerInput = data.data.action as string;
-            const lang = (data.data.lang as "cn" | "en") || "cn";
+          // Support both legacy "player_action" and current frontend "player_input"
+          if (messageType === "player_action" || messageType === "player_input") {
+            let playerInput = "";
+            let lang: "cn" | "en" = "cn";
+
+            // Handle different data structures
+            if (data.data && typeof data.data === 'object') {
+                // Structure: { type: "player_action", data: { action: "...", lang: "..." } }
+                playerInput = data.data.action || data.data.content;
+                lang = data.data.lang || "cn";
+            } else {
+                // Structure: { type: "player_input", content: "...", lang: "..." }
+                playerInput = data.content || data.action;
+                lang = data.lang || "cn";
+            }
+
+            console.log(`[WebSocket] Player input extracted: ${playerInput}`);
+            
+            if (!playerInput) {
+                console.warn("[WebSocket] Received empty player input");
+                return;
+            }
 
             const ctx = getContext();
             if (!ctx.gmAgent) {
+              console.error("[WebSocket] GM Agent not initialized!");
               manager.sendError(sessionId, "Game engine not initialized");
               return;
             }
@@ -193,6 +217,7 @@ export function createWebSocketHandler(
               player_input: playerInput,
               lang,
             });
+            console.log(`[WebSocket] GM Process result success: ${response.success}`);
 
             if (response.success) {
               await streamContent(sessionId, response.content);
@@ -204,6 +229,10 @@ export function createWebSocketHandler(
                   response.metadata.check_request as Record<string, unknown>
                 );
               }
+              
+              // Ensure phase is synced after response
+              const gameState = ctx.gmAgent.getGameState();
+              manager.sendPhaseChange(sessionId, gameState.current_phase);
             } else {
               manager.sendError(sessionId, response.error || "Unknown error");
             }
