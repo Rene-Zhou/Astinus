@@ -1,4 +1,4 @@
-import { generateObject, generateText } from "ai";
+import { generateObject } from "ai";
 import type { LanguageModel } from "ai";
 import type { GameState, DiceCheckRequest } from "../../schemas";
 import { z } from "zod";
@@ -32,11 +32,13 @@ const GMCheckRequestSchema = z.object({
 
 const GMActionSchema = z.object({
   action_type: GMActionTypeSchema,
-  content: z.string().default(""),
-  agent_name: z.string().optional(),
-  agent_context: GMAgentContextSchema.default({}),
-  check_request: GMCheckRequestSchema.optional(),
-  reasoning: z.string().default(""),
+  reasoning: z.string().default("").describe("Reasoning process for this action"),
+  narrative: z.string().optional().describe("Final narrative output (RESPOND only)"),
+  target_location: z.string().nullable().optional().describe("Target location ID for scene transition (RESPOND only)"),
+  content: z.string().optional().describe("Search query or additional content (SEARCH_LORE only)"),
+  agent_name: z.string().optional().describe("Name of the agent to call (CALL_AGENT only)"),
+  agent_context: GMAgentContextSchema.optional().describe("Context to pass to agent (CALL_AGENT only)"),
+  check_request: GMCheckRequestSchema.optional().describe("Dice check parameters (REQUEST_CHECK only)"),
 });
 
 type GMAction = z.infer<typeof GMActionSchema>;
@@ -247,7 +249,7 @@ export class GMAgent {
         );
 
         return {
-          content: action.content,
+          content: action.content || "",
           success: true,
           metadata: {
             agent: "gm_agent",
@@ -277,7 +279,7 @@ export class GMAgent {
               agentName,
               playerInput,
               lang,
-              action.agent_context,
+              action.agent_context || {},
               diceResult
             );
 
@@ -309,14 +311,6 @@ export class GMAgent {
             diceResult,
         });
     }
-
-    // Default fallback
-    return {
-      content: "",
-      success: false,
-      error: "Unknown action or missing service",
-      metadata: { agent: "gm_agent" },
-    };
   }
 
   private async prepareAgentContext(
@@ -471,26 +465,31 @@ export class GMAgent {
   }
 
   private async generateResponse(
-    context: string,
+    _context: string,
     action: GMAction,
-    lang: "cn" | "en"
+    _lang: "cn" | "en"
   ): Promise<AgentResponse> {
-    const systemPrompt = this.buildNarrativePrompt(lang);
-    const maxOutputTokens = this.maxTokens ?? undefined;
+    const narrative = action.narrative || "";
 
-    const { text } = await generateText({
-      model: this.llm,
-      system: systemPrompt,
-      prompt: context + "\n\nReasoning: " + action.reasoning,
-      maxOutputTokens,
-    });
+    if (!narrative) {
+      return {
+        content: "",
+        success: false,
+        error: "RESPOND action missing narrative field",
+        metadata: { agent: "gm_agent" },
+      };
+    }
+
+    if (action.target_location) {
+      await this.handleSceneTransition(action.target_location);
+    }
 
     this.gameState.turn_count += 1;
     this.gameState.updated_at = new Date().toISOString();
     
     this.gameState.messages.push({
       role: "assistant",
-      content: text,
+      content: narrative,
       timestamp: new Date().toISOString(),
       turn: this.gameState.turn_count,
       metadata: {
@@ -502,7 +501,7 @@ export class GMAgent {
     this.gameState.current_phase = "waiting_input";
 
     return {
-      content: text,
+      content: narrative,
       success: true,
       metadata: { agent: "gm_agent" },
     };
@@ -755,34 +754,73 @@ Context Analysis (Decision Logic Flow):
 - If you see agent responses in the context → DO NOT call agents again
 - One agent call per type per turn maximum
 
+**Response Format Requirements**:
+
+For RESPOND action (final narrative output):
+- action_type: "RESPOND"
+- reasoning: Your reasoning process
+- narrative: The complete narrative text in ${lang === 'cn' ? 'Chinese' : 'English'}
+- target_location: Location ID if player is moving (or null)
+
+For REQUEST_CHECK action (dice check request):
+- action_type: "REQUEST_CHECK"
+- reasoning: Why this check is needed
+- check_request: { intention, difficulty, stat, reason, modifiers }
+
+For SEARCH_LORE action (background knowledge search):
+- action_type: "SEARCH_LORE"
+- reasoning: Why lore search is needed
+- content: Search keywords or question
+
+For CALL_AGENT action (invoke NPC or other agent):
+- action_type: "CALL_AGENT"
+- reasoning: Why this agent call is needed
+- agent_name: "npc_{id}" or other agent identifier
+- agent_context: Additional context for the agent
+
 Return the decision as a JSON object matching the GMAction schema.`;
-  }
-
-  private buildNarrativePrompt(lang: "cn" | "en"): string {
-    // ALWAYS use English for Logic Prompts to improve reasoning quality
-    // Only the FINAL OUTPUT instruction specifies the target language.
-    return `You are an experienced Game Master narrator.
-Your task is to synthesize the game state, agent results, and context into a coherent, immersive narrative response.
-
-Target Language: ${lang === 'cn' ? 'Chinese (Simplified)' : 'English'}
-
-【Information Control Rules - STRICTLY ENFORCE】:
-1. NEVER expose internal IDs (e.g., "npc_old_man", "loc_tavern"). Use in-world names.
-2. Do NOT use an NPC's true name unless the player has already learned it. Use descriptions (e.g., "the hooded figure").
-3. Do NOT reveal secret background info unless explicitly discovered.
-4. Do NOT mention game mechanics or agents (e.g., "The Rule Agent says..."). Describe the outcome naturally.
-
-【Narrative Integration Rules - NO EMBELLISHMENT】:
-1. Player Actions: Do NOT repeat or embellish what the player just said they did. Acknowledge the consequence, not the action itself.
-2. NPC Dialogue: Output dialogue EXACTLY as provided by the NPC agent. Do not rewrite.
-3. NPC Actions: Integrate provided NPC actions naturally as-is. Do not create additional expressions/actions.
-4. Immersion: Use second-person perspective ("You see...", "You hear...").
-
-Generate the final narrative response in ${lang === 'cn' ? 'Chinese (Simplified)' : 'English'}.`;
   }
 
   private getCurrentRegion(): string | undefined {
     return undefined;
+  }
+
+  private async handleSceneTransition(targetLocationId: string): Promise<boolean> {
+    if (!this.worldPackLoader) {
+      console.warn(`[GMAgent] Cannot transition: no world pack loader`);
+      return false;
+    }
+
+    try {
+      const pack = await this.worldPackLoader.load(this.gameState.world_pack_id);
+      const currentLocation = pack.locations[this.gameState.current_location];
+      
+      if (!currentLocation) {
+        console.error(`[GMAgent] Current location not found: ${this.gameState.current_location}`);
+        return false;
+      }
+
+      if (!currentLocation.connected_locations?.includes(targetLocationId)) {
+        console.error(`[GMAgent] Target location ${targetLocationId} not connected to current location`);
+        return false;
+      }
+
+      const targetLocation = pack.locations[targetLocationId];
+      if (!targetLocation) {
+        console.error(`[GMAgent] Target location not found: ${targetLocationId}`);
+        return false;
+      }
+
+      const npcIds = targetLocation.present_npc_ids || [];
+      this.gameState.current_location = targetLocationId;
+      this.gameState.active_npc_ids = npcIds;
+
+      console.log(`[GMAgent] Scene transition: ${this.gameState.current_location} -> ${targetLocationId}`);
+      return true;
+    } catch (error) {
+      console.error(`[GMAgent] Scene transition failed:`, error);
+      return false;
+    }
   }
 
   private buildDiceCheckRequest(
