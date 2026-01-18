@@ -330,8 +330,6 @@ gameRouter.get("/game/state/:sessionId", async (c) => {
   try {
     const worldPack = await ctx.worldPackLoader.load(packId);
 
-    const lang = (c.req.query("lang") as "cn" | "en") || "cn";
-
     const locations = Object.entries(worldPack.locations).map(([id, location]) => ({
       id,
       name: location.name,
@@ -352,7 +350,7 @@ gameRouter.get("/game/state/:sessionId", async (c) => {
         version: worldPack.info.version,
         author: worldPack.info.author,
         setting: worldPack.info.setting,
-        player_hook: worldPack.info.player_hook,
+        player_hook: worldPack.info.playerHook,
       },
       summary: {
         locations: Object.keys(worldPack.locations).length,
