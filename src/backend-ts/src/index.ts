@@ -90,6 +90,14 @@ async function initializeServices(): Promise<void> {
 
   try {
     console.log("📦 Initializing embedding service...");
+
+    // Check if HF token is available
+    if (!process.env.HF_TOKEN) {
+      console.warn("⚠️  HF_TOKEN not set - embedding service will be disabled");
+      console.warn("⚠️  Set HF_TOKEN environment variable to enable HuggingFace model downloads");
+      console.warn("⚠️  Or run without vector store features");
+    }
+
     await getEmbeddingService((progress) => {
       if (progress.status === "progress" && progress.file) {
         const pct = progress.progress?.toFixed(1) || "0";
@@ -99,6 +107,8 @@ async function initializeServices(): Promise<void> {
     console.log("✅ Embedding service ready");
   } catch (error) {
     console.error("⚠️ Embedding service failed:", error);
+    console.warn("⚠️  Continuing without embedding service...");
+    console.warn("⚠️  Set HF_TOKEN environment variable to enable HuggingFace features");
   }
 
   try {

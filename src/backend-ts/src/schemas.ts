@@ -449,7 +449,7 @@ export const LoreEntrySchema = z.object({
   key: z.array(z.string()),
   secondaryKeys: z.array(z.string()).default([]),
   content: LocalizedStringSchema,
-  comment: LocalizedStringSchema.optional(),
+  comment: LocalizedStringSchema.nullable(),
   constant: z.boolean().default(false),
   selective: z.boolean().default(true),
   order: z.number().int().default(100),
