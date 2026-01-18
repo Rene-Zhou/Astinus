@@ -220,15 +220,31 @@ export function createWebSocketHandler(
             console.log(`[WebSocket] GM Process result success: ${response.success}`);
 
             if (response.success) {
-              await streamContent(sessionId, response.content);
-              manager.sendComplete(sessionId, response.content, response.metadata || {});
-
+              // Check for dice requirement BEFORE streaming/completing
               if (response.metadata?.requires_dice) {
+                // Stream the narrative prompt (if any)
+                if (response.content) {
+                  await streamContent(sessionId, response.content);
+                  manager.sendComplete(sessionId, response.content, response.metadata || {});
+                }
+                
+                // Change phase to dice_check
+                const gameState = ctx.gmAgent.getGameState();
+                manager.sendPhaseChange(sessionId, gameState.current_phase);
+                
+                // Send dice check request (this keeps the turn active)
                 manager.sendDiceCheck(
                   sessionId,
                   response.metadata.check_request as Record<string, unknown>
                 );
+                
+                // DO NOT send phase back to waiting_input - stay in dice_check
+                return;
               }
+              
+              // Normal response without dice check
+              await streamContent(sessionId, response.content);
+              manager.sendComplete(sessionId, response.content, response.metadata || {});
               
               // Ensure phase is synced after response
               const gameState = ctx.gmAgent.getGameState();
@@ -251,8 +267,28 @@ export function createWebSocketHandler(
             const response = await ctx.gmAgent.resumeAfterDice(diceResult, lang);
 
             if (response.success) {
+              if (response.metadata?.requires_dice) {
+                if (response.content) {
+                  await streamContent(sessionId, response.content);
+                  manager.sendComplete(sessionId, response.content, response.metadata || {});
+                }
+                
+                const gameState = ctx.gmAgent.getGameState();
+                manager.sendPhaseChange(sessionId, gameState.current_phase);
+                
+                manager.sendDiceCheck(
+                  sessionId,
+                  response.metadata.check_request as Record<string, unknown>
+                );
+                
+                return;
+              }
+              
               await streamContent(sessionId, response.content);
               manager.sendComplete(sessionId, response.content, response.metadata || {});
+              
+              const gameState = ctx.gmAgent.getGameState();
+              manager.sendPhaseChange(sessionId, gameState.current_phase);
             } else {
               manager.sendError(sessionId, response.error || "Unknown error");
             }
