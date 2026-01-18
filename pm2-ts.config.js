@@ -3,14 +3,14 @@ module.exports = {
     {
       name: "astinus-backend-ts",
       cwd: "src/backend-ts",
-      script: "npm",
-      args: ["run", "dev"],
+      script: "tsx",
+      args: ["watch", "src/index.ts"],
       env: {
         NODE_ENV: "development",
         PORT: "8000",
       },
       autorestart: true,
-      watch: false,
+      watch: true,
       max_memory_restart: "1G",
       restart_delay: 2000,
       out_file: "logs/backend-ts.log",
