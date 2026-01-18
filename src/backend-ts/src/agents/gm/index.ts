@@ -1,7 +1,9 @@
 import { generateObject, generateText } from "ai";
-import type { LanguageModel } from "ai";
+import type { LanguageModelV1 } from "ai";
 import type { GameState } from "../../schemas";
 import { z } from "zod";
+import { LocationContextService } from "../../services/location-context";
+import { WorldPackLoader } from "../../services/world";
 
 const GMActionTypeSchema = z.enum([
   "RESPOND",
@@ -49,13 +51,19 @@ interface ReActLoopParams {
 
 export class GMAgent {
   private statusCallback?: StatusCallback;
+  private locationContextService?: LocationContextService;
 
   constructor(
-    private llm: LanguageModel,
+    private llm: LanguageModelV1,
     private subAgents: Record<string, SubAgent>,
     private gameState: GameState,
-    private loreService?: any
-  ) {}
+    private loreService?: any,
+    private worldPackLoader?: WorldPackLoader
+  ) {
+    if (this.worldPackLoader) {
+      this.locationContextService = new LocationContextService(this.worldPackLoader);
+    }
+  }
 
   setStatusCallback(callback: StatusCallback): void {
     this.statusCallback = callback;
@@ -136,16 +144,26 @@ export class GMAgent {
     const maxIterations = 5;
     const agentsCalled: string[] = [];
 
+    // Force output if max iterations reached
     if (iteration >= maxIterations) {
-      return {
-        content: "",
-        success: false,
-        error: "Max ReAct iterations reached",
-        metadata: { agent: "gm_agent", iteration },
-      };
+        // Fallback: Generate response with what we have
+        const context = await this.buildContext(
+            playerInput,
+            lang,
+            iteration,
+            agentResults,
+            diceResult
+        );
+        const action: GMAction = {
+            action_type: "RESPOND",
+            content: "Max iterations reached. Generating best effort response.",
+            reasoning: "Forced response due to loop limit.",
+            agent_context: {}
+        };
+        return this.generateResponse(context, action, lang);
     }
 
-    const context = this.buildContext(
+    const context = await this.buildContext(
       playerInput,
       lang,
       iteration,
@@ -184,7 +202,14 @@ export class GMAgent {
             diceResult,
           });
         }
-        break;
+        // If no lore service, skip to next iteration (or default to respond if no other actions)
+        return this.runReActLoop({
+            playerInput,
+            lang,
+            iteration: iteration + 1,
+            agentResults,
+            diceResult,
+        });
 
       case "REQUEST_CHECK":
         this.gameState.react_pending_state = {
@@ -192,6 +217,8 @@ export class GMAgent {
           iteration: iteration + 1,
           agent_results: agentResults,
         };
+        
+        this.gameState.current_phase = "dice_check";
 
         return {
           content: action.content,
@@ -212,30 +239,37 @@ export class GMAgent {
           agentsCalled.push(action.agent_name);
 
           const subAgent = this.subAgents[action.agent_name];
-          if (!subAgent) {
-            throw new Error(`Sub-agent not found: ${action.agent_name}`);
+          if (subAgent) {
+            const subAgentResponse = await subAgent.process(action.agent_context);
+
+            agentResults.push({
+              agent: action.agent_name,
+              result: subAgentResponse.content,
+              success: subAgentResponse.success,
+              reasoning: action.reasoning,
+              metadata: subAgentResponse.metadata
+            });
+
+            return this.runReActLoop({
+              playerInput,
+              lang,
+              iteration: iteration + 1,
+              agentResults,
+              diceResult,
+            });
           }
-
-          const subAgentResponse = await subAgent.process(action.agent_context);
-
-          agentResults.push({
-            agent: action.agent_name,
-            result: subAgentResponse.content,
-            success: subAgentResponse.success,
-            reasoning: action.reasoning,
-          });
-
-          return this.runReActLoop({
+        }
+        // Agent not found or invalid
+        return this.runReActLoop({
             playerInput,
             lang,
             iteration: iteration + 1,
             agentResults,
             diceResult,
-          });
-        }
-        break;
+        });
     }
 
+    // Default fallback
     return {
       content: "",
       success: false,
@@ -257,6 +291,11 @@ export class GMAgent {
       prompt: context,
     });
 
+    // Default agent_context if undefined
+    if (!object.agent_context) {
+        object.agent_context = {};
+    }
+
     return object;
   }
 
@@ -273,12 +312,21 @@ export class GMAgent {
       prompt: context + "\n\nReasoning: " + action.reasoning,
     });
 
+    this.gameState.turn_count += 1;
+    this.gameState.updated_at = new Date().toISOString();
+    
     this.gameState.messages.push({
       role: "assistant",
       content: text,
       timestamp: new Date().toISOString(),
       turn: this.gameState.turn_count,
+      metadata: {
+          phase: "gm_response",
+          reasoning: action.reasoning
+      }
     });
+
+    this.gameState.current_phase = "waiting_input";
 
     return {
       content: text,
@@ -287,45 +335,92 @@ export class GMAgent {
     };
   }
 
-  private buildContext(
+  private async getSceneContext(lang: "cn" | "en") {
+    if (!this.locationContextService) {
+      return null;
+    }
+
+    return await this.locationContextService.getContextForLocation(
+      this.gameState.world_pack_id,
+      this.gameState.current_location,
+      this.gameState.discovered_items,
+      lang
+    );
+  }
+
+  private async buildContext(
     playerInput: string,
     lang: "cn" | "en",
     iteration: number,
     agentResults: Array<Record<string, unknown>>,
     diceResult: Record<string, unknown> | null
-  ): string {
+  ): Promise<string> {
+    const sceneContext = await this.getSceneContext(lang);
     const parts: string[] = [];
 
-    parts.push(`Player Input: ${playerInput}`);
-    parts.push(`Language: ${lang}`);
+    // 1. Basic Info (Always English for System Logic)
+    parts.push(`Language: ${lang === 'cn' ? 'Chinese (Simplified)' : 'English'}`);
     parts.push(`Iteration: ${iteration}`);
+    parts.push(`Player Input: ${playerInput}`);
 
-    parts.push(`\nGame State:`);
-    parts.push(`  Phase: ${this.gameState.current_phase}`);
-    parts.push(`  Turn: ${this.gameState.turn_count}`);
-    parts.push(`  Location: ${this.gameState.current_location}`);
+    // 2. Game State & Location Context
+    parts.push(`\n[Game State]`);
+    parts.push(`Phase: ${this.gameState.current_phase}`);
+    parts.push(`Turn: ${this.gameState.turn_count}`);
+    parts.push(`Location ID: ${this.gameState.current_location}`);
+    
+    if (sceneContext) {
+        // Provide localized names but keep structure in English
+        parts.push(`Region: ${sceneContext.region.name} (${sceneContext.region.narrative_tone})`);
+        parts.push(`Location: ${sceneContext.location.name}`);
+        parts.push(`Description: ${sceneContext.location.description}`);
+        if (sceneContext.location.atmosphere) {
+            parts.push(`Atmosphere: ${sceneContext.location.atmosphere}`);
+        }
+        if (sceneContext.atmosphere_guidance) {
+            parts.push(`Guidance: ${sceneContext.atmosphere_guidance}`);
+        }
+        parts.push(`Visible Items: ${sceneContext.location.visible_items.join(", ")}`);
+        
+        if (sceneContext.basic_lore.length > 0) {
+            parts.push(`\n[Relevant Lore]`);
+            sceneContext.basic_lore.forEach(lore => parts.push(`- ${lore}`));
+        }
+    }
 
     if (this.gameState.player) {
-      parts.push(`  Player:`);
-      parts.push(`  Name: ${this.gameState.player.name}`);
-      parts.push(`  Traits: ${this.gameState.player.traits.length}`);
+      parts.push(`\n[Player Character]`);
+      parts.push(`Name: ${this.gameState.player.name}`);
+      const concept = typeof this.gameState.player.concept === 'string' 
+        ? this.gameState.player.concept 
+        : (this.gameState.player.concept as any)[lang] || JSON.stringify(this.gameState.player.concept);
+      parts.push(`Concept: ${concept}`);
+      
+      parts.push(`Traits:`);
+      this.gameState.player.traits.forEach(t => {
+          const name = (t.name as any)[lang] || t.name;
+          parts.push(`- ${name}`);
+      });
     }
 
     if (agentResults.length > 0) {
-      parts.push(`\nAgent Results:`);
+      parts.push(`\n[Agent Results]`);
       for (const result of agentResults) {
-        parts.push(`  - ${result.agent}: ${result.reasoning}`);
+        parts.push(`  - Agent: ${result.agent}`);
+        parts.push(`    Reasoning: ${result.reasoning}`);
+        // Agent results might be in mixed language depending on the agent, pass as is
         parts.push(`    Result: ${JSON.stringify(result.result)}`);
       }
     }
 
     if (diceResult) {
-      parts.push(`\nDice Result: ${JSON.stringify(diceResult)}`);
+      parts.push(`\n[Dice Result]`);
+      parts.push(JSON.stringify(diceResult, null, 2));
     }
 
     const recentMessages = this.gameState.messages.slice(-10);
     if (recentMessages.length > 0) {
-      parts.push(`\nRecent Messages:`);
+      parts.push(`\n[Conversation History]`);
       for (const msg of recentMessages) {
         parts.push(`  ${msg.role}: ${msg.content}`);
       }
@@ -335,37 +430,48 @@ export class GMAgent {
   }
 
   private buildDecisionPrompt(lang: "cn" | "en"): string {
-    if (lang === "cn") {
-      return `你是游戏主持人(GM),负责协调多个子代理。
-分析玩家输入,决定下一步行动:
-- RESPOND: 直接回应玩家
-- SEARCH_LORE: 搜索背景知识
-- REQUEST_CHECK: 请求掷骰检定
-- CALL_AGENT: 调用子代理(rule, npc等)
+    // ALWAYS use English for Logic Prompts to improve reasoning quality
+    return `You are the Game Master (GM) orchestrating a TTRPG session.
+Your role is to analyze the player's input and decide the next logical step in the game loop.
 
-返回JSON格式的行动决策。`;
-    }
+Current Language for Output: ${lang === 'cn' ? 'Chinese (Simplified)' : 'English'}
 
-    return `You are the Game Master (GM) coordinating multiple sub-agents.
-Analyze player input and decide the next action:
-- RESPOND: Directly respond to player
-- SEARCH_LORE: Search background lore
-- REQUEST_CHECK: Request dice check
-- CALL_AGENT: Call sub-agent (rule, npc, etc.)
+Analyze the input and context to choose ONE action:
+- RESPOND: Direct narrative response to the player. Use this for general interactions, descriptions, or when no other action applies.
+- SEARCH_LORE: The player is asking about world history, background, or specific details that might be in the lore database.
+- REQUEST_CHECK: The player attempts an action with a chance of failure or significant consequence (e.g., attacking, climbing, persuading).
+- CALL_AGENT: The player is interacting with a specific sub-agent (e.g., talking to an NPC).
 
-Return action decision in JSON format.`;
+Context Analysis:
+1. Is the player interacting with a specific NPC? -> CALL_AGENT (agent_name: "npc_{id}")
+2. Is the player asking about history/lore? -> SEARCH_LORE
+3. Is the player attempting a risky action? -> REQUEST_CHECK
+4. Otherwise -> RESPOND
+
+Return the decision as a JSON object matching the GMAction schema.`;
   }
 
   private buildNarrativePrompt(lang: "cn" | "en"): string {
-    if (lang === "cn") {
-      return `你是一位经验丰富的游戏主持人。
-基于游戏状态和代理结果,生成引人入胜的叙事描述。
-保持角色扮演的沉浸感,使用生动的语言。`;
-    }
+    // ALWAYS use English for Logic Prompts to improve reasoning quality
+    // Only the FINAL OUTPUT instruction specifies the target language.
+    return `You are an experienced Game Master narrator.
+Your task is to synthesize the game state, agent results, and context into a coherent, immersive narrative response.
 
-    return `You are an experienced Game Master.
-Based on game state and agent results, generate engaging narrative.
-Maintain immersive roleplay and use vivid language.`;
+Target Language: ${lang === 'cn' ? 'Chinese (Simplified)' : 'English'}
+
+【Information Control Rules - STRICTLY ENFORCE】:
+1. NEVER expose internal IDs (e.g., "npc_old_man", "loc_tavern"). Use in-world names.
+2. Do NOT use an NPC's true name unless the player has already learned it. Use descriptions (e.g., "the hooded figure").
+3. Do NOT reveal secret background info unless explicitly discovered.
+4. Do NOT mention game mechanics or agents (e.g., "The Rule Agent says..."). Describe the outcome naturally.
+
+【Narrative Integration Rules】:
+1. Player Actions: Do NOT repeat or embellish what the player just said they did. Acknowledge the consequence, not the action itself.
+2. NPC Dialogue: Output dialogue EXACTLY as provided by the NPC agent. Do not rewrite.
+3. NPC Actions: Integrate provided NPC actions naturally.
+4. Immersion: Use second-person perspective ("You see...", "You hear...").
+
+Generate the final narrative response in ${lang === 'cn' ? 'Chinese (Simplified)' : 'English'}.`;
   }
 
   private getCurrentRegion(): string | undefined {

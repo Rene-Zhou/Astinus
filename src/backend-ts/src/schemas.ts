@@ -346,12 +346,17 @@ export const GameStateHelpers = {
   },
 
   setPhase(state: GameState, phase: GamePhase, nextAgent?: string | null): GameState {
-    return {
+    const newState = {
       ...state,
       current_phase: phase,
       next_agent: nextAgent !== undefined ? nextAgent : state.next_agent,
       updated_at: new Date().toISOString(),
     };
+    // Mutate original state for now to match current usage pattern in GMAgent
+    state.current_phase = phase;
+    if (nextAgent !== undefined) state.next_agent = nextAgent;
+    state.updated_at = newState.updated_at;
+    return state;
   },
 
   saveReactState(
