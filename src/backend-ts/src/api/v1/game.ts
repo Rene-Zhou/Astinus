@@ -304,7 +304,7 @@ gameRouter.get("/game/state/:sessionId", async (c) => {
   });
 });
 
-gameRouter.get("/world-packs", async (c) => {
+  gameRouter.get("/game/world-packs", async (c) => {
   const ctx = getAppContext();
 
   if (!ctx.worldPackLoader) {
@@ -319,7 +319,7 @@ gameRouter.get("/world-packs", async (c) => {
   }
 });
 
-  gameRouter.get("/world-packs/:packId", async (c) => {
+  gameRouter.get("/game/world-pack/:packId", async (c) => {
   const packId = c.req.param("packId");
   const ctx = getAppContext();
 

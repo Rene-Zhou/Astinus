@@ -78,7 +78,7 @@ app.get("/health", (c) => {
 });
 
 app.route("/api/v1", gameRouter);
-app.route("/api/v1", settingsRouter);
+app.route("/api/v1/settings", settingsRouter);
 
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 const wsHandler = createWebSocketHandler(upgradeWebSocket, () => appContext);
