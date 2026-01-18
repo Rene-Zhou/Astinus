@@ -226,7 +226,10 @@ gameRouter.post(
 
       // NO message push to gameState.messages - Python backend starts empty
 
-      const npcAgent = new NPCAgent(npcModel as any);
+      const npcMaxTokens = config.agents?.npc?.max_tokens;
+      const gmMaxTokens = config.agents?.gm?.max_tokens;
+
+      const npcAgent = new NPCAgent(npcModel as any, npcMaxTokens);
       const subAgents = {
         npc: npcAgent,
       };
@@ -236,7 +239,8 @@ gameRouter.post(
         subAgents,
         gameState,
         ctx.loreService,
-        ctx.worldPackLoader
+        ctx.worldPackLoader,
+        gmMaxTokens
       );
 
       return c.json({

@@ -29,7 +29,8 @@ interface NPCProcessInput {
 
 export class NPCAgent {
   constructor(
-    private llm: LanguageModel
+    private llm: LanguageModel,
+    private maxTokens?: number
   ) {}
 
   async process(input: Record<string, unknown>): Promise<AgentResponse> {
@@ -84,12 +85,15 @@ export class NPCAgent {
 
     const userPrompt = this.buildUserPrompt(npc, playerInput, context, lang);
 
+    const maxOutputTokens = this.maxTokens ?? undefined;
+
     try {
       const { object } = await generateObject({
         model: this.llm,
         schema: NPCResponseSchema,
         system: systemPrompt,
         prompt: userPrompt,
+        maxOutputTokens,
       });
 
       const responseMetadata: Record<string, unknown> = {

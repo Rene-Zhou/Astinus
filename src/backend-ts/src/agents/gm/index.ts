@@ -75,7 +75,8 @@ export class GMAgent {
     private subAgents: Record<string, SubAgent>,
     private gameState: GameState,
     private loreService?: any,
-    private worldPackLoader?: WorldPackLoader
+    private worldPackLoader?: WorldPackLoader,
+    private maxTokens?: number
   ) {
     if (this.worldPackLoader) {
       this.locationContextService = new LocationContextService(this.worldPackLoader);
@@ -439,12 +440,15 @@ export class GMAgent {
     console.log("[GMAgent] Deciding action...");
     const systemPrompt = this.buildDecisionPrompt(lang);
 
+    const maxOutputTokens = this.maxTokens ?? undefined;
+
     try {
       const { object } = await generateObject({
         model: this.llm,
         schema: GMActionSchema,
         system: systemPrompt,
         prompt: context,
+        maxOutputTokens,
       });
       console.log("[GMAgent] Decision:", object);
 
@@ -466,11 +470,13 @@ export class GMAgent {
     lang: "cn" | "en"
   ): Promise<AgentResponse> {
     const systemPrompt = this.buildNarrativePrompt(lang);
+    const maxOutputTokens = this.maxTokens ?? undefined;
 
     const { text } = await generateText({
       model: this.llm,
       system: systemPrompt,
       prompt: context + "\n\nReasoning: " + action.reasoning,
+      maxOutputTokens,
     });
 
     this.gameState.turn_count += 1;
