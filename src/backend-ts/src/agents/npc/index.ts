@@ -7,7 +7,7 @@ const NPCResponseSchema = z.object({
   response: z.string(),
   emotion: z.string().default("neutral"),
   action: z.string().default(""),
-  relation_change: z.number().int().default(0),
+  relation_change: z.number().int().min(-10).max(10).default(0),
   new_memory: z.string().optional(),
 });
 
@@ -206,21 +206,7 @@ export class NPCAgent {
       lines.push(roleplayDirection);
     }
 
-    lines.push("");
-    lines.push("## Response Format");
-    lines.push("You must output a valid JSON object matching this TypeScript interface:");
-    lines.push("```typescript");
-    lines.push("interface NPCResponse {");
-    lines.push(`  // Your dialogue in ${lang === 'cn' ? 'Chinese' : 'English'}`);
-    lines.push("  response: string;");
-    lines.push("  // Emotional state (e.g., happy, sad, angry, scared, neutral)");
-    lines.push("  emotion: string;");
-    lines.push(`  // Accompanying action in ${lang === 'cn' ? 'Chinese' : 'English'} (follow narrative style)`);
-    lines.push("  action: string;");
-    lines.push("  // Relationship change integer between -10 and +10 (NO floats)");
-    lines.push("  relation_change: number;");
-    lines.push("}");
-    lines.push("```");
+
 
     return lines.join("\n");
   }
