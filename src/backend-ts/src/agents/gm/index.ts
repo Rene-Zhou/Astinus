@@ -1,11 +1,12 @@
 import { generateObject, generateText } from "ai";
 import type { LanguageModel } from "ai";
-import type { GameState } from "../../schemas";
+import type { GameState, DiceCheckRequest } from "../../schemas";
 import { z } from "zod";
 import { LocationContextService } from "../../services/location-context";
 import { WorldPackLoader } from "../../services/world";
 import { getLocalizedString } from "../../schemas";
 import type { NPCData } from "../../schemas";
+import { DicePool } from "../../services/dice";
 
 const GMActionTypeSchema = z.enum([
   "RESPOND",
@@ -240,13 +241,18 @@ export class GMAgent {
         
         this.gameState.current_phase = "dice_check";
 
+        const fullCheckRequest = this.buildDiceCheckRequest(
+          action.check_request,
+          lang
+        );
+
         return {
           content: action.content,
           success: true,
           metadata: {
             agent: "gm_agent",
             requires_dice: true,
-            check_request: action.check_request,
+            check_request: fullCheckRequest,
           },
         };
 
@@ -777,5 +783,104 @@ Generate the final narrative response in ${lang === 'cn' ? 'Chinese (Simplified)
 
   private getCurrentRegion(): string | undefined {
     return undefined;
+  }
+
+  private buildDiceCheckRequest(
+    gmRequest: z.infer<typeof GMCheckRequestSchema> | undefined,
+    lang: "cn" | "en"
+  ): DiceCheckRequest {
+    if (!gmRequest) {
+      return {
+        intention: lang === "cn" ? "行动检定" : "Action check",
+        influencing_factors: { traits: [], tags: [] },
+        dice_formula: "2d6",
+        instructions: {
+          cn: "进行一次标准检定。",
+          en: "Make a standard check."
+        }
+      };
+    }
+
+    const playerTraits = this.gameState.player?.traits || [];
+    const playerTags = this.gameState.player?.tags || [];
+    const modifiers = gmRequest.modifiers || [];
+
+    const relevantTraits: string[] = [];
+    const relevantTags: string[] = [];
+
+    if (gmRequest.stat) {
+      const matchingTrait = playerTraits.find(t => {
+        const traitNameCn = typeof t.name === 'string' ? t.name : (t.name as any).cn;
+        const traitNameEn = typeof t.name === 'string' ? t.name : (t.name as any).en;
+        return traitNameCn === gmRequest.stat || traitNameEn === gmRequest.stat;
+      });
+      if (matchingTrait) {
+        const traitName = typeof matchingTrait.name === 'string' 
+          ? matchingTrait.name 
+          : (matchingTrait.name as any)[lang] || (matchingTrait.name as any).cn;
+        relevantTraits.push(traitName);
+      }
+    }
+
+    for (const mod of modifiers) {
+      const foundTag = playerTags.find(tag => mod.includes(tag));
+      if (foundTag) {
+        relevantTags.push(foundTag);
+      }
+    }
+
+    let bonusDice = 0;
+    let penaltyDice = 0;
+
+    const advantageKeywords = ["advantage", "优势", "bonus", "奖励"];
+    const disadvantageKeywords = ["disadvantage", "劣势", "penalty", "惩罚"];
+
+    for (const mod of modifiers) {
+      const lowerMod = mod.toLowerCase();
+      if (advantageKeywords.some(kw => lowerMod.includes(kw))) {
+        bonusDice++;
+      } else if (disadvantageKeywords.some(kw => lowerMod.includes(kw))) {
+        penaltyDice++;
+      }
+    }
+
+    if (relevantTraits.length > 0 && bonusDice === 0 && penaltyDice === 0) {
+      bonusDice = 1;
+    }
+
+    if (relevantTags.length > 0 && bonusDice === 0 && penaltyDice === 0) {
+      penaltyDice = 1;
+    }
+
+    const pool = new DicePool(0, bonusDice, penaltyDice);
+    const diceFormula = pool.getDiceFormula();
+
+    let instructionsCn = gmRequest.reason || "进行一次检定。";
+    let instructionsEn = gmRequest.reason || "Make a check.";
+
+    if (relevantTraits.length > 0) {
+      const traitList = relevantTraits.join("、");
+      instructionsCn += ` 你的特质「${traitList}」在此发挥作用。`;
+      instructionsEn += ` Your trait(s) "${traitList}" come into play.`;
+    }
+
+    if (relevantTags.length > 0) {
+      const tagList = relevantTags.join("、");
+      instructionsCn += ` 当前状态「${tagList}」影响了你的行动。`;
+      instructionsEn += ` Current status "${tagList}" affects your action.`;
+    }
+
+    return {
+      intention: gmRequest.intention,
+      influencing_factors: {
+        traits: relevantTraits,
+        tags: relevantTags
+      },
+      dice_formula: diceFormula,
+      instructions: {
+        cn: instructionsCn,
+        en: instructionsEn
+      }
+    };
   }
 }
