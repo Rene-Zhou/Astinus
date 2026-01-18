@@ -180,16 +180,25 @@ gameRouter.post(
         visible_items: startingLocation.visible_items || [],
       };
 
+      const message =
+        lang === "cn"
+          ? `游戏开始！欢迎来到${locationName}。`
+          : `Game started! Welcome to ${locationName}.`;
+
+      gameState.messages.push({
+        role: "assistant",
+        content: message,
+        timestamp: new Date().toISOString(),
+        turn: 0,
+      });
+
       return c.json({
         session_id: sessionId,
         player: playerCharacter,
         game_state: gameState,
         world_info: worldInfo,
         starting_scene: startingScene,
-        message:
-          lang === "cn"
-            ? `游戏开始！欢迎来到${locationName}。`
-            : `Game started! Welcome to ${locationName}.`,
+        message: message,
       });
     } catch (error) {
       console.error("Error starting new game:", error);
@@ -279,6 +288,25 @@ gameRouter.post(
     }
   }
 );
+
+gameRouter.get("/game/state", async (c) => {
+  const ctx = getAppContext();
+
+  if (!ctx.gmAgent) {
+    return c.json({ error: "Game engine not initialized" }, 503);
+  }
+
+  const gameState = ctx.gmAgent.getGameState();
+
+  return c.json({
+    session_id: gameState.session_id,
+    phase: gameState.current_phase,
+    turn_number: gameState.turn_count,
+    current_location: gameState.current_location,
+    active_npc_ids: gameState.active_npc_ids,
+    player: gameState.player,
+  });
+});
 
 gameRouter.get("/game/state/:sessionId", async (c) => {
   const sessionId = c.req.param("sessionId");

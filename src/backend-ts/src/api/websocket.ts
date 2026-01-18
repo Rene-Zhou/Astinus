@@ -137,6 +137,28 @@ export function createWebSocketHandler(
         console.log(`[WebSocket] Client connected: ${sessionId}`);
         manager.connect(sessionId, ws);
         manager.sendStatus(sessionId, "connected", "WebSocket connected");
+
+        const ctx = getContext();
+        if (ctx.gmAgent) {
+          const gameState = ctx.gmAgent.getGameState();
+          if (gameState.session_id === sessionId) {
+            // Push current phase
+            manager.sendPhaseChange(sessionId, gameState.current_phase);
+
+            // Push last message if any
+            if (gameState.messages.length > 0) {
+              const lastMsg = gameState.messages[gameState.messages.length - 1];
+              if (lastMsg) {
+                manager.sendComplete(
+                  sessionId,
+                  lastMsg.content,
+                  lastMsg.metadata || {},
+                  true
+                );
+              }
+            }
+          }
+        }
       },
 
       async onMessage(evt, ws) {
