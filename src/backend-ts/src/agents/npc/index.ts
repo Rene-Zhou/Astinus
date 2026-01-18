@@ -32,7 +32,8 @@ export class NPCAgent {
     private llm: LanguageModel
   ) {}
 
-  async process(inputData: NPCProcessInput): Promise<AgentResponse> {
+  async process(input: Record<string, unknown>): Promise<AgentResponse> {
+    const inputData = input as unknown as NPCProcessInput;
     const npcDataDict = inputData.npc_data;
     const playerInput = inputData.player_input;
     const context = inputData.context || {};

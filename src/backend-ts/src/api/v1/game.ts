@@ -4,6 +4,9 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { getAppContext } from "../../index";
 import type { GameState, PlayerCharacter, Trait } from "../../schemas";
+import { GMAgent } from "../../agents/gm";
+import { NPCAgent } from "../../agents/npc";
+import { mockLanguageModel } from "../../lib/mock-llm";
 
 const NewGameRequestSchema = z.object({
   world_pack_id: z.string().default("demo_pack"),
@@ -191,6 +194,20 @@ gameRouter.post(
         timestamp: new Date().toISOString(),
         turn: 0,
       });
+
+      // Initialize Agents with Mock LLM
+      // In a real implementation, this would use a configured LanguageModel based on settings
+      const npcAgent = new NPCAgent(mockLanguageModel as any);
+      const subAgents = {
+        npc: npcAgent,
+      };
+
+      ctx.gmAgent = new GMAgent(
+        mockLanguageModel as any,
+        subAgents,
+        gameState,
+        ctx.loreService
+      );
 
       return c.json({
         session_id: sessionId,
