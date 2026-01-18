@@ -169,31 +169,29 @@ gameRouter.post(
         language: "cn",
       };
 
-      const lang = "cn";
-      const locationName =
-        startingLocation.name[lang] || startingLocation.name.en || startingLocationId;
-      const locationDesc =
-        startingLocation.description?.[lang] ||
-        startingLocation.description?.en ||
-        "";
-
-      const worldInfo = {
-        pack_id: request.world_pack_id,
-        name: worldPack.info.name[lang] || worldPack.info.name.en,
-        description:
-          worldPack.info.description?.[lang] ||
-          worldPack.info.description?.en ||
-          "",
-        author: worldPack.info.author || "Unknown",
+      const worldInfo: any = {
+        id: request.world_pack_id,
+        name: worldPack.info.name,
+        description: worldPack.info.description,
+        version: worldPack.info.version,
+        author: worldPack.info.author,
       };
+
+      if (worldPack.info.setting) {
+        worldInfo.setting = worldPack.info.setting;
+      }
+      if (worldPack.info.player_hook) {
+        worldInfo.player_hook = worldPack.info.player_hook;
+      }
 
       const startingScene = {
         location_id: startingLocationId,
-        location_name: locationName,
-        location_description: locationDesc,
+        location_name: startingLocation.name,
+        description: startingLocation.description, // Aligned with Python backend
         items: startingLocation.items || [],
         connected_locations: [], // Populated below
         npcs: [], // Populated below
+        atmosphere: startingLocation.atmosphere, // Add atmosphere if present
       };
 
       // Populate connected locations
@@ -203,7 +201,7 @@ gameRouter.post(
           if (connectedLoc) {
             (startingScene.connected_locations as any[]).push({
               id: locId,
-              name: connectedLoc.name[lang] || connectedLoc.name.en || locId,
+              name: connectedLoc.name, // Pass raw LocalizedString object
             });
           }
         }
@@ -216,12 +214,11 @@ gameRouter.post(
             const npcInfo: any = { id: npcId };
             // Use appearance if available, otherwise fallback to description
             const soul = (npc as any).soul;
-            if (soul.appearance && (soul.appearance[lang] || soul.appearance.en)) {
-                npcInfo.appearance = soul.appearance[lang] || soul.appearance.en;
+            if (soul.appearance) {
+                npcInfo.appearance = soul.appearance;
             } else {
-                // Fallback: use first sentence of description
-                const desc = soul.description[lang] || soul.description.en || "";
-                npcInfo.appearance = desc.split(/[.!?。！？]/)[0];
+                // Fallback: use description (Python sends full description model_dump)
+                npcInfo.appearance = soul.description;
             }
             (startingScene.npcs as any[]).push(npcInfo);
         }
@@ -354,7 +351,7 @@ gameRouter.get("/game/state", async (c) => {
 
   return c.json({
     session_id: gameState.session_id,
-    phase: gameState.current_phase,
+    current_phase: gameState.current_phase, // Aligned with Python backend (was 'phase')
     turn_number: gameState.turn_count,
     current_location: gameState.current_location,
     active_npc_ids: gameState.active_npc_ids,
@@ -378,7 +375,7 @@ gameRouter.get("/game/state/:sessionId", async (c) => {
 
   return c.json({
     session_id: gameState.session_id,
-    phase: gameState.current_phase,
+    current_phase: gameState.current_phase, // Aligned with Python backend (was 'phase')
     turn_number: gameState.turn_count,
     current_location: gameState.current_location,
     active_npc_ids: gameState.active_npc_ids,

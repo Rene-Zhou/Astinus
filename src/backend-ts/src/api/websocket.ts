@@ -136,13 +136,24 @@ export function createWebSocketHandler(
       onOpen(_evt, ws) {
         console.log(`[WebSocket] Client connected: ${sessionId}`);
         manager.connect(sessionId, ws);
-        manager.sendStatus(sessionId, "connected", "WebSocket connected");
 
         const ctx = getContext();
+        let currentPhase = "waiting_input";
+
         if (ctx.gmAgent) {
           const gameState = ctx.gmAgent.getGameState();
           if (gameState.session_id === sessionId) {
-            // Push current phase
+            currentPhase = gameState.current_phase;
+          }
+        }
+
+        // Send initial status with ACTUAL phase, not "connected"
+        manager.sendStatus(sessionId, currentPhase, "WebSocket connected");
+
+        if (ctx.gmAgent) {
+          const gameState = ctx.gmAgent.getGameState();
+          if (gameState.session_id === sessionId) {
+            // Push current phase explicitly as phase message too
             manager.sendPhaseChange(sessionId, gameState.current_phase);
 
             // Push last message if any
