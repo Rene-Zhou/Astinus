@@ -78,10 +78,10 @@ export class WorldPackLoader {
 
   getLocationRegion(pack: WorldPack, locationId: string): RegionData | undefined {
     const location = this.getLocation(pack, locationId);
-    if (!location || !location.regionId) {
+    if (!location || !location.region_id) {
       return undefined;
     }
-    return this.getRegion(pack, location.regionId);
+    return this.getRegion(pack, location.region_id);
   }
 
   getConstantEntries(pack: WorldPack): LoreEntry[] {
@@ -107,21 +107,21 @@ export class WorldPackLoader {
         continue;
       }
 
-      if (entry.applicableLocations.length > 0) {
-        if (entry.applicableLocations.includes(locationId)) {
+      if (entry.applicable_locations.length > 0) {
+        if (entry.applicable_locations.includes(locationId)) {
           matches.push(entry);
         }
         continue;
       }
 
-      if (entry.applicableRegions.length > 0 && region) {
-        if (entry.applicableRegions.includes(region.id)) {
+      if (entry.applicable_regions.length > 0 && region) {
+        if (entry.applicable_regions.includes(region.id)) {
           matches.push(entry);
         }
         continue;
       }
 
-      if (entry.applicableLocations.length === 0 && entry.applicableRegions.length === 0) {
+      if (entry.applicable_locations.length === 0 && entry.applicable_regions.length === 0) {
         matches.push(entry);
       }
     }
@@ -147,8 +147,8 @@ export class WorldPackLoader {
         continue;
       }
 
-      if (includeSecondary && entry.secondaryKeys.length > 0) {
-        const secondaryMatch = entry.secondaryKeys.some(
+      if (includeSecondary && entry.secondary_keys.length > 0) {
+        const secondaryMatch = entry.secondary_keys.some(
           (k) => keywordLower.includes(k.toLowerCase()) || k.toLowerCase().includes(keywordLower)
         );
         if (secondaryMatch) {

@@ -203,18 +203,18 @@ export class LoreService {
       }
 
       if (
-        entry.applicableLocations &&
-        entry.applicableLocations.length > 0 &&
+        entry.applicable_locations &&
+        entry.applicable_locations.length > 0 &&
         (!currentLocation ||
-          !entry.applicableLocations.includes(currentLocation))
+          !entry.applicable_locations.includes(currentLocation))
       ) {
         return false;
       }
 
       if (
-        entry.applicableRegions &&
-        entry.applicableRegions.length > 0 &&
-        (!currentRegion || !entry.applicableRegions.includes(currentRegion))
+        entry.applicable_regions &&
+        entry.applicable_regions.length > 0 &&
+        (!currentRegion || !entry.applicable_regions.includes(currentRegion))
       ) {
         return false;
       }
@@ -249,18 +249,18 @@ export class LoreService {
       }
 
       if (
-        entry.applicableLocations &&
-        entry.applicableLocations.length > 0 &&
+        entry.applicable_locations &&
+        entry.applicable_locations.length > 0 &&
         (!currentLocation ||
-          !entry.applicableLocations.includes(currentLocation))
+          !entry.applicable_locations.includes(currentLocation))
       ) {
         return false;
       }
 
       if (
-        entry.applicableRegions &&
-        entry.applicableRegions.length > 0 &&
-        (!currentRegion || !entry.applicableRegions.includes(currentRegion))
+        entry.applicable_regions &&
+        entry.applicable_regions.length > 0 &&
+        (!currentRegion || !entry.applicable_regions.includes(currentRegion))
       ) {
         return false;
       }
@@ -397,8 +397,8 @@ export class LoreService {
         return true;
       }
 
-      if (includeSecondary && entry.secondaryKeys) {
-        return entry.secondaryKeys.some((k: any) =>
+      if (includeSecondary && entry.secondary_keys) {
+        return entry.secondary_keys.some((k: any) =>
           k.toLowerCase().includes(keyword.toLowerCase())
         );
       }

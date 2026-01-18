@@ -158,8 +158,8 @@ export function createTestApp(options: TestAppOptions = {}) {
       const sessionId = `test-session-${Date.now()}`;
 
       let player = mockGameState.player;
-      if (presetCharacterId && worldPack.presetCharacters) {
-        const preset = worldPack.presetCharacters.find(
+      if (presetCharacterId && worldPack.preset_characters) {
+        const preset = worldPack.preset_characters.find(
           (p: { id: string }) => p.id === presetCharacterId
         );
         if (preset) {
@@ -167,7 +167,7 @@ export function createTestApp(options: TestAppOptions = {}) {
             name: preset.name,
             concept: preset.concept,
             traits: preset.traits,
-            fatePoints: 3,
+            fate_points: 3,
             tags: [],
           };
         }
@@ -193,7 +193,7 @@ export function createTestApp(options: TestAppOptions = {}) {
           location_name: startingLocation.name.cn,
           location_description: startingLocation.description?.cn || '',
           present_npcs: [],
-          visible_items: startingLocation.visibleItems || [],
+          visible_items: startingLocation.visible_items || [],
         },
         message: `游戏开始！欢迎来到${startingLocation.name.cn}。`,
       });
@@ -272,8 +272,8 @@ export function createTestApp(options: TestAppOptions = {}) {
       player: gameState.player,
       current_location: gameState.currentLocation,
       active_npc_ids: gameState.activeNpcIds,
-      current_phase: gameState.currentPhase,
-      turn_count: gameState.turnCount,
+      current_phase: gameState.current_phase,
+      turn_count: gameState.turn_count,
       language: gameState.language,
       messages: gameState.messages.slice(-10),
     });
@@ -350,17 +350,17 @@ export function createTestApp(options: TestAppOptions = {}) {
           version: worldPack.info.version,
           author: worldPack.info.author,
           setting: worldPack.info.setting,
-          player_hook: worldPack.info.playerHook,
+          player_hook: worldPack.info.player_hook,
         },
         summary: {
           locations: Object.keys(worldPack.locations).length,
           npcs: Object.keys(worldPack.npcs || {}).length,
           lore_entries: Object.keys(worldPack.entries).length,
-          preset_characters: worldPack.presetCharacters?.length || 0,
+          preset_characters: worldPack.preset_characters?.length || 0,
         },
         locations,
         npcs,
-        preset_characters: worldPack.presetCharacters || [],
+        preset_characters: worldPack.preset_characters || [],
       });
     } catch {
       return c.json({ error: `World pack not found: ${packId}` }, 404);

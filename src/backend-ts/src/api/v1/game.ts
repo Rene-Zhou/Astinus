@@ -77,16 +77,16 @@ gameRouter.post(
         return c.json({ error: "World pack has no locations defined" }, 400);
       }
 
-      const activeNpcIds = startingLocation.presentNpcIds || [];
+      const activeNpcIds = startingLocation.present_npc_ids || [];
 
       let playerCharacter: PlayerCharacter;
 
       if (request.preset_character_id) {
-        const preset = worldPack.presetCharacters?.find(
+        const preset = worldPack.preset_characters?.find(
           (p: any) => p.id === request.preset_character_id
         );
         if (!preset) {
-          const availableIds = worldPack.presetCharacters?.map((p: any) => p.id) || [];
+          const availableIds = worldPack.preset_characters?.map((p: any) => p.id) || [];
           return c.json(
             {
               error: `Preset character not found: ${request.preset_character_id}. Available: ${availableIds.join(", ")}`,
@@ -98,7 +98,7 @@ gameRouter.post(
           name: preset.name,
           concept: preset.concept,
           traits: preset.traits,
-          fatePoints: 3,
+          fate_points: 3,
           tags: [],
         };
       } else {
@@ -108,38 +108,38 @@ gameRouter.post(
             cn: "面对困难不退缩",
             en: "Faces difficulties without retreat",
           },
-          positiveAspect: { cn: "勇敢", en: "Brave" },
-          negativeAspect: { cn: "鲁莽", en: "Rash" },
+          positive_aspect: { cn: "勇敢", en: "Brave" },
+          negative_aspect: { cn: "鲁莽", en: "Rash" },
         };
 
         playerCharacter = {
           name: request.player_name || "冒险者",
           concept: { cn: "冒险者", en: "Adventurer" },
           traits: [defaultTrait],
-          fatePoints: 3,
+          fate_points: 3,
           tags: [],
         };
       }
 
       const gameState: GameState = {
-        sessionId: sessionId,
-        playerName: request.player_name || "玩家",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        session_id: sessionId,
+        player_name: request.player_name || "玩家",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         player: playerCharacter,
-        currentPhase: "waiting_input",
-        nextAgent: null,
-        worldPackId: request.world_pack_id,
-        currentLocation: startingLocationId || "",
-        activeNpcIds: activeNpcIds,
-        discoveredItems: [],
+        current_phase: "waiting_input",
+        next_agent: null,
+        world_pack_id: request.world_pack_id,
+        current_location: startingLocationId || "",
+        active_npc_ids: activeNpcIds,
+        discovered_items: [],
         flags: [],
-        gameTime: "00:00",
-        turnCount: 0,
+        game_time: "00:00",
+        turn_count: 0,
         messages: [],
-        tempContext: {},
-        lastCheckResult: null,
-        reactPendingState: null,
+        temp_context: {},
+        last_check_result: null,
+        react_pending_state: null,
         language: "cn",
       };
 
@@ -177,7 +177,7 @@ gameRouter.post(
           }
           return { id: npcId, name: npcId, description: "" };
         }),
-        visible_items: startingLocation.visibleItems || [],
+        visible_items: startingLocation.visible_items || [],
       };
 
       return c.json({
@@ -290,16 +290,16 @@ gameRouter.get("/game/state/:sessionId", async (c) => {
 
   const gameState = ctx.gmAgent.getGameState();
 
-  if (gameState.sessionId !== sessionId) {
+  if (gameState.session_id !== sessionId) {
     return c.json({ error: "Session not found" }, 404);
   }
 
   return c.json({
-    session_id: gameState.sessionId,
-    phase: gameState.currentPhase,
-    turn_number: gameState.turnCount,
-    current_location: gameState.currentLocation,
-    active_npc_ids: gameState.activeNpcIds,
+    session_id: gameState.session_id,
+    phase: gameState.current_phase,
+    turn_number: gameState.turn_count,
+    current_location: gameState.current_location,
+    active_npc_ids: gameState.active_npc_ids,
     player: gameState.player,
   });
 });
@@ -350,17 +350,17 @@ gameRouter.get("/game/state/:sessionId", async (c) => {
         version: worldPack.info.version,
         author: worldPack.info.author,
         setting: worldPack.info.setting,
-        player_hook: worldPack.info.playerHook,
+        player_hook: worldPack.info.player_hook,
       },
       summary: {
         locations: Object.keys(worldPack.locations).length,
         npcs: Object.keys(worldPack.npcs || {}).length,
         lore_entries: Object.keys(worldPack.entries).length,
-        preset_characters: worldPack.presetCharacters?.length || 0,
+        preset_characters: worldPack.preset_characters?.length || 0,
       },
       locations,
       npcs,
-      preset_characters: worldPack.presetCharacters || [],
+      preset_characters: worldPack.preset_characters || [],
     });
   } catch (error) {
     return c.json({ error: `World pack not found: ${packId}` }, 404);

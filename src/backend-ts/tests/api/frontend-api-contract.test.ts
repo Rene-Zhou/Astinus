@@ -87,7 +87,7 @@ describe('Frontend API Contract Tests', () => {
       expect(data.player).toHaveProperty('traits');
       expect(Array.isArray(data.player.traits)).toBe(true);
       expect(data.player).toHaveProperty('tags');
-      expect(data.player).toHaveProperty('fatePoints');
+      expect(data.player).toHaveProperty('fate_points');
 
       expect(data).toHaveProperty('game_state');
       expect(data.game_state).toHaveProperty('current_location');
@@ -371,8 +371,8 @@ describe('Trait Model Format', () => {
       const trait = data.player.traits[0];
       expect(trait).toHaveProperty('name');
       expect(trait).toHaveProperty('description');
-      expect(trait).toHaveProperty('positiveAspect');
-      expect(trait).toHaveProperty('negativeAspect');
+      expect(trait).toHaveProperty('positive_aspect');
+      expect(trait).toHaveProperty('negative_aspect');
     }
   });
 });

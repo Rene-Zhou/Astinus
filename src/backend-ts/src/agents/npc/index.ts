@@ -143,12 +143,12 @@ export class NPCAgent {
       lines.push(soul.description.cn || soul.description.en);
       lines.push("");
       lines.push(`## 性格特征: ${soul.personality.join(", ")}`);
-      const speechStyle = soul.speechStyle;
+      const speechStyle = soul.speech_style;
       lines.push(speechStyle?.cn || speechStyle?.en || "");
       lines.push("");
-      if (soul.exampleDialogue && soul.exampleDialogue.length > 0) {
+      if (soul.example_dialogue && soul.example_dialogue.length > 0) {
         lines.push("示例对话:");
-        for (const example of soul.exampleDialogue) {
+        for (const example of soul.example_dialogue) {
           lines.push(`玩家：${example.user}`);
           lines.push(`${soul.name}：${example.char}`);
         }
@@ -210,12 +210,12 @@ export class NPCAgent {
       lines.push(`## Personality: ${soul.personality.join(", ")}`);
       lines.push("");
       lines.push("## Speech Style");
-      const speechStyle = soul.speechStyle;
+      const speechStyle = soul.speech_style;
       lines.push(speechStyle?.en || speechStyle?.cn || "");
       lines.push("");
-      if (soul.exampleDialogue && soul.exampleDialogue.length > 0) {
+      if (soul.example_dialogue && soul.example_dialogue.length > 0) {
         lines.push("Example Dialogue:");
-        for (const example of soul.exampleDialogue) {
+        for (const example of soul.example_dialogue) {
           lines.push(`Player: ${example.user}`);
           lines.push(`${soul.name}: ${example.char}`);
         }

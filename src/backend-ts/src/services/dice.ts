@@ -41,14 +41,14 @@ export class DicePool {
     const total = diceSum + this.modifier;
 
     return {
-      allRolls,
-      keptRolls,
-      droppedRolls,
+      all_rolls: allRolls,
+      kept_rolls: keptRolls,
+      dropped_rolls: droppedRolls,
       modifier: this.modifier,
       total,
       outcome: DicePool.determineOutcome(total),
-      isBonus,
-      isPenalty,
+      is_bonus: isBonus,
+      is_penalty: isPenalty,
     };
   }
 
@@ -95,13 +95,13 @@ export function toDisplay(
 
   const parts: string[] = [];
 
-  if (result.allRolls.length > 2) {
-    const allDiceStr = result.allRolls.join('+');
-    const keptDiceStr = result.keptRolls.join('+');
-    const arrow = result.isBonus ? '↑' : '↓';
+  if (result.all_rolls.length > 2) {
+    const allDiceStr = result.all_rolls.join('+');
+    const keptDiceStr = result.kept_rolls.join('+');
+    const arrow = result.is_bonus ? '↑' : '↓';
     parts.push(`[${allDiceStr}]→[${keptDiceStr}]${arrow}`);
   } else {
-    parts.push(`[${result.keptRolls.join('+')}]`);
+    parts.push(`[${result.kept_rolls.join('+')}]`);
   }
 
   if (result.modifier !== 0) {
@@ -115,9 +115,9 @@ export function toDisplay(
   const outcomeText = outcomeTexts[result.outcome][lang];
 
   let modifierText: string | null = null;
-  if (result.isBonus) {
+  if (result.is_bonus) {
     modifierText = modifierTexts.bonus[lang];
-  } else if (result.isPenalty) {
+  } else if (result.is_penalty) {
     modifierText = modifierTexts.penalty[lang];
   }
 

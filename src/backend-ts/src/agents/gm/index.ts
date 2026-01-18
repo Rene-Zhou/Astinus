@@ -86,7 +86,7 @@ export class GMAgent {
       role: "user",
       content: playerInput,
       timestamp: new Date().toISOString(),
-      turn: this.gameState.turnCount,
+      turn: this.gameState.turn_count,
     });
 
     return this.runReActLoop({
@@ -102,7 +102,7 @@ export class GMAgent {
     diceResult: Record<string, unknown>,
     lang: "cn" | "en" = "cn"
   ): Promise<AgentResponse> {
-      const pendingState = this.gameState.reactPendingState;
+      const pendingState = this.gameState.react_pending_state;
 
     if (!pendingState) {
       return {
@@ -119,7 +119,7 @@ export class GMAgent {
       Record<string, unknown>
     >;
 
-          this.gameState.reactPendingState = null;
+          this.gameState.react_pending_state = null;
 
     return this.runReActLoop({
       playerInput,
@@ -164,8 +164,8 @@ export class GMAgent {
           const loreResult = await this.loreService.search({
             query: action.content,
             context: playerInput,
-            worldPackId: this.gameState.worldPackId,
-            currentLocation: this.gameState.currentLocation,
+            worldPackId: this.gameState.world_pack_id,
+            currentLocation: this.gameState.current_location,
             currentRegion: this.getCurrentRegion(),
             lang,
           });
@@ -187,7 +187,7 @@ export class GMAgent {
         break;
 
       case "REQUEST_CHECK":
-        this.gameState.reactPendingState = {
+        this.gameState.react_pending_state = {
           player_input: playerInput,
           iteration: iteration + 1,
           agent_results: agentResults,
@@ -277,7 +277,7 @@ export class GMAgent {
       role: "assistant",
       content: text,
       timestamp: new Date().toISOString(),
-      turn: this.gameState.turnCount,
+      turn: this.gameState.turn_count,
     });
 
     return {
@@ -301,9 +301,9 @@ export class GMAgent {
     parts.push(`Iteration: ${iteration}`);
 
     parts.push(`\nGame State:`);
-    parts.push(`  Phase: ${this.gameState.currentPhase}`);
-    parts.push(`  Turn: ${this.gameState.turnCount}`);
-    parts.push(`  Location: ${this.gameState.currentLocation}`);
+    parts.push(`  Phase: ${this.gameState.current_phase}`);
+    parts.push(`  Turn: ${this.gameState.turn_count}`);
+    parts.push(`  Location: ${this.gameState.current_location}`);
 
     if (this.gameState.player) {
       parts.push(`  Player:`);
