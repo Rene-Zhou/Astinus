@@ -4,6 +4,8 @@ import type { GameState } from "../../schemas";
 import { z } from "zod";
 import { LocationContextService } from "../../services/location-context";
 import { WorldPackLoader } from "../../services/world";
+import { getLocalizedString } from "../../schemas";
+import type { NPCData } from "../../schemas";
 
 const GMActionTypeSchema = z.enum([
   "RESPOND",
@@ -233,19 +235,34 @@ export class GMAgent {
         };
 
       case "CALL_AGENT":
-        if (action.agent_name && this.subAgents[action.agent_name]) {
-          if (this.statusCallback) {
-            await this.statusCallback(action.agent_name, null);
+        if (action.agent_name) {
+          let agentName = action.agent_name;
+          let subAgent = this.subAgents[agentName];
+
+          // Handle NPC routing (npc_ID -> npc)
+          if (agentName.startsWith("npc_")) {
+            subAgent = this.subAgents["npc"];
           }
 
-          agentsCalled.push(action.agent_name);
-
-          const subAgent = this.subAgents[action.agent_name];
           if (subAgent) {
-            const subAgentResponse = await subAgent.process(action.agent_context);
+            if (this.statusCallback) {
+              await this.statusCallback(agentName, null);
+            }
+
+            agentsCalled.push(agentName);
+
+            const agentContext = await this.prepareAgentContext(
+              agentName,
+              playerInput,
+              lang,
+              action.agent_context,
+              diceResult
+            );
+
+            const subAgentResponse = await subAgent.process(agentContext);
 
             agentResults.push({
-              agent: action.agent_name,
+              agent: agentName,
               result: subAgentResponse.content,
               success: subAgentResponse.success,
               reasoning: action.reasoning,
@@ -257,7 +274,7 @@ export class GMAgent {
               lang,
               iteration: iteration + 1,
               agentResults,
-              diceResult,
+              diceResult, // Pass dice result to next iteration so GM can see it
             });
           }
         }
@@ -278,6 +295,97 @@ export class GMAgent {
       error: "Unknown action or missing service",
       metadata: { agent: "gm_agent" },
     };
+  }
+
+  private async prepareAgentContext(
+    agentName: string,
+    playerInput: string,
+    lang: "cn" | "en",
+    providedContext: Record<string, any>,
+    diceResult: Record<string, any> | null
+  ): Promise<Record<string, any>> {
+    if (agentName.startsWith("npc_")) {
+      const npcId = agentName.replace("npc_", "");
+      return this.sliceContextForNpc(npcId, playerInput, lang, diceResult);
+    }
+    
+    return {
+      player_input: playerInput,
+      lang: lang,
+      ...providedContext
+    };
+  }
+
+  private async sliceContextForNpc(
+    npcId: string,
+    playerInput: string,
+    lang: "cn" | "en",
+    diceResult: Record<string, any> | null
+  ): Promise<Record<string, any>> {
+    const recentMessages = this.gameState.messages.slice(-10);
+
+    let npcData: NPCData | undefined;
+    if (this.worldPackLoader) {
+      try {
+        const pack = await this.worldPackLoader.load(this.gameState.world_pack_id);
+        npcData = pack.npcs[npcId];
+      } catch (error) {
+        console.error(`Failed to load NPC data for ${npcId}:`, error);
+      }
+    }
+
+    const narrativeStyle = "detailed";
+
+    const context: Record<string, any> = {
+      npc_id: npcId,
+      player_input: playerInput,
+      recent_messages: recentMessages,
+      lang: lang,
+      narrative_style: narrativeStyle,
+      context: {
+        location: this.gameState.current_location,
+        world_pack_id: this.gameState.world_pack_id,
+      }
+    };
+
+    if (npcData) {
+      context.npc_data = npcData;
+    }
+
+    if (diceResult) {
+      context.roleplay_direction = this.generateRoleplayDirection(diceResult, lang);
+    }
+
+    return context;
+  }
+
+  private generateRoleplayDirection(
+    diceResult: Record<string, any>,
+    lang: "cn" | "en"
+  ): string {
+    const outcome = diceResult.outcome as string;
+    if (!outcome) return "";
+
+    const directions: Record<string, Record<string, string>> = {
+      cn: {
+        critical_success: "NPC 应该非常积极地回应，态度明显软化甚至热情，愿意主动提供帮助或重要信息。",
+        success: "NPC 应该积极回应，态度有所软化，愿意提供帮助或信息。",
+        partial: "NPC 的态度应有所松动，但仍保持一定警惕，可能只透露有限信息、给出警告、或提出额外条件。",
+        failure: "NPC 应该拒绝请求，态度可能更加冷淡或警惕。",
+        critical_failure: "NPC 应该强烈拒绝，态度恶化，可能产生敌意或采取对抗行动。",
+      },
+      en: {
+        critical_success: "The NPC should respond very positively, with a notably softened or even warm attitude, willing to proactively offer help or important information.",
+        success: "The NPC should respond positively, with a softened attitude, willing to provide help or information.",
+        partial: "The NPC's attitude should soften somewhat, but remain guarded, perhaps only revealing limited information, giving a warning, or requesting additional conditions.",
+        failure: "The NPC should refuse the request, with a colder or more guarded attitude.",
+        critical_failure: "The NPC should strongly refuse, with worsened attitude, possibly showing hostility or taking confrontational action.",
+      },
+    };
+
+    const langDirections = directions[lang] || directions["en"];
+    if (!langDirections) return "";
+    return langDirections[outcome] || "";
   }
 
   private async decideAction(
@@ -397,6 +505,24 @@ export class GMAgent {
         }
     }
 
+    if (this.gameState.active_npc_ids.length > 0 && this.worldPackLoader) {
+        try {
+            const pack = await this.worldPackLoader.load(this.gameState.world_pack_id);
+            parts.push(`\n[Active NPCs]`);
+            for (const npcId of this.gameState.active_npc_ids) {
+                const npc = pack.npcs[npcId];
+                if (npc) {
+                    const name = npc.soul.name;
+                    const desc = getLocalizedString(npc.soul.description, lang);
+                    const brief = desc.length > 100 ? desc.substring(0, 100) + "..." : desc;
+                    parts.push(`- ID: ${npcId} | Name: ${name} | Description: ${brief}`);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load active NPCs context", e);
+        }
+    }
+
     if (this.gameState.player) {
       parts.push(`\n[Player Character]`);
       parts.push(`Name: ${this.gameState.player.name}`);
@@ -453,6 +579,7 @@ Analyze the input and context to choose ONE action:
 
 Context Analysis:
 1. Is the player interacting with a specific NPC? -> CALL_AGENT (agent_name: "npc_{id}")
+   - REFER to the [Active NPCs] section to find the correct ID.
 2. Is the player asking about history/lore? -> SEARCH_LORE
 3. Is the player attempting a risky action? -> REQUEST_CHECK
 4. Otherwise -> RESPOND
