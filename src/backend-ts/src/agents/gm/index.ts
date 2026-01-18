@@ -14,12 +14,27 @@ const GMActionTypeSchema = z.enum([
   "REQUEST_CHECK",
 ]);
 
+const GMAgentContextSchema = z.object({
+  target_location: z.string().optional().describe("Target location ID for scene transition"),
+  npc_id: z.string().optional().describe("ID of the NPC to interact with"),
+  topic: z.string().optional().describe("Topic for lore search or conversation"),
+  details: z.string().optional().describe("Additional details for the action"),
+});
+
+const GMCheckRequestSchema = z.object({
+  intention: z.string().describe("What the player is attempting to do"),
+  difficulty: z.number().optional().describe("Target number (default 7)"),
+  stat: z.string().optional().describe("Relevant stat/trait"),
+  reason: z.string().optional().describe("Reasoning for the difficulty"),
+  modifiers: z.array(z.string()).optional().describe("Applicable modifiers"),
+});
+
 const GMActionSchema = z.object({
   action_type: GMActionTypeSchema,
   content: z.string().default(""),
   agent_name: z.string().optional(),
-  agent_context: z.record(z.any()).default({}),
-  check_request: z.record(z.any()).optional(),
+  agent_context: GMAgentContextSchema.default({}),
+  check_request: GMCheckRequestSchema.optional(),
   reasoning: z.string().default(""),
 });
 
@@ -388,6 +403,35 @@ export class GMAgent {
     return langDirections[outcome] || "";
   }
 
+  private getDiceOutcomeExplanation(
+    diceResult: Record<string, any>,
+    lang: "cn" | "en"
+  ): string {
+    const outcome = diceResult.outcome as string;
+    if (!outcome) return "";
+
+    const explanations: Record<string, Record<string, string>> = {
+      cn: {
+        critical_success: "【大成功】玩家的行动完美达成，甚至超出预期。应该给予额外的正面效果或意外收获。",
+        success: "【成功】玩家的行动顺利达成目标，没有负面后果或代价。",
+        partial: "【部分成功】玩家达成了目标，但伴随代价、复杂情况或不完美的结果。",
+        failure: "【失败】玩家的行动未能达成目标，应该引入负面后果或新的困境。",
+        critical_failure: "【大失败】玩家的行动彻底失败，并且引发了严重的负面后果或危机。"
+      },
+      en: {
+        critical_success: "[Critical Success] The action succeeds perfectly, exceeding expectations. Grant extra positive effects or unexpected benefits.",
+        success: "[Success] The action succeeds smoothly with no negative consequences.",
+        partial: "[Partial Success] The goal is achieved but with a cost, complication, or imperfect result.",
+        failure: "[Failure] The action fails to achieve the goal. Introduce negative consequences or new dilemmas.",
+        critical_failure: "[Critical Failure] The action fails catastrophically, triggering serious negative consequences or crisis."
+      }
+    };
+
+    const langExplanations = explanations[lang] || explanations["en"];
+    if (!langExplanations) return "";
+    return langExplanations[outcome] || "";
+  }
+
   private async decideAction(
     context: string,
     lang: "cn" | "en"
@@ -550,7 +594,12 @@ export class GMAgent {
 
     if (diceResult) {
       parts.push(`\n[Dice Result]`);
-      parts.push(JSON.stringify(diceResult, null, 2));
+      const outcomeExplanation = this.getDiceOutcomeExplanation(diceResult, lang);
+      const displayResult = {
+        ...diceResult,
+        outcome_explanation: outcomeExplanation
+      };
+      parts.push(JSON.stringify(displayResult, null, 2));
     }
 
     const recentMessages = this.gameState.messages.slice(-10);

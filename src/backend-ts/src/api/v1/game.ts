@@ -235,7 +235,8 @@ gameRouter.post(
         gmModel as any,
         subAgents,
         gameState,
-        ctx.loreService
+        ctx.loreService,
+        ctx.worldPackLoader
       );
 
       return c.json({
