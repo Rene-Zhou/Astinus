@@ -707,7 +707,6 @@ export class GMAgent {
   }
 
   private buildDecisionPrompt(lang: "cn" | "en"): string {
-    // ALWAYS use English for Logic Prompts to improve reasoning quality
     return `You are the Game Master (GM) orchestrating a TTRPG session.
 Your role is to analyze the player's input and decide the next logical step in the game loop.
 
@@ -720,15 +719,35 @@ Analyze the input and context to choose ONE action:
 - CALL_AGENT: The player is interacting with a specific sub-agent (e.g., talking to an NPC).
 
 Context Analysis (Decision Logic Flow):
-1. **Information Coherence Check**: Do I have enough information to generate the final narrative? If yes, RESPOND.
-2. **Background Knowledge**: Is background info missing for the description? If yes, SEARCH_LORE.
-3. **Risk & Check Assessment**: Does the action involve risk? If yes and NOT yet checked, REQUEST_CHECK.
+1. **Information Coherence Check (CRITICAL)**: Do I have enough information to generate the final narrative?
+   - **FIRST**: Check the [Information Gathered This Iteration] section.
+   - If it contains ANY agent responses (NPC, lore) or dice results, you MUST use RESPOND to generate the final narrative.
+   - **NEVER call the same agent twice in one turn.**
+   - **NEVER call ANY agent if you already have sufficient information.**
+   - If sufficient information exists, RESPOND immediately and SKIP all other steps.
+
+2. **Background Knowledge**: Is background info missing for the description? 
+   - Check: Has lore already been searched in this iteration? If yes, SKIP to next step.
+   - If background info needed and NOT yet searched, SEARCH_LORE.
+
+3. **Risk & Check Assessment**: Does the action involve risk?
+   - Check: Has a dice check already been performed in this iteration? If yes, SKIP to next step.
+   - If yes and NOT yet checked, REQUEST_CHECK.
    - Note: REQUEST_CHECK initiates the dice roll request. Do not output narrative yet.
+
 4. **NPC Interaction**: Does the action (or post-check result) require an NPC response?
-   - If yes: CALL_AGENT (agent_name: "npc_{id}").
-   - **Crucial**: If a dice check was just performed, you MUST invoke the NPC to react to the result.
+   - **CRITICAL CHECK**: Look at [Information Gathered This Iteration]. Does it already contain a response from this NPC?
+   - If YES → SKIP this step entirely and go to step 5 (RESPOND).
+   - If NO and NPC response needed → CALL_AGENT (agent_name: "npc_{id}").
+   - **Important**: If a dice check was just performed, you MUST invoke the NPC to react to the result.
    - Refer to [Active NPCs] for IDs.
+
 5. **Otherwise**: RESPOND.
+
+**STOP CONDITIONS (Read before making ANY decision)**:
+- If [Information Gathered This Iteration] is NOT empty → You MUST RESPOND
+- If you see agent responses in the context → DO NOT call agents again
+- One agent call per type per turn maximum
 
 Return the decision as a JSON object matching the GMAction schema.`;
   }
