@@ -319,7 +319,7 @@ gameRouter.get("/world-packs", async (c) => {
   }
 });
 
-gameRouter.get("/world-packs/:packId", async (c) => {
+  gameRouter.get("/world-packs/:packId", async (c) => {
   const packId = c.req.param("packId");
   const ctx = getAppContext();
 
@@ -332,6 +332,18 @@ gameRouter.get("/world-packs/:packId", async (c) => {
 
     const lang = (c.req.query("lang") as "cn" | "en") || "cn";
 
+    const locations = Object.entries(worldPack.locations).map(([id, location]) => ({
+      id,
+      name: location.name,
+      tags: location.tags || [],
+    }));
+
+    const npcs = Object.entries(worldPack.npcs || {}).map(([id, npc]) => ({
+      id,
+      name: npc.soul.name,
+      location: npc.body?.location || "unknown",
+    }));
+
     return c.json({
       id: packId,
       name: worldPack.info.name[lang] || worldPack.info.name.en,
@@ -339,12 +351,17 @@ gameRouter.get("/world-packs/:packId", async (c) => {
         worldPack.info.description?.[lang] ||
         worldPack.info.description?.en ||
         "",
-      author: worldPack.info.author,
+      author: worldPack.info.author || "Unknown",
       version: worldPack.info.version,
-      locations: Object.keys(worldPack.locations).length,
-      npcs: worldPack.npcs?.length || 0,
-      lore_entries: Object.keys(worldPack.entries).length,
-      preset_characters: worldPack.presetCharacters?.length || 0,
+      summary: {
+        locations: Object.keys(worldPack.locations).length,
+        npcs: Object.keys(worldPack.npcs || {}).length,
+        lore_entries: Object.keys(worldPack.entries).length,
+        preset_characters: worldPack.presetCharacters?.length || 0,
+      },
+      locations,
+      npcs,
+      preset_characters: worldPack.presetCharacters || [],
     });
   } catch (error) {
     return c.json({ error: `World pack not found: ${packId}` }, 404);
