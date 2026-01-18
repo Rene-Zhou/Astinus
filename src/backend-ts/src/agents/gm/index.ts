@@ -532,7 +532,15 @@ export class GMAgent {
     
     if (sceneContext) {
         // Provide localized names but keep structure in English
-        parts.push(`Region: ${sceneContext.region.name} (${sceneContext.region.narrative_tone})`);
+        parts.push(`\n[Region & Location]`);
+        parts.push(`Region: ${sceneContext.region.name}`);
+        if (sceneContext.region.narrative_tone) {
+            parts.push(`Tone: ${sceneContext.region.narrative_tone}`);
+        }
+        if (sceneContext.region.atmosphere_keywords && sceneContext.region.atmosphere_keywords.length > 0) {
+            parts.push(`Atmosphere Keywords: ${sceneContext.region.atmosphere_keywords.join(", ")}`);
+        }
+
         parts.push(`Location: ${sceneContext.location.name}`);
         parts.push(`Description: ${sceneContext.location.description}`);
         if (sceneContext.location.atmosphere) {
@@ -543,9 +551,52 @@ export class GMAgent {
         }
         parts.push(`Visible Items: ${sceneContext.location.visible_items.join(", ")}`);
         
+        const hiddenHints = this.generateHiddenItemHints(sceneContext.location.hidden_items_remaining || [], lang);
+        if (hiddenHints) {
+            parts.push(`Hidden Clues: ${hiddenHints}`);
+        }
+        
+        // Connected Locations
+        if (this.worldPackLoader && this.gameState.world_pack_id) {
+            try {
+                const pack = await this.worldPackLoader.load(this.gameState.world_pack_id);
+                const loc = pack.locations[this.gameState.current_location];
+                if (loc && loc.connected_locations) {
+                    const connections = loc.connected_locations.map(id => {
+                        const target = pack.locations[id];
+                        const name = target ? getLocalizedString(target.name, lang) : id;
+                        return `${name} (ID: ${id})`;
+                    });
+                    parts.push(`Can Go To: ${connections.join(", ")}`);
+                }
+            } catch (e) {
+                // Ignore if load fails
+            }
+        }
+
         if (sceneContext.basic_lore.length > 0) {
             parts.push(`\n[Relevant Lore]`);
             sceneContext.basic_lore.forEach(lore => parts.push(`- ${lore}`));
+        }
+
+        // World Background (from constant entries)
+        if (this.worldPackLoader) {
+            try {
+                const pack = await this.worldPackLoader.load(this.gameState.world_pack_id);
+                const constantEntries = pack.entries 
+                    ? Object.values(pack.entries).filter((e: any) => e.is_constant)
+                    : [];
+                
+                if (constantEntries.length > 0) {
+                     parts.push(`\n[World Background]`);
+                     constantEntries.forEach((e: any) => {
+                         const content = getLocalizedString(e.content, lang);
+                         if (content) parts.push(content);
+                     });
+                }
+            } catch (e) {
+                // Ignore
+            }
         }
     }
 
@@ -578,39 +629,75 @@ export class GMAgent {
       parts.push(`Traits:`);
       this.gameState.player.traits.forEach(t => {
           const name = (t.name as any)[lang] || t.name;
+          const desc = (t.description as any)[lang] || t.description;
+          const pos = (t.positive_aspect as any)[lang] || t.positive_aspect;
+          const neg = (t.negative_aspect as any)[lang] || t.negative_aspect;
+          
           parts.push(`- ${name}`);
+          parts.push(`  Description: ${desc}`);
+          parts.push(`  Positive: ${pos}`);
+          parts.push(`  Negative: ${neg}`);
       });
-    }
-
-    if (agentResults.length > 0) {
-      parts.push(`\n[Agent Results]`);
-      for (const result of agentResults) {
-        parts.push(`  - Agent: ${result.agent}`);
-        parts.push(`    Reasoning: ${result.reasoning}`);
-        // Agent results might be in mixed language depending on the agent, pass as is
-        parts.push(`    Result: ${JSON.stringify(result.result)}`);
+      
+      if (this.gameState.player.tags && this.gameState.player.tags.length > 0) {
+          parts.push(`Current Tags: ${this.gameState.player.tags.join(", ")}`);
       }
-    }
-
-    if (diceResult) {
-      parts.push(`\n[Dice Result]`);
-      const outcomeExplanation = this.getDiceOutcomeExplanation(diceResult, lang);
-      const displayResult = {
-        ...diceResult,
-        outcome_explanation: outcomeExplanation
-      };
-      parts.push(JSON.stringify(displayResult, null, 2));
     }
 
     const recentMessages = this.gameState.messages.slice(-10);
     if (recentMessages.length > 0) {
       parts.push(`\n[Conversation History]`);
       for (const msg of recentMessages) {
-        parts.push(`  ${msg.role}: ${msg.content}`);
+        parts.push(`  [Turn ${msg.turn}] ${msg.role}: ${msg.content}`);
       }
+    }
+    
+    // Agent results and Dice results (Information Gathered)
+    if (agentResults.length > 0 || diceResult) {
+        parts.push(`\n[Information Gathered This Iteration]`);
+        
+        if (diceResult) {
+            const outcomeExplanation = this.getDiceOutcomeExplanation(diceResult, lang);
+            parts.push(`【Dice Check】Intention: ${diceResult.intention} | Result: ${diceResult.total} (${diceResult.outcome})`);
+            parts.push(outcomeExplanation);
+        }
+        
+        for (const result of agentResults) {
+            const agentName = result.agent as string;
+            const content = result.result as string;
+            const metadata = result.metadata as Record<string, any> || {};
+            
+            if (agentName.startsWith("npc_") || agentName === "npc") {
+                 const response = content || "";
+                 const emotion = metadata.emotion || "unknown";
+                 const action = metadata.action || "";
+                 const relChange = metadata.relation_change || 0;
+                 
+                 const resultParts = [`Response: ${response || "(None)"}`];
+                 if (emotion !== "unknown") resultParts.push(`Emotion: ${emotion}`);
+                 if (action) {
+                     const actionStr = action.length > 300 ? action.substring(0, 300) + "..." : action;
+                     resultParts.push(`Action: ${actionStr}`);
+                 }
+                 if (relChange !== 0) {
+                     resultParts.push(`Relation Change: ${relChange > 0 ? '+' : ''}${relChange}`);
+                 }
+                 
+                 parts.push(`【${agentName}】: ${resultParts.join(" | ")}`);
+            } else {
+                 parts.push(`【${agentName}】: ${content}`);
+            }
+        }
     }
 
     return parts.join("\n");
+  }
+
+  private generateHiddenItemHints(hiddenItems: string[], lang: "cn" | "en"): string {
+      if (!hiddenItems || hiddenItems.length === 0) return "";
+      return lang === "cn" 
+          ? "房间里似乎还有一些不易察觉的细节..."
+          : "There seem to be some subtle details yet to notice...";
   }
 
   private buildDecisionPrompt(lang: "cn" | "en"): string {
@@ -626,12 +713,16 @@ Analyze the input and context to choose ONE action:
 - REQUEST_CHECK: The player attempts an action with a chance of failure or significant consequence (e.g., attacking, climbing, persuading).
 - CALL_AGENT: The player is interacting with a specific sub-agent (e.g., talking to an NPC).
 
-Context Analysis:
-1. Is the player interacting with a specific NPC? -> CALL_AGENT (agent_name: "npc_{id}")
-   - REFER to the [Active NPCs] section to find the correct ID.
-2. Is the player asking about history/lore? -> SEARCH_LORE
-3. Is the player attempting a risky action? -> REQUEST_CHECK
-4. Otherwise -> RESPOND
+Context Analysis (Decision Logic Flow):
+1. **Information Coherence Check**: Do I have enough information to generate the final narrative? If yes, RESPOND.
+2. **Background Knowledge**: Is background info missing for the description? If yes, SEARCH_LORE.
+3. **Risk & Check Assessment**: Does the action involve risk? If yes and NOT yet checked, REQUEST_CHECK.
+   - Note: REQUEST_CHECK initiates the dice roll request. Do not output narrative yet.
+4. **NPC Interaction**: Does the action (or post-check result) require an NPC response?
+   - If yes: CALL_AGENT (agent_name: "npc_{id}").
+   - **Crucial**: If a dice check was just performed, you MUST invoke the NPC to react to the result.
+   - Refer to [Active NPCs] for IDs.
+5. **Otherwise**: RESPOND.
 
 Return the decision as a JSON object matching the GMAction schema.`;
   }
@@ -650,10 +741,10 @@ Target Language: ${lang === 'cn' ? 'Chinese (Simplified)' : 'English'}
 3. Do NOT reveal secret background info unless explicitly discovered.
 4. Do NOT mention game mechanics or agents (e.g., "The Rule Agent says..."). Describe the outcome naturally.
 
-【Narrative Integration Rules】:
+【Narrative Integration Rules - NO EMBELLISHMENT】:
 1. Player Actions: Do NOT repeat or embellish what the player just said they did. Acknowledge the consequence, not the action itself.
 2. NPC Dialogue: Output dialogue EXACTLY as provided by the NPC agent. Do not rewrite.
-3. NPC Actions: Integrate provided NPC actions naturally.
+3. NPC Actions: Integrate provided NPC actions naturally as-is. Do not create additional expressions/actions.
 4. Immersion: Use second-person perspective ("You see...", "You hear...").
 
 Generate the final narrative response in ${lang === 'cn' ? 'Chinese (Simplified)' : 'English'}.`;
