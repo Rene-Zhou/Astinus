@@ -46,6 +46,7 @@ export class LLMFactory {
         return ollama(agentConfig.model) as unknown as LanguageModelV1;
         
       case 'google':
+        console.log(`[LLMFactory] Creating Google model: ${agentConfig.model} with base_url: ${baseUrl || 'default'}`);
         const google = createGoogleGenerativeAI({
           apiKey,
           baseURL: baseUrl,

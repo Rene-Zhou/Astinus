@@ -74,6 +74,7 @@ export class GMAgent {
   }
 
   async process(inputData: GMProcessInput): Promise<AgentResponse> {
+    console.log("[GMAgent] Processing input:", inputData);
     const playerInput = inputData.player_input;
     const lang = inputData.lang || "cn";
 
@@ -139,6 +140,7 @@ export class GMAgent {
   }
 
   private async runReActLoop(params: ReActLoopParams): Promise<AgentResponse> {
+    console.log(`[GMAgent] ReAct Loop Iteration ${params.iteration}`);
     const { playerInput, lang, iteration, agentResults, diceResult } = params;
 
     const maxIterations = 5;
@@ -282,21 +284,28 @@ export class GMAgent {
     context: string,
     lang: "cn" | "en"
   ): Promise<GMAction> {
+    console.log("[GMAgent] Deciding action...");
     const systemPrompt = this.buildDecisionPrompt(lang);
 
-    const { object } = await generateObject({
-      model: this.llm,
-      schema: GMActionSchema,
-      system: systemPrompt,
-      prompt: context,
-    });
+    try {
+      const { object } = await generateObject({
+        model: this.llm,
+        schema: GMActionSchema,
+        system: systemPrompt,
+        prompt: context,
+      });
+      console.log("[GMAgent] Decision:", object);
 
-    // Default agent_context if undefined
-    if (!object.agent_context) {
-        object.agent_context = {};
+      // Default agent_context if undefined
+      if (!object.agent_context) {
+          object.agent_context = {};
+      }
+
+      return object;
+    } catch (error) {
+      console.error("[GMAgent] decideAction failed:", error);
+      throw error;
     }
-
-    return object;
   }
 
   private async generateResponse(

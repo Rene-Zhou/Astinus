@@ -278,10 +278,12 @@ gameRouter.post(
     }
 
     try {
+      console.log(`[GameAPI] Received action: ${request.action}`);
       const response = await ctx.gmAgent.process({
         player_input: request.action,
         lang: request.lang,
       });
+      console.log(`[GameAPI] Process finished. Success: ${response.success}`);
 
       return c.json({
         success: response.success,
