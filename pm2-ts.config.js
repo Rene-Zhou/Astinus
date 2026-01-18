@@ -3,8 +3,8 @@ module.exports = {
     {
       name: "astinus-backend-ts",
       cwd: "src/backend-ts",
-      script: "tsx",
-      args: ["watch", "src/index.ts"],
+      script: "node",
+      args: ["node_modules/.bin/tsx", "watch", "src/index.ts"],
       env: {
         NODE_ENV: "development",
         PORT: "8000",
