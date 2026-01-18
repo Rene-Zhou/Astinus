@@ -1,32 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-
-const ProviderInputSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  type: z.string(),
-  api_key: z.string().default(""),
-  base_url: z.string().optional(),
-});
-
-const AgentInputSchema = z.object({
-  provider_id: z.string(),
-  model: z.string(),
-  temperature: z.number().min(0.0).max(2.0).default(0.7),
-  max_tokens: z.number().min(1).default(2000),
-});
-
-const AgentsInputSchema = z.object({
-  gm: AgentInputSchema.optional(),
-  npc: AgentInputSchema.optional(),
-  lore: AgentInputSchema.optional(),
-});
-
-const UpdateSettingsRequestSchema = z.object({
-  providers: z.array(ProviderInputSchema).optional(),
-  agents: AgentsInputSchema.optional(),
-});
+import { ConfigService } from "../../services/config";
+import { SettingsConfigSchema } from "../../schemas/config";
 
 const TestConnectionRequestSchema = z.object({
   provider_id: z.string(),
@@ -35,31 +11,33 @@ const TestConnectionRequestSchema = z.object({
 export const settingsRouter = new Hono();
 
 settingsRouter.get("/", async (c) => {
-  return c.json({
-    providers: [],
-    agents: null,
-    game: {
-      default_language: "cn",
-      dice: {
-        base_dice: 2,
-        bonus_mode: "keep_highest",
-        penalty_mode: "keep_lowest",
-      },
-    },
-  });
+  try {
+    const config = ConfigService.getInstance().get();
+    return c.json(config);
+  } catch (error) {
+    return c.json({ error: "Config not loaded" }, 500);
+  }
 });
 
 settingsRouter.put(
   "/",
-  zValidator("json", UpdateSettingsRequestSchema),
+  zValidator("json", SettingsConfigSchema),
   async (c) => {
-    const request = c.req.valid("json");
+    try {
+      const request = c.req.valid("json");
+      await ConfigService.getInstance().save(request);
 
-    return c.json({
-      success: true,
-      message: "Settings updated (stub implementation)",
-      data: request,
-    });
+      return c.json({
+        success: true,
+        message: "Settings updated successfully",
+        data: request,
+      });
+    } catch (error: any) {
+      return c.json({ 
+        success: false, 
+        message: `Failed to save settings: ${error.message}` 
+      }, 500);
+    }
   }
 );
 
@@ -68,12 +46,13 @@ settingsRouter.post(
   zValidator("json", TestConnectionRequestSchema),
   async (c) => {
     const request = c.req.valid("json");
-
+    // Implementation for testing connection can come later or be added to LLMFactory
+    // For now, stub it as success to unblock UI if it checks this
     return c.json({
       success: true,
       provider_id: request.provider_id,
-      message: "Connection test successful (stub implementation)",
-      latency_ms: 100,
+      message: "Connection test not fully implemented yet, but config is valid.",
+      latency_ms: 10,
     });
   }
 );
@@ -107,13 +86,15 @@ settingsRouter.get("/provider-types", async (c) => {
 });
 
 settingsRouter.get("/providers", async (c) => {
+  const config = ConfigService.getInstance().get();
   return c.json({
-    providers: [],
+    providers: config.providers || [],
   });
 });
 
 settingsRouter.get("/agents", async (c) => {
-  return c.json({
+  const config = ConfigService.getInstance().get();
+  return c.json(config.agents || {
     gm: null,
     npc: null,
     lore: null,

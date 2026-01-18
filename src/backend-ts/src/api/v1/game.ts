@@ -7,6 +7,8 @@ import type { GameState, PlayerCharacter, Trait } from "../../schemas";
 import { GMAgent } from "../../agents/gm";
 import { NPCAgent } from "../../agents/npc";
 import { mockLanguageModel } from "../../lib/mock-llm";
+import { ConfigService } from "../../services/config";
+import { LLMFactory } from "../../lib/llm-factory";
 
 const NewGameRequestSchema = z.object({
   world_pack_id: z.string().default("demo_pack"),
@@ -195,15 +197,34 @@ gameRouter.post(
         turn: 0,
       });
 
-      // Initialize Agents with Mock LLM
-      // In a real implementation, this would use a configured LanguageModel based on settings
-      const npcAgent = new NPCAgent(mockLanguageModel as any);
+      // Initialize Agents
+      const config = ConfigService.getInstance().get();
+      let gmModel, npcModel;
+
+      if (config.agents && config.providers && config.providers.length > 0) {
+        try {
+          gmModel = LLMFactory.createModel(config.agents.gm, config.providers);
+          npcModel = LLMFactory.createModel(config.agents.npc, config.providers);
+          console.log("🤖 Agents initialized with real LLM configuration");
+        } catch (err) {
+          console.error("❌ Failed to create LLM models:", err);
+          console.warn("⚠️ Falling back to Mock LLM");
+          gmModel = mockLanguageModel;
+          npcModel = mockLanguageModel;
+        }
+      } else {
+        console.warn("⚠️ LLM not configured in settings.yaml - Using Mock LLM");
+        gmModel = mockLanguageModel;
+        npcModel = mockLanguageModel;
+      }
+
+      const npcAgent = new NPCAgent(npcModel as any);
       const subAgents = {
         npc: npcAgent,
       };
 
       ctx.gmAgent = new GMAgent(
-        mockLanguageModel as any,
+        gmModel as any,
         subAgents,
         gameState,
         ctx.loreService

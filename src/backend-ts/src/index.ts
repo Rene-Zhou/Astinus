@@ -11,6 +11,7 @@ import { getEmbeddingService } from "./lib/embeddings";
 import { getVectorStoreService } from "./lib/lance";
 import { WorldPackLoader } from "./services/world";
 import { LoreService } from "./services/lore";
+import { ConfigService } from "./services/config";
 import { GMAgent } from "./agents/gm";
 
 export interface AppContext {
@@ -89,6 +90,17 @@ async function initializeServices(): Promise<void> {
   console.log("🚀 Starting Astinus backend (TypeScript)...");
 
   try {
+    console.log("⚙️ Loading configuration...");
+    const configPath = ConfigService.getInstance().getConfigPath();
+    console.log(`   Reading from: ${configPath}`);
+    await ConfigService.getInstance().load();
+    console.log("✅ Configuration loaded successfully");
+  } catch (error) {
+    console.error("⚠️ Failed to load configuration:", error);
+    console.error("   Using default/fallback settings where possible, but LLM features may fail.");
+  }
+
+  try {
     console.log("📦 Initializing embedding service...");
 
     // Check if HF token is available
@@ -140,7 +152,6 @@ async function initializeServices(): Promise<void> {
     }
   }
 
-  console.log("⚠️ LLM not configured - agents will be initialized on first request");
   console.log("✅ Astinus backend started successfully");
   console.log("📝 API available at http://localhost:3000");
 }
