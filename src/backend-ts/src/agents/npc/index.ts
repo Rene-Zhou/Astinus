@@ -4,11 +4,17 @@ import { z } from "zod";
 import type { NPCData } from "../../schemas";
 
 const NPCResponseSchema = z.object({
-  response: z.string(),
-  emotion: z.string().default("neutral"),
-  action: z.string().default(""),
-  relation_change: z.number().int().min(-10).max(10).default(0),
-  new_memory: z.string().optional(),
+  response: z.string().describe("Your dialogue response to the player"),
+  emotion: z.string().default("neutral").describe("Your current emotional state"),
+  action: z.string().default("").describe("Your physical action or body language, can be empty"),
+  relation_change: z
+    .number()
+    .int()
+    .min(-10)
+    .max(10)
+    .default(0)
+    .describe("How this interaction changes your attitude toward the player. Integer from -10 to 10. Use ±1~3 for minor interactions, ±5~10 only for significant events."),
+  new_memory: z.string().optional().describe("Important event worth remembering, if any"),
 });
 
 interface AgentResponse {
