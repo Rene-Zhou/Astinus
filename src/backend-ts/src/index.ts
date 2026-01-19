@@ -151,13 +151,14 @@ async function initializeServices(): Promise<void> {
     console.error("⚠️ World pack loader failed:", error);
   }
 
-  if (appContext.worldPackLoader && appContext.vectorStore) {
+  if (appContext.worldPackLoader) {
     try {
+      // LoreService 支持无 vectorStore 的关键词搜索回退模式
       appContext.loreService = new LoreService(
         appContext.worldPackLoader,
-        appContext.vectorStore
+        appContext.vectorStore || undefined
       );
-      console.log("✅ Lore service ready");
+      console.log("✅ Lore service ready" + (appContext.vectorStore ? " (hybrid search)" : " (keyword-only fallback)"));
     } catch (error) {
       console.error("⚠️ Lore service failed:", error);
     }
