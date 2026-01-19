@@ -108,19 +108,16 @@ export class GMAgent {
     const pool = new DicePool(0, bonusDice, penaltyDice);
     const diceFormula = pool.getDiceFormula();
 
-    let instructionsCn = reason || "进行一次检定。";
-    let instructionsEn = reason || "Make a check.";
+    let instructions = reason || "Make a check.";
 
     if (relevantTraits.length > 0) {
-      const traitList = relevantTraits.join("、");
-      instructionsCn += ` 你的特质「${traitList}」在此发挥作用。`;
-      instructionsEn += ` Your trait(s) "${traitList}" come into play.`;
+      const traitList = relevantTraits.join(", ");
+      instructions += ` Your trait(s) "${traitList}" come into play.`;
     }
 
     if (relevantTags.length > 0) {
-      const tagList = relevantTags.join("、");
-      instructionsCn += ` 当前状态「${tagList}」影响了你的行动。`;
-      instructionsEn += ` Current status "${tagList}" affects your action.`;
+      const tagList = relevantTags.join(", ");
+      instructions += ` Current status "${tagList}" affects your action.`;
     }
 
     return {
@@ -131,8 +128,8 @@ export class GMAgent {
       },
       dice_formula: diceFormula,
       instructions: {
-        cn: instructionsCn,
-        en: instructionsEn
+        cn: instructions,
+        en: instructions
       }
     };
   }
@@ -480,7 +477,7 @@ When processing player input, follow this sequence:
 1. **No Pre-Narrative**: If you decide to call a tool, call it directly. Do NOT generate any narrative text before the tool call.
 2. **No NPC Roleplay**: You are FORBIDDEN from roleplaying NPCs yourself. You MUST use call_agent to get NPC responses.
 3. **Must Synthesize Results**: When you receive tool results (especially NPC responses), you MUST synthesize them into coherent narrative for the player.
-   - NPC response format is usually: "对白: xxx\\n情绪: xxx\\n动作: xxx" (or "Dialogue: xxx\\nEmotion: xxx\\nAction: xxx")
+   - NPC response format is usually: "Dialogue: xxx\\nEmotion: xxx\\nAction: xxx"
    - Extract the dialogue as what the NPC says, weave action descriptions into the narrative
    - Do NOT copy-paste the tool output format directly; rephrase it narratively
 
@@ -492,7 +489,7 @@ When processing player input, follow this sequence:
 
 ## Narrative Style
 
-- Use second person ("你" for Chinese, "you" for English) to maintain immersion
+- Use second person ("you") to maintain immersion
 - Target language: ${lang === "cn" ? "Chinese (Simplified)" : "English"}
 - Narrative should be coherent, vivid, weaving player actions, environment, and NPC reactions together
 - When synthesizing NPC responses, present them as part of the story flow, not as raw tool output`;
@@ -548,31 +545,20 @@ When processing player input, follow this sequence:
 
   private generateRoleplayDirection(
     diceResult: Record<string, any>,
-    lang: "cn" | "en"
+    _lang: "cn" | "en"
   ): string {
     const outcome = diceResult.outcome as string;
     if (!outcome) return "";
 
-    const directions: Record<string, Record<string, string>> = {
-      cn: {
-        critical_success: "NPC 应该非常积极地回应，态度明显软化甚至热情，愿意主动提供帮助或重要信息。",
-        success: "NPC 应该积极回应，态度有所软化，愿意提供帮助或信息。",
-        partial: "NPC 的态度应有所松动，但仍保持一定警惕，可能只透露有限信息、给出警告、或提出额外条件。",
-        failure: "NPC 应该拒绝请求，态度可能更加冷淡或警惕。",
-        critical_failure: "NPC 应该强烈拒绝，态度恶化，可能产生敌意或采取对抗行动。",
-      },
-      en: {
-        critical_success: "The NPC should respond very positively, with a notably softened or even warm attitude, willing to proactively offer help or important information.",
-        success: "The NPC should respond positively, with a softened attitude, willing to provide help or information.",
-        partial: "The NPC's attitude should soften somewhat, but remain guarded, perhaps only revealing limited information, giving a warning, or requesting additional conditions.",
-        failure: "The NPC should refuse the request, with a colder or more guarded attitude.",
-        critical_failure: "The NPC should strongly refuse, with worsened attitude, possibly showing hostility or taking confrontational action.",
-      },
+    const directions: Record<string, string> = {
+      critical_success: "The NPC should respond very positively, with a notably softened or even warm attitude, willing to proactively offer help or important information.",
+      success: "The NPC should respond positively, with a softened attitude, willing to provide help or information.",
+      partial: "The NPC's attitude should soften somewhat, but remain guarded, perhaps only revealing limited information, giving a warning, or requesting additional conditions.",
+      failure: "The NPC should refuse the request, with a colder or more guarded attitude.",
+      critical_failure: "The NPC should strongly refuse, with worsened attitude, possibly showing hostility or taking confrontational action.",
     };
 
-    const langDirections = directions[lang] || directions["en"];
-    if (!langDirections) return "";
-    return langDirections[outcome] || "";
+    return directions[outcome] || "";
   }
 
   private async getSceneContext(lang: "cn" | "en") {
@@ -588,10 +574,8 @@ When processing player input, follow this sequence:
     );
   }
 
-  private generateHiddenItemHints(hiddenItems: string[], lang: "cn" | "en"): string {
+  private generateHiddenItemHints(hiddenItems: string[], _lang: "cn" | "en"): string {
     if (!hiddenItems || hiddenItems.length === 0) return "";
-    return lang === "cn" 
-      ? "房间里似乎还有一些不易察觉的细节..."
-      : "There seem to be some subtle details yet to notice...";
+    return "There seem to be some subtle details yet to notice...";
   }
 }
