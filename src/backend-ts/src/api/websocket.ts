@@ -220,15 +220,21 @@ export function createWebSocketHandler(
             console.log(`[WebSocket] GM Process result success: ${response.success}`);
 
             if (response.success) {
+              // Send current phase after processing (aligned with Python backend)
+              const gameStateAfterProcess = ctx.gmAgent.getGameState();
+              manager.sendPhaseChange(sessionId, gameStateAfterProcess.current_phase);
+
               // Check for dice requirement BEFORE streaming/completing
               if (response.metadata?.requires_dice) {
                 // Stream the narrative prompt (if any)
                 if (response.content) {
+                  // Send narrating status before streaming (aligned with Python backend)
+                  manager.sendStatus(sessionId, "narrating", "generating_narrative");
                   await streamContent(sessionId, response.content);
                   manager.sendComplete(sessionId, response.content, response.metadata || {});
                 }
                 
-                // Change phase to dice_check
+                // Change phase to dice_check (send again to ensure frontend receives it)
                 const gameState = ctx.gmAgent.getGameState();
                 manager.sendPhaseChange(sessionId, gameState.current_phase);
                 
@@ -243,6 +249,8 @@ export function createWebSocketHandler(
               }
               
               // Normal response without dice check
+              // Send narrating status before streaming (aligned with Python backend)
+              manager.sendStatus(sessionId, "narrating", "generating_narrative");
               await streamContent(sessionId, response.content);
               manager.sendComplete(sessionId, response.content, response.metadata || {});
               
@@ -272,16 +280,25 @@ export function createWebSocketHandler(
             }
 
             manager.sendStatus(sessionId, "processing", "Processing dice result...");
+            // Send processing phase (aligned with Python backend)
+            manager.sendPhaseChange(sessionId, "processing");
 
             const response = await ctx.gmAgent.resumeAfterDice(diceResult, lang);
 
             if (response.success) {
+              // Send current phase after processing (aligned with Python backend)
+              const gameStateAfterProcess = ctx.gmAgent.getGameState();
+              manager.sendPhaseChange(sessionId, gameStateAfterProcess.current_phase);
+
               if (response.metadata?.requires_dice) {
                 if (response.content) {
+                  // Send narrating status before streaming (aligned with Python backend)
+                  manager.sendStatus(sessionId, "narrating", "generating_narrative");
                   await streamContent(sessionId, response.content);
                   manager.sendComplete(sessionId, response.content, response.metadata || {});
                 }
                 
+                // Change phase to dice_check (send again to ensure frontend receives it)
                 const gameState = ctx.gmAgent.getGameState();
                 manager.sendPhaseChange(sessionId, gameState.current_phase);
                 
@@ -293,6 +310,8 @@ export function createWebSocketHandler(
                 return;
               }
               
+              // Send narrating status before streaming (aligned with Python backend)
+              manager.sendStatus(sessionId, "narrating", "generating_narrative");
               await streamContent(sessionId, response.content);
               manager.sendComplete(sessionId, response.content, response.metadata || {});
               

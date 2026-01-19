@@ -120,8 +120,8 @@ export class GMAgent {
       intention: savedCheckRequest?.intention || diceResult.intention,
     };
 
-    // 重置游戏阶段
-    this.gameState.current_phase = "waiting_input";
+    // 设置处理中阶段（与Python后端一致）
+    this.gameState.current_phase = "processing";
     this.gameState.react_pending_state = null;
 
     return this.runReActWithTools({
