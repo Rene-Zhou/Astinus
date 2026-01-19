@@ -25,6 +25,7 @@ interface NPCProcessInput {
   lang?: "cn" | "en";
   narrative_style?: "brief" | "detailed";
   roleplay_direction?: string;
+  gm_instruction?: string;
 }
 
 export class NPCAgent {
@@ -41,6 +42,7 @@ export class NPCAgent {
     const lang = inputData.lang || "cn";
     const narrativeStyle = inputData.narrative_style || "detailed";
     const roleplayDirection = inputData.roleplay_direction;
+    const gmInstruction = inputData.gm_instruction;
 
     if (!npcDataDict) {
       return {
@@ -80,7 +82,8 @@ export class NPCAgent {
       context,
       lang,
       narrativeStyle,
-      roleplayDirection
+      roleplayDirection,
+      gmInstruction
     );
 
     const userPrompt = this.buildUserPrompt(npc, playerInput, context, lang);
@@ -134,7 +137,8 @@ export class NPCAgent {
     _context: Record<string, unknown>,
     lang: "cn" | "en",
     narrativeStyle: "brief" | "detailed",
-    roleplayDirection?: string
+    roleplayDirection?: string,
+    gmInstruction?: string
   ): string {
     const soul = npc.soul;
     const body = npc.body;
@@ -206,7 +210,11 @@ export class NPCAgent {
       lines.push(roleplayDirection);
     }
 
-
+    if (gmInstruction) {
+      lines.push("");
+      lines.push("## GM Instruction (Critical)");
+      lines.push(gmInstruction);
+    }
 
     return lines.join("\n");
   }

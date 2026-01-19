@@ -296,7 +296,7 @@ export class GMAgent {
   ): Promise<Record<string, any>> {
     if (agentName.startsWith("npc_")) {
       const npcId = agentName.replace("npc_", "");
-      return this.sliceContextForNpc(npcId, playerInput, lang, diceResult);
+      return this.sliceContextForNpc(npcId, playerInput, lang, diceResult, providedContext);
     }
     
     return {
@@ -502,7 +502,8 @@ When processing player input, follow this sequence:
     npcId: string,
     playerInput: string,
     lang: "cn" | "en",
-    diceResult: Record<string, any> | null
+    diceResult: Record<string, any> | null,
+    providedContext: Record<string, any> = {}
   ): Promise<Record<string, any>> {
     const recentMessages = this.gameState.messages.slice(-10);
 
@@ -536,6 +537,10 @@ When processing player input, follow this sequence:
 
     if (diceResult) {
       context.roleplay_direction = this.generateRoleplayDirection(diceResult, lang);
+    }
+
+    if (providedContext.instruction) {
+      context.gm_instruction = providedContext.instruction;
     }
 
     return context;
