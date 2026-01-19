@@ -23,6 +23,8 @@ interface AgentResponse {
   metadata?: Record<string, unknown>;
 }
 
+type StatusCallback = (agentName: string, status: string | null) => Promise<void>;
+
 interface GMToolsContext {
   loreService?: LoreService;
   subAgents: Record<string, SubAgent>;
@@ -36,6 +38,7 @@ interface GMToolsContext {
     diceResult: Record<string, any> | null
   ) => Promise<Record<string, any>>;
   getCurrentRegion: () => Promise<string | undefined>;
+  statusCallback?: StatusCallback;
 }
 
 export function createGMTools(context: GMToolsContext, lang: "cn" | "en") {
@@ -45,6 +48,7 @@ export function createGMTools(context: GMToolsContext, lang: "cn" | "en") {
     gameState,
     prepareAgentContext,
     getCurrentRegion,
+    statusCallback,
   } = context;
 
   return {
@@ -73,6 +77,11 @@ export function createGMTools(context: GMToolsContext, lang: "cn" | "en") {
           return lang === "cn"
             ? "背景信息服务不可用。"
             : "Lore service unavailable.";
+        }
+
+        // Notify frontend that lore agent is working (aligned with Python backend)
+        if (statusCallback) {
+          await statusCallback("lore", "searching_lore");
         }
 
         console.log(
@@ -121,6 +130,11 @@ export function createGMTools(context: GMToolsContext, lang: "cn" | "en") {
           ),
       }),
       execute: async ({ agent_name, instruction, reasoning }) => {
+        // Notify frontend which agent is working (aligned with Python backend)
+        if (statusCallback) {
+          await statusCallback(agent_name, null);
+        }
+
         console.log(
           `[GM Tool: call_agent] Agent: ${agent_name} | Reasoning: ${reasoning || "N/A"}`
         );

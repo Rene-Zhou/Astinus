@@ -211,12 +211,23 @@ export function createWebSocketHandler(
               return;
             }
 
-            manager.sendStatus(sessionId, "processing", "Processing action...");
-
-            const response = await ctx.gmAgent.process({
-              player_input: playerInput,
-              lang,
+            // Set up status callback to notify frontend which agent is working (aligned with Python backend)
+            ctx.gmAgent.setStatusCallback(async (agent: string, message: string | null) => {
+              manager.sendStatus(sessionId, "processing", message || undefined, agent);
             });
+
+            manager.sendStatus(sessionId, "processing", "analyzing_action", "gm");
+
+            let response;
+            try {
+              response = await ctx.gmAgent.process({
+                player_input: playerInput,
+                lang,
+              });
+            } finally {
+              // Clear callback after processing (aligned with Python backend)
+              ctx.gmAgent.setStatusCallback(undefined as any);
+            }
             console.log(`[WebSocket] GM Process result success: ${response.success}`);
 
             if (response.success) {
@@ -279,11 +290,22 @@ export function createWebSocketHandler(
               return;
             }
 
-            manager.sendStatus(sessionId, "processing", "Processing dice result...");
+            // Set up status callback to notify frontend which agent is working (aligned with Python backend)
+            ctx.gmAgent.setStatusCallback(async (agent: string, message: string | null) => {
+              manager.sendStatus(sessionId, "processing", message || undefined, agent);
+            });
+
+            manager.sendStatus(sessionId, "processing", "processing_dice_result", "gm");
             // Send processing phase (aligned with Python backend)
             manager.sendPhaseChange(sessionId, "processing");
 
-            const response = await ctx.gmAgent.resumeAfterDice(diceResult, lang);
+            let response;
+            try {
+              response = await ctx.gmAgent.resumeAfterDice(diceResult, lang);
+            } finally {
+              // Clear callback after processing (aligned with Python backend)
+              ctx.gmAgent.setStatusCallback(undefined as any);
+            }
 
             if (response.success) {
               // Send current phase after processing (aligned with Python backend)

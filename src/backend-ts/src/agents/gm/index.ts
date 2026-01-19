@@ -147,6 +147,7 @@ export class GMAgent {
         worldPackLoader: this.worldPackLoader,
         prepareAgentContext: this.prepareAgentContext.bind(this),
         getCurrentRegion: this.getCurrentRegion.bind(this),
+        statusCallback: this.statusCallback,
       },
       lang
     );
