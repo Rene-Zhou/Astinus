@@ -5,7 +5,6 @@ import { LocationContextService } from "../../services/location-context";
 import { WorldPackLoader } from "../../services/world";
 import { getLocalizedString } from "../../schemas";
 import type { NPCData } from "../../schemas";
-import { DicePool } from "../../services/dice";
 import { createGMTools } from "./tools";
 
 type StatusCallback = (agentName: string, status: string | null) => Promise<void>;
@@ -65,75 +64,6 @@ export class GMAgent {
     }
   }
 
-  private buildDiceCheckRequest(
-    intention: string,
-    reason: string,
-    lang: "cn" | "en"
-  ): DiceCheckRequest {
-    const playerTraits = this.gameState.player?.traits || [];
-    const playerTags = this.gameState.player?.tags || [];
-
-    const relevantTraits: string[] = [];
-    const relevantTags: string[] = [];
-
-    for (const trait of playerTraits) {
-      const traitName = typeof trait.name === 'string' 
-        ? trait.name 
-        : (trait.name as any)[lang] || (trait.name as any).cn;
-      
-      if (intention.toLowerCase().includes(traitName.toLowerCase()) || 
-          reason.toLowerCase().includes(traitName.toLowerCase())) {
-        relevantTraits.push(traitName);
-      }
-    }
-
-    for (const tag of playerTags) {
-      if (intention.toLowerCase().includes(tag.toLowerCase()) || 
-          reason.toLowerCase().includes(tag.toLowerCase())) {
-        relevantTags.push(tag);
-      }
-    }
-
-    let bonusDice = 0;
-    let penaltyDice = 0;
-
-    if (relevantTraits.length > 0) {
-      bonusDice = 1;
-    }
-
-    if (relevantTags.length > 0) {
-      penaltyDice = 1;
-    }
-
-    const pool = new DicePool(0, bonusDice, penaltyDice);
-    const diceFormula = pool.getDiceFormula();
-
-    let instructions = reason || "Make a check.";
-
-    if (relevantTraits.length > 0) {
-      const traitList = relevantTraits.join(", ");
-      instructions += ` Your trait(s) "${traitList}" come into play.`;
-    }
-
-    if (relevantTags.length > 0) {
-      const tagList = relevantTags.join(", ");
-      instructions += ` Current status "${tagList}" affects your action.`;
-    }
-
-    return {
-      intention,
-      influencing_factors: {
-        traits: relevantTraits,
-        tags: relevantTags
-      },
-      dice_formula: diceFormula,
-      instructions: {
-        cn: instructions,
-        en: instructions
-      }
-    };
-  }
-
   async process(inputData: GMProcessInput): Promise<AgentResponse> {
     console.log("[GMAgent] Processing input:", inputData);
     const playerInput = inputData.player_input;
@@ -182,13 +112,22 @@ export class GMAgent {
     }
 
     const playerInput = pendingState.player_input as string;
+    const savedCheckRequest = pendingState.check_request as Record<string, unknown> | undefined;
 
+    // 将保存的 intention 合并到 diceResult 中，供 LLM 理解上下文
+    const enrichedDiceResult = {
+      ...diceResult,
+      intention: savedCheckRequest?.intention || diceResult.intention,
+    };
+
+    // 重置游戏阶段
+    this.gameState.current_phase = "waiting_input";
     this.gameState.react_pending_state = null;
 
     return this.runReActWithTools({
       playerInput,
       lang,
-      diceResult,
+      diceResult: enrichedDiceResult,
     });
   }
 
@@ -207,7 +146,6 @@ export class GMAgent {
         gameState: this.gameState,
         worldPackLoader: this.worldPackLoader,
         prepareAgentContext: this.prepareAgentContext.bind(this),
-        buildDiceCheckRequest: this.buildDiceCheckRequest.bind(this),
         getCurrentRegion: this.getCurrentRegion.bind(this),
       },
       lang
@@ -236,6 +174,55 @@ export class GMAgent {
       console.log(`[GMAgent] Generated response after ${steps.length} steps`);
       console.log(`[GMAgent] Finish reason: ${finishReason}`);
 
+      // 检查是否有 request_dice_check tool call（hasToolCall 触发停止时）
+      const diceCheckToolCall = steps
+        .flatMap((s) => s.toolCalls || [])
+        .find((tc) => tc.toolName === "request_dice_check");
+
+      if (diceCheckToolCall) {
+        // 直接使用 LLM 提供的完整 check_request 参数
+        const input = diceCheckToolCall.input as {
+          intention: string;
+          influencing_factors: { traits: string[]; tags: string[] };
+          dice_formula: string;
+          instructions: string;
+        };
+
+        // 构建 checkRequest（LLM 已提供所有字段）
+        const checkRequest: DiceCheckRequest = {
+          intention: input.intention,
+          influencing_factors: input.influencing_factors,
+          dice_formula: input.dice_formula,
+          instructions: {
+            cn: input.instructions,
+            en: input.instructions,
+          },
+        };
+
+        // 设置游戏阶段
+        this.gameState.current_phase = "dice_check";
+
+        // 保存 ReAct 状态，包括 check_request（用于 resumeAfterDice）
+        this.gameState.react_pending_state = {
+          player_input: playerInput,
+          iteration: steps.length,
+          agent_results: [],
+          check_request: checkRequest,  // 保存以便恢复时获取 intention
+        };
+
+        // REQUEST_CHECK 不包含叙事，与 Python 后端行为一致
+        return {
+          content: "",  // 返回空 content，节省 LLM 调用
+          success: true,
+          metadata: {
+            agent: "gm_agent",
+            requires_dice: true,
+            check_request: checkRequest,
+          },
+        };
+      }
+
+      // 兼容旧逻辑：如果 temp_context 中有 pending_check_request（tool.execute 已执行）
       if (this.gameState.current_phase === "dice_check") {
         const pendingCheckRequest = this.gameState.temp_context?.pending_check_request;
 
@@ -243,11 +230,11 @@ export class GMAgent {
           player_input: playerInput,
           iteration: steps.length,
           agent_results: [],
+          check_request: pendingCheckRequest,
         };
 
-        // REQUEST_CHECK 不包含叙事，与 Python 后端行为一致
         return {
-          content: "",  // 返回空 content，节省 LLM 调用
+          content: "",
           success: true,
           metadata: {
             agent: "gm_agent",

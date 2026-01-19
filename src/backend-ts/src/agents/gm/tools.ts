@@ -35,11 +35,6 @@ interface GMToolsContext {
     providedContext: Record<string, any>,
     diceResult: Record<string, any> | null
   ) => Promise<Record<string, any>>;
-  buildDiceCheckRequest: (
-    intention: string,
-    reason: string,
-    lang: "cn" | "en"
-  ) => DiceCheckRequest;
   getCurrentRegion: () => Promise<string | undefined>;
 }
 
@@ -49,7 +44,6 @@ export function createGMTools(context: GMToolsContext, lang: "cn" | "en") {
     subAgents,
     gameState,
     prepareAgentContext,
-    buildDiceCheckRequest,
     getCurrentRegion,
   } = context;
 
@@ -184,8 +178,8 @@ export function createGMTools(context: GMToolsContext, lang: "cn" | "en") {
     request_dice_check: tool({
       description:
         lang === "cn"
-          ? "请求玩家进行骰子检定。当玩家尝试有风险、不确定或有重大后果的行动时使用。调用此工具后，当前回合结束，等待玩家掷骰。"
-          : "Request a dice check from the player. Use when player attempts risky, uncertain, or consequential actions. Calling this tool ends the current turn and waits for player to roll.",
+          ? "请求玩家进行骰子检定。当玩家尝试有风险、不确定或有重大后果的行动时使用。你必须分析玩家特质和标签来决定骰子公式。调用此工具后，当前回合结束，等待玩家掷骰。"
+          : "Request a dice check from the player. Use when player attempts risky, uncertain, or consequential actions. You must analyze player traits and tags to determine dice formula. Calling this tool ends the current turn and waits for player to roll.",
       inputSchema: z.object({
         intention: z
           .string()
@@ -194,20 +188,57 @@ export function createGMTools(context: GMToolsContext, lang: "cn" | "en") {
               ? "玩家尝试做什么（例如：'说服守卫放行'）"
               : "What the player is trying to do (e.g., 'persuade the guard')"
           ),
-        reason: z
+        influencing_factors: z
+          .object({
+            traits: z
+              .array(z.string())
+              .describe(
+                lang === "cn"
+                  ? "影响此检定的玩家特质名称列表"
+                  : "List of player trait names that affect this check"
+              ),
+            tags: z
+              .array(z.string())
+              .describe(
+                lang === "cn"
+                  ? "影响此检定的玩家状态标签列表"
+                  : "List of player status tags that affect this check"
+              ),
+          })
+          .describe(
+            lang === "cn"
+              ? "影响因素：根据玩家特质和标签分析"
+              : "Influencing factors: analyze based on player traits and tags"
+          ),
+        dice_formula: z
           .string()
           .describe(
             lang === "cn"
-              ? "为什么需要检定（向玩家解释）"
-              : "Why a check is needed (explain to player)"
+              ? "骰子公式：2d6（普通检定）、3d6kh2（有利特质时取高）、3d6kl2（不利标签时取低）"
+              : "Dice formula: 2d6 (normal), 3d6kh2 (advantage from traits), 3d6kl2 (disadvantage from tags)"
+          ),
+        instructions: z
+          .string()
+          .describe(
+            lang === "cn"
+              ? "向玩家解释为什么需要检定，以及特质/标签如何影响骰子"
+              : "Explain to player why check is needed and how traits/tags affect dice"
           ),
       }),
-      execute: async ({ intention, reason }) => {
+      execute: async ({ intention, influencing_factors, dice_formula, instructions }) => {
         console.log(
-          `[GM Tool: request_dice_check] Intention: "${intention}" | Reason: "${reason}"`
+          `[GM Tool: request_dice_check] Intention: "${intention}" | Formula: ${dice_formula}`
         );
 
-        const checkRequest = buildDiceCheckRequest(intention, reason, lang);
+        const checkRequest: DiceCheckRequest = {
+          intention,
+          influencing_factors,
+          dice_formula,
+          instructions: {
+            cn: instructions,
+            en: instructions,
+          },
+        };
 
         gameState.current_phase = "dice_check";
 
