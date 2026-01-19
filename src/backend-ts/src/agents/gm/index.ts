@@ -1,4 +1,4 @@
-import { generateText, stepCountIs } from "ai";
+import { generateText, stepCountIs, hasToolCall } from "ai";
 import type { LanguageModel } from "ai";
 import type { GameState, DiceCheckRequest } from "../../schemas";
 import { LocationContextService } from "../../services/location-context";
@@ -227,7 +227,10 @@ export class GMAgent {
         system: systemPrompt,
         prompt: context,
         tools,
-        stopWhen: stepCountIs(maxIterations),
+        stopWhen: [
+          hasToolCall("request_dice_check"),  // dice check 后立即停止
+          stepCountIs(maxIterations),
+        ],
       });
 
       console.log(`[GMAgent] Generated response after ${steps.length} steps`);
@@ -242,8 +245,9 @@ export class GMAgent {
           agent_results: [],
         };
 
+        // REQUEST_CHECK 不包含叙事，与 Python 后端行为一致
         return {
-          content: text || "",
+          content: "",  // 返回空 content，节省 LLM 调用
           success: true,
           metadata: {
             agent: "gm_agent",
