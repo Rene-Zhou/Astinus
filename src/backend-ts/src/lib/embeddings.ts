@@ -78,8 +78,9 @@ export class QwenEmbedding {
   /**
    * Model identifier on HuggingFace
    * Uses ONNX-optimized quantized version for fast inference
+   * Note: The ONNX version is maintained by onnx-community, not Qwen directly
    */
-  private static readonly MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B-ONNX";
+  private static readonly MODEL_NAME = "onnx-community/Qwen3-Embedding-0.6B-ONNX";
 
   /**
    * Expected embedding dimension

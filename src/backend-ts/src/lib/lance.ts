@@ -73,8 +73,25 @@ export class LanceDBService {
       return await this.connection.openTable(tableName);
     }
 
-    const emptySchema: VectorRecord[] = [];
-    return await this.connection.createTable({ name: tableName, data: emptySchema });
+    // Cannot create empty table in LanceDB - caller must provide initial data
+    throw new Error(`Table "${tableName}" does not exist. Use addDocuments to create it with initial data.`);
+  }
+
+  /**
+   * Get table if it exists, returns null otherwise.
+   */
+  public async getTableIfExists(tableName: string): Promise<Table | null> {
+    if (!this.connection) {
+      throw new Error("LanceDB not initialized");
+    }
+
+    const tableNames = await this.connection.tableNames();
+
+    if (tableNames.includes(tableName)) {
+      return await this.connection.openTable(tableName);
+    }
+
+    return null;
   }
 
   public async addDocuments(
@@ -83,8 +100,16 @@ export class LanceDBService {
     ids: string[],
     metadatas?: Record<string, string | number | boolean>[]
   ): Promise<void> {
+    if (!this.connection) {
+      throw new Error("LanceDB not initialized");
+    }
+
     if (!this.embedder) {
       throw new Error("Embedder not initialized");
+    }
+
+    if (documents.length === 0) {
+      throw new Error("At least one document is required");
     }
 
     if (documents.length !== ids.length) {
@@ -104,8 +129,17 @@ export class LanceDBService {
       metadata: metadatas?.[i],
     }));
 
-    const table = await this.getOrCreateTable(tableName);
-    await table.add(records);
+    // Check if table exists
+    const tableNames = await this.connection.tableNames();
+
+    if (tableNames.includes(tableName)) {
+      // Table exists, add records
+      const table = await this.connection.openTable(tableName);
+      await table.add(records);
+    } else {
+      // Table doesn't exist, create with initial data
+      await this.connection.createTable({ name: tableName, data: records });
+    }
   }
 
   public async search(
@@ -118,7 +152,12 @@ export class LanceDBService {
       throw new Error("Embedder not initialized");
     }
 
-    const table = await this.getOrCreateTable(tableName);
+    const table = await this.getTableIfExists(tableName);
+
+    if (!table) {
+      // Table doesn't exist, return empty results
+      return [];
+    }
 
     const queryVector = await this.embedder.embed(queryText, "query");
 
