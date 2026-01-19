@@ -754,31 +754,14 @@ Context Analysis (Decision Logic Flow):
 - If you see agent responses in the context → DO NOT call agents again
 - One agent call per type per turn maximum
 
-**Response Format Requirements**:
+**NPC Invocation Rules (CRITICAL)**:
+- NPC Agent name format is \`npc_{id}\`, e.g., "npc_old_guard", "npc_blacksmith"
+- You CANNOT roleplay NPCs directly. You MUST use CALL_AGENT to get their response.
+- Refer to [Active NPCs] section for available NPC IDs.
 
-For RESPOND action (final narrative output):
-- action_type: "RESPOND"
-- reasoning: Your reasoning process
-- narrative: The complete narrative text in ${lang === 'cn' ? 'Chinese' : 'English'}
-- target_location: Location ID if player is moving (or null)
-
-For REQUEST_CHECK action (dice check request):
-- action_type: "REQUEST_CHECK"
-- reasoning: Why this check is needed
-- check_request: { intention, difficulty, stat, reason, modifiers }
-
-For SEARCH_LORE action (background knowledge search):
-- action_type: "SEARCH_LORE"
-- reasoning: Why lore search is needed
-- content: Search keywords or question
-
-For CALL_AGENT action (invoke NPC or other agent):
-- action_type: "CALL_AGENT"
-- reasoning: Why this agent call is needed
-- agent_name: "npc_{id}" or other agent identifier
-- agent_context: Additional context for the agent
-
-Return the decision as a JSON object matching the GMAction schema.`;
+**Scene Transition Rules**:
+- When player moves, set target_location to the destination location ID in RESPOND action.
+- Only use IDs from "Can Go To" list.`;
   }
 
   private getCurrentRegion(): string | undefined {
