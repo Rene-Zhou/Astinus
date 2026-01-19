@@ -1,14 +1,25 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { WorldPackSchema } from '../schemas';
 import type { WorldPack, LoreEntry, NPCData, LocationData, RegionData } from '../schemas';
+import type { LanceDBService } from '../lib/lance';
 
 export class WorldPackLoader {
   private packsDir: string;
   private loadedPacks: Map<string, WorldPack> = new Map();
+  private vectorStore?: LanceDBService;
 
-  constructor(packsDir: string = './data/packs') {
+  constructor(packsDir: string = './data/packs', vectorStore?: LanceDBService) {
     this.packsDir = packsDir;
+    this.vectorStore = vectorStore;
+  }
+
+  /**
+   * Set the vector store service (can be set after construction).
+   */
+  setVectorStore(vectorStore: LanceDBService): void {
+    this.vectorStore = vectorStore;
   }
 
   async load(packId: string): Promise<WorldPack> {
@@ -26,6 +37,14 @@ export class WorldPackLoader {
       console.log(`[WorldPackLoader] Pack validated successfully`);
 
       this.loadedPacks.set(packId, worldPack);
+
+      // Fire-and-forget async indexing (non-blocking)
+      if (this.vectorStore) {
+        this.indexLoreEntriesAsync(packId, worldPack).catch((error) => {
+          console.error(`[WorldPackLoader] Async indexing failed for ${packId}:`, error);
+        });
+      }
+
       return worldPack;
     } catch (error) {
       console.error(`[WorldPackLoader] Error loading pack "${packId}":`, error);
@@ -158,5 +177,136 @@ export class WorldPackLoader {
     }
 
     return matches.sort((a, b) => a.order - b.order);
+  }
+
+  // ============================================================
+  // Lore Auto-Indexing (Phase 1.1 & 1.2)
+  // ============================================================
+
+  /**
+   * Compute SHA-256 hash of world pack entries for change detection.
+   * Only hashes the lore entries (content, keys, metadata) since that's what we index.
+   *
+   * @param pack - WorldPack to hash
+   * @returns SHA-256 hash string (hex)
+   */
+  private computePackHash(pack: WorldPack): string {
+    const entriesData = Object.values(pack.entries)
+      .map((entry) => ({
+        uid: entry.uid,
+        key: entry.key,
+        secondary_keys: entry.secondary_keys,
+        content: entry.content,
+        order: entry.order,
+        constant: entry.constant,
+        visibility: entry.visibility,
+        applicable_regions: entry.applicable_regions,
+        applicable_locations: entry.applicable_locations,
+      }))
+      .sort((a, b) => a.uid - b.uid);
+
+    const hashInput = JSON.stringify(entriesData);
+    return crypto.createHash('sha256').update(hashInput).digest('hex');
+  }
+
+  /**
+   * Async index lore entries for vector search.
+   * Uses hash-based change detection to skip unnecessary re-indexing.
+   *
+   * Creates separate documents for Chinese and English versions of each entry,
+   * with metadata for filtering (visibility, applicable_regions, applicable_locations).
+   *
+   * @param packId - World pack identifier
+   * @param pack - Loaded WorldPack
+   */
+  async indexLoreEntriesAsync(packId: string, pack: WorldPack): Promise<void> {
+    if (!this.vectorStore) {
+      console.log(`[WorldPackLoader] No vector store, skipping indexing for ${packId}`);
+      return;
+    }
+
+    if (!pack.entries || Object.keys(pack.entries).length === 0) {
+      console.log(`[WorldPackLoader] No entries in pack ${packId}, skipping indexing`);
+      return;
+    }
+
+    const collectionName = `lore_entries_${packId}`;
+    const currentHash = this.computePackHash(pack);
+
+    // Check if re-indexing is needed
+    const storedHash = await this.vectorStore.getTableMetadata(collectionName, 'pack_hash');
+
+    if (storedHash === currentHash) {
+      console.log(`[WorldPackLoader] Index up-to-date for ${packId} (hash: ${currentHash.slice(0, 8)}...)`);
+      return;
+    }
+
+    if (storedHash === null) {
+      console.log(`[WorldPackLoader] First-time indexing for ${packId} (${Object.keys(pack.entries).length} entries)`);
+    } else {
+      console.log(`[WorldPackLoader] Pack changed, re-indexing ${packId} (hash: ${currentHash.slice(0, 8)}...)`);
+    }
+
+    // Prepare for re-indexing - delete old table if exists
+    const tableExists = await this.vectorStore.tableExists(collectionName);
+    if (tableExists) {
+      try {
+        await this.vectorStore.deleteTable(collectionName);
+      } catch (error) {
+        // Ignore error if table doesn't exist
+      }
+    }
+
+    // Prepare documents and metadata
+    const documents: string[] = [];
+    const ids: string[] = [];
+    const metadatas: Record<string, string | number | boolean>[] = [];
+
+    for (const entry of Object.values(pack.entries)) {
+      // Chinese document
+      if (entry.content.cn) {
+        documents.push(entry.content.cn);
+        ids.push(`${entry.uid}`);  // Use uid as id for easy lookup
+        metadatas.push({
+          uid: entry.uid,
+          keys: entry.key.join(','),
+          order: entry.order,
+          lang: 'cn',
+          constant: entry.constant,
+          visibility: entry.visibility,
+          applicable_regions: entry.applicable_regions.join(','),
+          applicable_locations: entry.applicable_locations.join(','),
+        });
+      }
+
+      // English document (with different id suffix to avoid collision)
+      if (entry.content.en) {
+        documents.push(entry.content.en);
+        ids.push(`${entry.uid}_en`);
+        metadatas.push({
+          uid: entry.uid,
+          keys: entry.key.join(','),
+          order: entry.order,
+          lang: 'en',
+          constant: entry.constant,
+          visibility: entry.visibility,
+          applicable_regions: entry.applicable_regions.join(','),
+          applicable_locations: entry.applicable_locations.join(','),
+        });
+      }
+    }
+
+    // Add documents to vector store
+    try {
+      await this.vectorStore.addDocuments(collectionName, documents, ids, metadatas);
+
+      // Store the hash for future change detection
+      await this.vectorStore.setTableMetadata(collectionName, 'pack_hash', currentHash);
+
+      console.log(`[WorldPackLoader] ✅ Indexed ${documents.length} documents for ${packId}`);
+    } catch (error) {
+      console.error(`[WorldPackLoader] ❌ Failed to index ${packId}:`, error);
+      throw error;
+    }
   }
 }

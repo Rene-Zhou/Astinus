@@ -17,6 +17,13 @@ interface SearchResult {
   metadata?: Record<string, string | number | boolean>;
 }
 
+// Metadata storage record (for table-level metadata like pack_hash)
+interface MetadataRecord {
+  key: string;
+  value: string;
+  [key: string]: unknown; // Index signature for LanceDB compatibility
+}
+
 export class LanceDBService {
   private static instance: LanceDBService | null = null;
   private connection: Connection | null = null;
@@ -142,6 +149,90 @@ export class LanceDBService {
   public async clearTable(tableName: string): Promise<void> {
     await this.deleteTable(tableName);
     await this.getOrCreateTable(tableName);
+  }
+
+  /**
+   * Get metadata for a table (stored in a separate _metadata table).
+   * Used for tracking pack hashes to avoid unnecessary re-indexing.
+   *
+   * @param tableName - The table to get metadata for
+   * @param key - The metadata key to retrieve
+   * @returns The metadata value, or null if not found
+   */
+  public async getTableMetadata(tableName: string, key: string): Promise<string | null> {
+    if (!this.connection) {
+      throw new Error("LanceDB not initialized");
+    }
+
+    const metadataTableName = `${tableName}_metadata`;
+    const tableNames = await this.connection.tableNames();
+
+    if (!tableNames.includes(metadataTableName)) {
+      return null;
+    }
+
+    try {
+      const table = await this.connection.openTable(metadataTableName);
+      // LanceDB uses query().where() for filtering
+      const results = await table.query().where(`key = '${key}'`).limit(1).toArray();
+
+      if (results.length > 0) {
+        return (results[0] as MetadataRecord).value;
+      }
+      return null;
+    } catch (error) {
+      console.error(`[LanceDB] Failed to get metadata for ${tableName}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Set metadata for a table (stored in a separate _metadata table).
+   * Used for tracking pack hashes to avoid unnecessary re-indexing.
+   *
+   * @param tableName - The table to set metadata for
+   * @param key - The metadata key
+   * @param value - The metadata value
+   */
+  public async setTableMetadata(tableName: string, key: string, value: string): Promise<void> {
+    if (!this.connection) {
+      throw new Error("LanceDB not initialized");
+    }
+
+    const metadataTableName = `${tableName}_metadata`;
+    const tableNames = await this.connection.tableNames();
+
+    // If table exists, try to update or delete+recreate
+    if (tableNames.includes(metadataTableName)) {
+      try {
+        // Delete existing table and recreate with new data
+        await this.connection.dropTable(metadataTableName);
+      } catch (error) {
+        // Ignore error if table doesn't exist
+      }
+    }
+
+    // Create metadata table with the new value
+    const record: MetadataRecord = { key, value };
+    await this.connection.createTable({
+      name: metadataTableName,
+      data: [record],
+    });
+  }
+
+  /**
+   * Check if a table exists.
+   *
+   * @param tableName - The table name to check
+   * @returns True if the table exists
+   */
+  public async tableExists(tableName: string): Promise<boolean> {
+    if (!this.connection) {
+      throw new Error("LanceDB not initialized");
+    }
+
+    const tableNames = await this.connection.tableNames();
+    return tableNames.includes(tableName);
   }
 
   public static async cleanup(): Promise<void> {

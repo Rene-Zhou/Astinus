@@ -133,9 +133,20 @@ async function initializeServices(): Promise<void> {
 
   try {
     console.log("📦 Initializing world pack loader...");
-    appContext.worldPackLoader = new WorldPackLoader("../../data/packs");
+    // Pass vectorStore to WorldPackLoader for auto-indexing support
+    appContext.worldPackLoader = new WorldPackLoader("../../data/packs", appContext.vectorStore || undefined);
     const packs = await appContext.worldPackLoader.listAvailable();
     console.log(`✅ World pack loader ready (packs: ${packs.join(", ")})`);
+
+    // Pre-load available packs to trigger async indexing
+    for (const packId of packs) {
+      try {
+        await appContext.worldPackLoader.load(packId);
+        console.log(`   ✓ Loaded pack: ${packId}`);
+      } catch (error) {
+        console.error(`   ✗ Failed to load pack ${packId}:`, error);
+      }
+    }
   } catch (error) {
     console.error("⚠️ World pack loader failed:", error);
   }

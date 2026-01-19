@@ -1,11 +1,12 @@
 import { generateText, stepCountIs, hasToolCall } from "ai";
 import type { LanguageModel } from "ai";
-import type { GameState, DiceCheckRequest } from "../../schemas";
+import type { GameState, DiceCheckRequest, Message } from "../../schemas";
 import { LocationContextService } from "../../services/location-context";
 import { WorldPackLoader } from "../../services/world";
 import { getLocalizedString } from "../../schemas";
 import type { NPCData } from "../../schemas";
 import { createGMTools } from "./tools";
+import type { LanceDBService } from "../../lib/lance";
 
 type StatusCallback = (agentName: string, status: string | null) => Promise<void>;
 
@@ -28,14 +29,17 @@ interface GMProcessInput {
 export class GMAgent {
   private statusCallback?: StatusCallback;
   private locationContextService?: LocationContextService;
+  private vectorStore?: LanceDBService;
 
   constructor(
     private llm: LanguageModel,
     private subAgents: Record<string, SubAgent>,
     private gameState: GameState,
     private loreService?: any,
-    private worldPackLoader?: WorldPackLoader
+    private worldPackLoader?: WorldPackLoader,
+    vectorStore?: LanceDBService
   ) {
+    this.vectorStore = vectorStore;
     if (this.worldPackLoader) {
       this.locationContextService = new LocationContextService(this.worldPackLoader);
     }
@@ -82,11 +86,18 @@ export class GMAgent {
       await this.statusCallback("gm", null);
     }
 
-    this.gameState.messages.push({
+    const userMessage: Message = {
       role: "user",
       content: playerInput,
       timestamp: new Date().toISOString(),
       turn: this.gameState.turn_count,
+    };
+
+    this.gameState.messages.push(userMessage);
+
+    // Index user message for future retrieval (fire-and-forget)
+    this.indexMessage(this.gameState.session_id, userMessage).catch((error) => {
+      console.error("[GMAgent] Failed to index user message:", error);
     });
 
     return this.runReActWithTools({
@@ -248,7 +259,7 @@ export class GMAgent {
       this.gameState.turn_count += 1;
       this.gameState.updated_at = new Date().toISOString();
 
-      this.gameState.messages.push({
+      const assistantMessage: Message = {
         role: "assistant",
         content: text,
         timestamp: new Date().toISOString(),
@@ -256,6 +267,13 @@ export class GMAgent {
         metadata: {
           phase: "gm_response",
         },
+      };
+
+      this.gameState.messages.push(assistantMessage);
+
+      // Index assistant message for future retrieval (fire-and-forget)
+      this.indexMessage(this.gameState.session_id, assistantMessage).catch((error) => {
+        console.error("[GMAgent] Failed to index assistant message:", error);
       });
 
       this.gameState.current_phase = "waiting_input";
@@ -422,10 +440,16 @@ export class GMAgent {
       }
     }
 
-    const recentMessages = this.gameState.messages.slice(-10);
-    if (recentMessages.length > 0) {
+    // Use vector retrieval for conversation history when available (Phase 3)
+    const relevantMessages = await this.retrieveRelevantHistory(
+      this.gameState.session_id,
+      playerInput,
+      this.gameState.messages
+    );
+
+    if (relevantMessages.length > 0) {
       parts.push(`\n[Conversation History]`);
-      for (const msg of recentMessages) {
+      for (const msg of relevantMessages) {
         parts.push(`  [Turn ${msg.turn}] ${msg.role}: ${msg.content}`);
       }
     }
@@ -569,5 +593,103 @@ When processing player input, follow this sequence:
   private generateHiddenItemHints(hiddenItems: string[], _lang: "cn" | "en"): string {
     if (!hiddenItems || hiddenItems.length === 0) return "";
     return "There seem to be some subtle details yet to notice...";
+  }
+
+  // ============================================================
+  // GM History Retrieval System (Phase 3)
+  // ============================================================
+
+  /**
+   * Retrieve relevant conversation history using vector similarity search.
+   *
+   * If messages < 10, return all messages.
+   * If messages >= 10, use vector search to find top relevant messages,
+   * then sort by turn to maintain chronological order.
+   *
+   * @param sessionId - Session identifier
+   * @param playerInput - Current player input (for semantic search)
+   * @param allMessages - All conversation messages
+   * @param nResults - Number of messages to retrieve (default: 5)
+   * @returns List of relevant messages (sorted chronologically)
+   */
+  private async retrieveRelevantHistory(
+    sessionId: string,
+    playerInput: string,
+    allMessages: Message[],
+    nResults: number = 5
+  ): Promise<Message[]> {
+    // If less than 10 messages, return all (no vector search needed)
+    if (allMessages.length < 10) {
+      return allMessages;
+    }
+
+    // If no vector store, return most recent messages
+    if (!this.vectorStore) {
+      return allMessages.slice(-nResults);
+    }
+
+    const collectionName = `conversation_history_${sessionId}`;
+
+    try {
+      // Check if collection exists
+      const tableExists = await this.vectorStore.tableExists(collectionName);
+      if (!tableExists) {
+        return allMessages.slice(-nResults);
+      }
+
+      const results = await this.vectorStore.search(collectionName, playerInput, nResults);
+
+      if (results.length === 0) {
+        return allMessages.slice(-nResults);
+      }
+
+      // Extract message IDs and find matching messages
+      const retrievedIds = new Set(results.map((r) => r.id));
+      const retrievedMessages = allMessages.filter(
+        (msg) => retrievedIds.has(`${sessionId}_msg_${msg.turn}`)
+      );
+
+      // Sort by turn for chronological order
+      return retrievedMessages.sort((a, b) => a.turn - b.turn);
+    } catch (error) {
+      console.error(`[GMAgent] History retrieval failed:`, error);
+      // Graceful fallback - return recent messages
+      return allMessages.slice(-nResults);
+    }
+  }
+
+  /**
+   * Index a message for future vector retrieval.
+   * Called after each message is added to the conversation.
+   *
+   * @param sessionId - Session identifier
+   * @param message - The message to index
+   */
+  private async indexMessage(sessionId: string, message: Message): Promise<void> {
+    if (!this.vectorStore) {
+      return;
+    }
+
+    const collectionName = `conversation_history_${sessionId}`;
+    const messageId = `${sessionId}_msg_${message.turn}`;
+
+    try {
+      await this.vectorStore.addDocuments(
+        collectionName,
+        [message.content],
+        [messageId],
+        [
+          {
+            role: message.role,
+            turn: message.turn,
+            timestamp: message.timestamp,
+            session_id: sessionId,
+          },
+        ]
+      );
+    } catch (error) {
+      console.error(`[GMAgent] Failed to index message:`, error);
+      // Don't throw - indexing failure shouldn't break the game
+    }
   }
 }

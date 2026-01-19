@@ -228,17 +228,20 @@ gameRouter.post(
 
       const npcMaxTokens = config.agents?.npc?.max_tokens;
 
-      const npcAgent = new NPCAgent(npcModel as any, npcMaxTokens);
+      // Pass vectorStore to NPCAgent for memory retrieval/persistence
+      const npcAgent = new NPCAgent(npcModel as any, ctx.vectorStore || undefined, npcMaxTokens);
       const subAgents = {
         npc: npcAgent,
       };
 
+      // Pass vectorStore to GMAgent for conversation history retrieval
       ctx.gmAgent = new GMAgent(
         gmModel as any,
         subAgents,
         gameState,
         ctx.loreService,
-        ctx.worldPackLoader
+        ctx.worldPackLoader,
+        ctx.vectorStore || undefined
       );
 
       return c.json({

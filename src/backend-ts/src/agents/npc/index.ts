@@ -2,6 +2,7 @@ import { generateObject } from "ai";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
 import type { NPCData } from "../../schemas";
+import type { LanceDBService } from "../../lib/lance";
 
 const NPCResponseSchema = z.object({
   response: z.string().describe("Your dialogue response to the player"),
@@ -27,6 +28,7 @@ interface AgentResponse {
 interface NPCProcessInput {
   npc_data: Record<string, unknown>;
   player_input: string;
+  session_id?: string;  // For memory isolation
   context?: Record<string, unknown>;
   lang?: "cn" | "en";
   narrative_style?: "brief" | "detailed";
@@ -37,6 +39,7 @@ interface NPCProcessInput {
 export class NPCAgent {
   constructor(
     private llm: LanguageModel,
+    private vectorStore?: LanceDBService,
     private maxTokens?: number
   ) {}
 
@@ -44,6 +47,7 @@ export class NPCAgent {
     const inputData = input as unknown as NPCProcessInput;
     const npcDataDict = inputData.npc_data;
     const playerInput = inputData.player_input;
+    const sessionId = inputData.session_id;
     const context = inputData.context || {};
     const lang = inputData.lang || "cn";
     const narrativeStyle = inputData.narrative_style || "detailed";
@@ -82,6 +86,14 @@ export class NPCAgent {
 
     const relationshipLevel = npc.body.relations.player || 0;
 
+    // Retrieve relevant memories using vector search (Phase 2.2)
+    const relevantMemories = await this.retrieveRelevantMemories(
+      sessionId,
+      npc.id,
+      playerInput,
+      npc.body.memory || {}
+    );
+
     const systemPrompt = this.buildSystemPrompt(
       npc,
       playerInput,
@@ -89,7 +101,8 @@ export class NPCAgent {
       lang,
       narrativeStyle,
       roleplayDirection,
-      gmInstruction
+      gmInstruction,
+      relevantMemories  // Pass retrieved memories
     );
 
     const userPrompt = this.buildUserPrompt(npc, playerInput, context, lang);
@@ -118,7 +131,11 @@ export class NPCAgent {
         responseMetadata.relation_change = object.relation_change;
       }
 
-      if (object.new_memory) {
+      // Persist new memory if generated (Phase 2.3)
+      if (object.new_memory && sessionId) {
+        // Extract keywords from the memory event
+        const keywords = this.extractMemoryKeywords(object.new_memory);
+        await this.persistMemory(sessionId, npc.id, object.new_memory, keywords);
         responseMetadata.new_memory = object.new_memory;
       }
 
@@ -137,6 +154,136 @@ export class NPCAgent {
     }
   }
 
+  // ============================================================
+  // NPC Memory System (Phase 2)
+  // ============================================================
+
+  /**
+   * Retrieve relevant memories using vector similarity search.
+   * Falls back gracefully when vector store is unavailable.
+   *
+   * Collection naming: npc_memories_{session_id}_{npc_id}
+   *
+   * @param sessionId - Session identifier for memory isolation
+   * @param npcId - NPC identifier
+   * @param playerInput - Current player input (for semantic search)
+   * @param allMemories - All NPC memories from state {event: keywords[]}
+   * @param nResults - Number of memories to retrieve (default: 3)
+   * @returns List of relevant memory event descriptions
+   */
+  private async retrieveRelevantMemories(
+    sessionId: string | undefined,
+    npcId: string,
+    playerInput: string,
+    allMemories: Record<string, string[]>,
+    nResults: number = 3
+  ): Promise<string[]> {
+    // If no vector store, session, or memories, return empty
+    if (!this.vectorStore || !sessionId || Object.keys(allMemories).length === 0) {
+      return [];
+    }
+
+    const collectionName = `npc_memories_${sessionId}_${npcId}`;
+
+    try {
+      // Check if collection exists
+      const tableExists = await this.vectorStore.tableExists(collectionName);
+      if (!tableExists) {
+        return [];
+      }
+
+      const results = await this.vectorStore.search(collectionName, playerInput, nResults);
+      return results.map((r) => r.text);
+    } catch (error) {
+      // Graceful degradation - return empty list if search fails
+      console.error(`[NPCAgent] Memory retrieval failed for ${npcId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Persist a new memory event to the vector store.
+   * Memories are session-isolated to prevent cross-session leakage.
+   *
+   * @param sessionId - Session identifier
+   * @param npcId - NPC identifier
+   * @param memoryEvent - The memory event description
+   * @param keywords - Keywords associated with the memory
+   */
+  async persistMemory(
+    sessionId: string,
+    npcId: string,
+    memoryEvent: string,
+    keywords: string[]
+  ): Promise<void> {
+    if (!this.vectorStore) {
+      return;
+    }
+
+    const collectionName = `npc_memories_${sessionId}_${npcId}`;
+    const memoryId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+    try {
+      await this.vectorStore.addDocuments(
+        collectionName,
+        [memoryEvent],
+        [memoryId],
+        [
+          {
+            keywords: keywords.join(','),
+            timestamp: Date.now(),
+            session_id: sessionId,
+            npc_id: npcId,
+          },
+        ]
+      );
+      console.log(`[NPCAgent] Memory persisted for ${npcId}: ${memoryEvent.slice(0, 50)}...`);
+    } catch (error) {
+      console.error(`[NPCAgent] Failed to persist memory for ${npcId}:`, error);
+    }
+  }
+
+  /**
+   * Extract keywords from a memory event description.
+   * Uses simple word segmentation and filtering.
+   *
+   * @param memoryEvent - The memory event description
+   * @returns List of extracted keywords
+   */
+  private extractMemoryKeywords(memoryEvent: string): string[] {
+    const stopWords = new Set([
+      "的", "了", "是", "在", "我", "你", "他", "她", "它", "有", "没有",
+      "什么", "怎么", "如何", "这", "那", "就", "也", "都", "很", "非常",
+      "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+      "have", "has", "had", "do", "does", "did", "will", "would", "should",
+    ]);
+
+    const segmenter = new Intl.Segmenter(["zh-CN", "en"], { granularity: "word" });
+    const segments = segmenter.segment(memoryEvent);
+
+    const keywords: string[] = [];
+    const seen = new Set<string>();
+
+    for (const { segment } of segments) {
+      const cleanWord = segment.trim().replace(/[，。！？：；''()（）\[\]【】""]/g, "");
+
+      if (
+        cleanWord &&
+        !stopWords.has(cleanWord) &&
+        cleanWord.length > 1 &&
+        !seen.has(cleanWord)
+      ) {
+        seen.add(cleanWord);
+        keywords.push(cleanWord);
+        if (keywords.length >= 5) {
+          break;
+        }
+      }
+    }
+
+    return keywords;
+  }
+
   private buildSystemPrompt(
     npc: NPCData,
     _playerInput: string,
@@ -144,7 +291,8 @@ export class NPCAgent {
     lang: "cn" | "en",
     narrativeStyle: "brief" | "detailed",
     roleplayDirection?: string,
-    gmInstruction?: string
+    gmInstruction?: string,
+    relevantMemories?: string[]  // Retrieved memories from vector search
   ): string {
     const soul = npc.soul;
     const body = npc.body;
@@ -189,7 +337,14 @@ export class NPCAgent {
       lines.push(`Attitude toward player: ${relDesc} (${rel})`);
     }
 
-    if (body.memory && Object.keys(body.memory).length > 0) {
+    // Use retrieved memories if available, otherwise fall back to all memories
+    if (relevantMemories && relevantMemories.length > 0) {
+      lines.push("");
+      lines.push("## Relevant Memories (Retrieved)");
+      for (const memory of relevantMemories) {
+        lines.push(`- ${memory}`);
+      }
+    } else if (body.memory && Object.keys(body.memory).length > 0) {
       lines.push("");
       lines.push("## Recent Memories");
       const recentMemories = Object.keys(body.memory).slice(0, 3);
