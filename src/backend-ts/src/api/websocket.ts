@@ -253,8 +253,17 @@ export function createWebSocketHandler(
               manager.sendError(sessionId, response.error || "Unknown error");
             }
           } else if (messageType === "dice_result") {
-            const diceResult = data.data as Record<string, unknown>;
+            // 前端直接在顶层发送字段，不是嵌套在 data 中
+            const diceResult = {
+              total: data.total as number,
+              all_rolls: data.all_rolls as number[],
+              kept_rolls: data.kept_rolls as number[],
+              outcome: data.outcome as string,
+              fate_point_spent: (data.fate_point_spent as boolean) ?? false,
+            };
             const lang = (data.lang as "cn" | "en") || "cn";
+
+            console.log(`[WebSocket] Dice result: total=${diceResult.total}, outcome=${diceResult.outcome}`);
 
             const ctx = getContext();
             if (!ctx.gmAgent) {
