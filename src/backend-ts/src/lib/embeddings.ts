@@ -124,6 +124,25 @@ export class QwenEmbedding {
   }
 
   /**
+   * Preferred device for inference.
+   * Set via EMBEDDING_DEVICE env var: "cuda", "gpu", "cpu" (default: "cpu")
+   *
+   * GPU/CUDA requires:
+   * - Linux x64
+   * - CUDA Toolkit 12.x installed
+   * - cuDNN installed
+   * - Matching system libraries (libcublasLt.so.12, etc.)
+   */
+  private static getPreferredDevice(): "cuda" | "cpu" {
+    const envDevice = process.env.EMBEDDING_DEVICE?.toLowerCase();
+    if (envDevice === "cuda" || envDevice === "gpu") {
+      return "cuda";
+    }
+    // Default to CPU for reliability (GPU requires proper CUDA setup)
+    return "cpu";
+  }
+
+  /**
    * Initialize the embedding pipeline
    * Downloads model on first run (~240MB)
    *
@@ -136,31 +155,41 @@ export class QwenEmbedding {
       return; // Already initialized
     }
 
+    const preferredDevice = QwenEmbedding.getPreferredDevice();
     console.log(
       `[QwenEmbedding] Loading model: ${QwenEmbedding.MODEL_NAME}...`
     );
+    console.log(`[QwenEmbedding] Device: ${preferredDevice}`);
 
-    // Create pipeline with progress tracking
+    if (preferredDevice === "cuda") {
+      console.log("[QwenEmbedding] Note: GPU mode requires CUDA 12.x + cuDNN installed");
+    }
+
+    const progressCallback = onProgress
+      ? (progress: any) => {
+          onProgress({
+            status: progress.status as "progress" | "ready" | "done",
+            file: progress.file || "",
+            loaded: progress.loaded || 0,
+            total: progress.total || 0,
+            progress: progress.progress || 0,
+          });
+        }
+      : undefined;
+
+    // Create pipeline with specified device
     this.pipeline = await pipeline(
       "feature-extraction",
       QwenEmbedding.MODEL_NAME,
       {
-        // Progress callback wrapper
-        progress_callback: onProgress
-          ? (progress: any) => {
-              onProgress({
-                status: progress.status as "progress" | "ready" | "done",
-                file: progress.file || "",
-                loaded: progress.loaded || 0,
-                total: progress.total || 0,
-                progress: progress.progress || 0,
-              });
-            }
-          : undefined,
+        device: preferredDevice,
+        // fp16 for GPU (faster), fp32 for CPU (more compatible)
+        dtype: preferredDevice === "cuda" ? "fp16" : "fp32",
+        progress_callback: progressCallback,
       }
     );
 
-    console.log("[QwenEmbedding] Model loaded successfully");
+    console.log(`[QwenEmbedding] Model loaded successfully (${preferredDevice})`);
   }
 
   /**
@@ -202,9 +231,17 @@ export class QwenEmbedding {
   }
 
   /**
+   * Maximum batch size for embedding generation.
+   * Smaller batches use less memory but are slower.
+   * Larger batches are faster but use more memory.
+   */
+  private static readonly MAX_BATCH_SIZE = 4;
+
+  /**
    * Generate embeddings for multiple texts in batch
    *
-   * More efficient than calling embed() multiple times.
+   * Uses chunked processing to limit memory usage.
+   * Each chunk is processed separately to avoid OOM errors.
    *
    * @param texts - Array of texts to embed
    * @param type - Instruction type for all texts
@@ -234,10 +271,38 @@ export class QwenEmbedding {
       return [];
     }
 
+    const allEmbeddings: number[][] = [];
+
+    // Process in chunks to limit memory usage
+    for (let i = 0; i < texts.length; i += QwenEmbedding.MAX_BATCH_SIZE) {
+      const chunk = texts.slice(i, i + QwenEmbedding.MAX_BATCH_SIZE);
+      const chunkEmbeddings = await this.embedChunk(chunk, type);
+      allEmbeddings.push(...chunkEmbeddings);
+
+      // Allow GC to run between chunks
+      if (i + QwenEmbedding.MAX_BATCH_SIZE < texts.length) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+    }
+
+    return allEmbeddings;
+  }
+
+  /**
+   * Process a single chunk of texts (internal method)
+   */
+  private async embedChunk(
+    texts: string[],
+    type: InstructionType
+  ): Promise<number[][]> {
+    if (!this.pipeline) {
+      throw new Error("QwenEmbedding not initialized.");
+    }
+
     // Add instruction prefixes
     const instructedTexts = texts.map((text) => INSTRUCTIONS[type] + text);
 
-    // Generate embeddings in batch
+    // Generate embeddings
     const output = await this.pipeline(instructedTexts, {
       pooling: "mean",
       normalize: true,
