@@ -1,7 +1,7 @@
 # COMPONENTS - React UI
 
-**Generated:** 2026-01-16
-**Branch:** main
+**Generated:** 2026-01-20
+**Branch:** migration/Python2TS_2
 **Stack:** React 19 (Functional) + TailwindCSS + i18next
 
 ## OVERVIEW

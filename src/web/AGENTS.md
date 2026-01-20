@@ -1,7 +1,7 @@
 # WEB - Frontend (React 19)
 
-**Generated:** 2026-01-16
-**Branch:** main
+**Generated:** 2026-01-20
+**Branch:** migration/Python2TS_2
 **Stack:** React 19 + Vite + TailwindCSS + Zustand (with Immer)
 
 ## OVERVIEW
