@@ -25,16 +25,16 @@ export function createMockGameState(overrides: Partial<GameState> = {}): GameSta
   const now = new Date().toISOString();
 
   return {
-    sessionId: 'test-session-id',
-    playerName: '玩家',
+    session_id: 'test-session-id',
+    player_name: '玩家',
     created_at: now,
     updated_at: now,
     player: createMockPlayerCharacter(),
     current_phase: 'waiting_input',
     next_agent: null,
-    worldPackId: 'demo_pack',
-    currentLocation: 'starting_location',
-    activeNpcIds: [],
+    world_pack_id: 'demo_pack',
+    current_location: 'starting_location',
+    active_npc_ids: [],
     discovered_items: [],
     flags: [],
     game_time: '00:00',
