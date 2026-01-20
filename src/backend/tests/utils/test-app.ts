@@ -301,11 +301,11 @@ export function createTestApp(options: TestAppOptions = {}) {
     }
 
     return c.json({
-      session_id: gameState.sessionId,
-      world_pack_id: gameState.worldPackId,
+      session_id: gameState.session_id,
+      world_pack_id: gameState.world_pack_id,
       player: gameState.player,
-      current_location: gameState.currentLocation,
-      active_npc_ids: gameState.activeNpcIds,
+      current_location: gameState.current_location,
+      active_npc_ids: gameState.active_npc_ids,
       current_phase: gameState.current_phase,
       turn_count: gameState.turn_count,
       language: gameState.language,
