@@ -98,7 +98,7 @@ make check
   - 自适应布局，手机平板完美适配
   - 防滚动锁定，流畅的移动体验
 - 🤖 **多智能体协作** - GM、NPC 等 Agent 分工协作
-  - GM Agent - 核心协调者，星型拓扑中心
+  - GM Agent - 核心协调者
   - NPC Agent - 角色对话，情感与关系系统
   - Lore Search - 通过 Tool Call 检索世界观与背景信息
 - 🧠 **智能向量检索** - LanceDB 语义搜索
@@ -144,7 +144,7 @@ Astinus 提供现代化的 Web 界面，可在任何现代浏览器中运行，�
 ### 后端
 - **框架**: Hono - 轻量高性能 Web 框架
 - **AI SDK**: Vercel AI SDK - 结构化输出与流式响应
-- **Agent**: 多 Agent 协作系统（星型拓扑）
+- **Agent**: 多 Agent 协作系统
 - **实时通信**: WebSocket - 流式响应
 
 ### 前端
@@ -170,71 +170,57 @@ Astinus 提供现代化的 Web 界面，可在任何现代浏览器中运行，�
 
 ## 架构设计
 
-### Agent 星型拓扑
-
-```mermaid
-graph TD
-    GM[GM Agent<br/>核心协调者] --> N[NPC Agent<br/>角色对话]
-    GM --> L[Lore Tool<br/>世界观检索]
-    GM --> D[Dice Tool<br/>骰子检定]
-    GM --> O[其他 Tool<br/>可扩展]
-
-    style GM fill:#e1f5fe,stroke:#01579b,color:#000000
-    style N fill:#f3e5f5,stroke:#4a148c,color:#000000
-    style L fill:#fff9c4,stroke:#f57f17,color:#000000
-    style D fill:#fff9c4,stroke:#f57f17,color:#000000
-    style O fill:#f3e5f5,stroke:#4a148c,color:#000000
-```
-
-- **信息隔离**: 每个 Agent 只能访问必要的上下文切片
-- **职责单一**: 每个 Agent 有明确的职责边界
-- **可扩展**: 易于添加新的 Agent 类型
-
-### Multi-Agent 循环
+### ReAct 循环
 
 游戏回合通过以下循环流程运行：
 
 ```mermaid
-graph TD
-    Start([玩家输入]) --> GM_Receive[GM Agent 接收输入]
-    GM_Receive --> GM_Analyze{GM 分析意图}
+flowchart TD
+    subgraph Input["输入阶段"]
+        A[玩家输入] --> B[GMAgent.process]
+    end
 
-    GM_Analyze -->|NPC 对话| NPC[NPC Agent<br/>角色扮演]
-    GM_Analyze -->|查询背景| Lore[Lore Tool<br/>向量检索]
-    GM_Analyze -->|需要检定| Dice[Dice Tool<br/>生成检定]
-    GM_Analyze -->|简单行动| Direct[直接响应]
+    subgraph Context["上下文构建"]
+        B --> C[buildContext]
+        C --> C1[场景信息]
+        C --> C2[活跃NPC]
+        C --> C3[玩家角色]
+        C --> C4[对话历史<br/>向量检索]
+    end
 
-    Dice --> GM_Synthesize[GM 综合响应]
-    NPC --> GM_Synthesize
-    Lore --> GM_Synthesize
-    Direct --> GM_Synthesize
+    subgraph ReAct["ReAct 循环 (max 5 步)"]
+        C1 & C2 & C3 & C4 --> D[runReActWithTools]
+        D --> E{LLM 推理}
+        E -->|需要信息| F[search_lore]
+        E -->|NPC交互| G[call_agent]
+        E -->|风险行动| H[request_dice_check]
+        E -->|信息充足| I[生成叙事]
+        
+        F --> F1[LoreService<br/>混合搜索]
+        F1 --> E
+        
+        G --> G1[prepareAgentContext<br/>上下文切片]
+        G1 --> G2[NPCAgent.process]
+        G2 --> E
+    end
 
-    GM_Synthesize --> Stream[WebSocket 流式输出]
-    Stream --> Wait{需要玩家<br/>掷骰?}
+    subgraph DiceCheck["骰子检定分支"]
+        H --> J[保存 react_pending_state]
+        J --> K[返回 dice_check 请求]
+        K --> L[前端显示骰子UI]
+        L --> M[玩家掷骰]
+        M --> N[resumeAfterDice]
+        N --> D
+    end
 
-    Wait -->|是| DiceCheck[前端展示骰子检定]
-    DiceCheck --> DiceResult[玩家掷骰并提交结果]
-    DiceResult --> GM_Narrate[GM 生成叙事]
-    GM_Narrate --> Stream
+    subgraph Output["输出阶段"]
+        I --> O[合成最终叙事]
+        O --> P[索引消息到向量库]
+        P --> Q[WebSocket 流式输出]
+    end
 
-    Wait -->|否| End([等待下一轮输入])
-    GM_Narrate --> End
-
-    End -.下一回合.-> Start
-
-    style Start fill:#c8e6c9,stroke:#2e7d32,color:#000000
-    style GM_Receive fill:#e1f5fe,stroke:#01579b,color:#000000
-    style GM_Analyze fill:#e1f5fe,stroke:#01579b,color:#000000
-    style GM_Synthesize fill:#e1f5fe,stroke:#01579b,color:#000000
-    style GM_Narrate fill:#e1f5fe,stroke:#01579b,color:#000000
-    style Dice fill:#f3e5f5,stroke:#4a148c,color:#000000
-    style NPC fill:#f3e5f5,stroke:#4a148c,color:#000000
-    style Lore fill:#fff9c4,stroke:#f57f17,color:#000000
-    style Direct fill:#fff9c4,stroke:#f57f17,color:#000000
-    style Stream fill:#fff3e0,stroke:#e65100,color:#000000
-    style DiceCheck fill:#fce4ec,stroke:#880e4f,color:#000000
-    style DiceResult fill:#fce4ec,stroke:#880e4f,color:#000000
-    style End fill:#c8e6c9,stroke:#2e7d32,color:#000000
+    style ReAct fill:#e1f5fe
+    style DiceCheck fill:#fff3e0
 ```
 
 **流程说明**:
