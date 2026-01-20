@@ -1,14 +1,14 @@
-import type { UpgradeWebSocket, WSContext } from "hono/ws";
-import type { AppContext } from "../index";
+import type { UpgradeWebSocket, WSContext } from 'hono/ws';
+import type { AppContext } from '../index';
 
 export enum MessageType {
-  STATUS = "status",
-  CONTENT = "content",
-  COMPLETE = "complete",
-  ERROR = "error",
-  PHASE = "phase",
-  DICE_CHECK = "dice_check",
-  DICE_RESULT = "dice_result",
+  STATUS = 'status',
+  CONTENT = 'content',
+  COMPLETE = 'complete',
+  ERROR = 'error',
+  PHASE = 'phase',
+  DICE_CHECK = 'dice_check',
+  DICE_RESULT = 'dice_result',
 }
 
 interface StreamMessage {
@@ -34,13 +34,8 @@ class ConnectionManager {
     }
   }
 
-  sendStatus(
-    sessionId: string,
-    phase: string,
-    message?: string,
-    agent?: string
-  ): void {
-    const data: Record<string, unknown> = { phase, message: message || "" };
+  sendStatus(sessionId: string, phase: string, message?: string, agent?: string): void {
+    const data: Record<string, unknown> = { phase, message: message || '' };
     if (agent) {
       data.agent = agent;
     }
@@ -96,10 +91,7 @@ class ConnectionManager {
     });
   }
 
-  sendDiceCheck(
-    sessionId: string,
-    checkRequest: Record<string, unknown>
-  ): void {
+  sendDiceCheck(sessionId: string, checkRequest: Record<string, unknown>): void {
     this.sendMessage(sessionId, {
       type: MessageType.DICE_CHECK,
       data: { check_request: checkRequest },
@@ -130,7 +122,7 @@ export function createWebSocketHandler(
   getContext: () => AppContext
 ) {
   return upgradeWebSocket((c) => {
-    const sessionId = c.req.param("sessionId");
+    const sessionId = c.req.param('sessionId');
 
     return {
       onOpen(_evt, ws) {
@@ -138,7 +130,7 @@ export function createWebSocketHandler(
         manager.connect(sessionId, ws);
 
         const ctx = getContext();
-        let currentPhase = "waiting_input";
+        let currentPhase = 'waiting_input';
 
         if (ctx.gmAgent) {
           const gameState = ctx.gmAgent.getGameState();
@@ -148,7 +140,7 @@ export function createWebSocketHandler(
         }
 
         // Send initial status with ACTUAL phase, not "connected"
-        manager.sendStatus(sessionId, currentPhase, "WebSocket connected");
+        manager.sendStatus(sessionId, currentPhase, 'WebSocket connected');
 
         if (ctx.gmAgent) {
           const gameState = ctx.gmAgent.getGameState();
@@ -160,12 +152,7 @@ export function createWebSocketHandler(
             if (gameState.messages.length > 0) {
               const lastMsg = gameState.messages[gameState.messages.length - 1];
               if (lastMsg) {
-                manager.sendComplete(
-                  sessionId,
-                  lastMsg.content,
-                  lastMsg.metadata || {},
-                  true
-                );
+                manager.sendComplete(sessionId, lastMsg.content, lastMsg.metadata || {}, true);
               }
             }
           }
@@ -176,47 +163,47 @@ export function createWebSocketHandler(
         try {
           const rawData = evt.data.toString();
           console.log(`[WebSocket] Received raw message: ${rawData}`);
-          
+
           const data = JSON.parse(rawData);
           const messageType = data.type as string;
           console.log(`[WebSocket] Parsed message type: ${messageType}`);
 
           // Support both legacy "player_action" and current frontend "player_input"
-          if (messageType === "player_action" || messageType === "player_input") {
-            let playerInput = "";
-            let lang: "cn" | "en" = "cn";
+          if (messageType === 'player_action' || messageType === 'player_input') {
+            let playerInput = '';
+            let lang: 'cn' | 'en' = 'cn';
 
             // Handle different data structures
             if (data.data && typeof data.data === 'object') {
-                // Structure: { type: "player_action", data: { action: "...", lang: "..." } }
-                playerInput = data.data.action || data.data.content;
-                lang = data.data.lang || "cn";
+              // Structure: { type: "player_action", data: { action: "...", lang: "..." } }
+              playerInput = data.data.action || data.data.content;
+              lang = data.data.lang || 'cn';
             } else {
-                // Structure: { type: "player_input", content: "...", lang: "..." }
-                playerInput = data.content || data.action;
-                lang = data.lang || "cn";
+              // Structure: { type: "player_input", content: "...", lang: "..." }
+              playerInput = data.content || data.action;
+              lang = data.lang || 'cn';
             }
 
             console.log(`[WebSocket] Player input extracted: ${playerInput}`);
-            
+
             if (!playerInput) {
-                console.warn("[WebSocket] Received empty player input");
-                return;
+              console.warn('[WebSocket] Received empty player input');
+              return;
             }
 
             const ctx = getContext();
             if (!ctx.gmAgent) {
-              console.error("[WebSocket] GM Agent not initialized!");
-              manager.sendError(sessionId, "Game engine not initialized");
+              console.error('[WebSocket] GM Agent not initialized!');
+              manager.sendError(sessionId, 'Game engine not initialized');
               return;
             }
 
             // Set up status callback to notify frontend which agent is working (aligned with Python backend)
             ctx.gmAgent.setStatusCallback(async (agent: string, message: string | null) => {
-              manager.sendStatus(sessionId, "processing", message || undefined, agent);
+              manager.sendStatus(sessionId, 'processing', message || undefined, agent);
             });
 
-            manager.sendStatus(sessionId, "processing", "analyzing_action", "gm");
+            manager.sendStatus(sessionId, 'processing', 'analyzing_action', 'gm');
 
             let response;
             try {
@@ -240,38 +227,38 @@ export function createWebSocketHandler(
                 // Stream the narrative prompt (if any)
                 if (response.content) {
                   // Send narrating status before streaming (aligned with Python backend)
-                  manager.sendStatus(sessionId, "narrating", "generating_narrative");
+                  manager.sendStatus(sessionId, 'narrating', 'generating_narrative');
                   await streamContent(sessionId, response.content);
                   manager.sendComplete(sessionId, response.content, response.metadata || {});
                 }
-                
+
                 // Change phase to dice_check (send again to ensure frontend receives it)
                 const gameState = ctx.gmAgent.getGameState();
                 manager.sendPhaseChange(sessionId, gameState.current_phase);
-                
+
                 // Send dice check request (this keeps the turn active)
                 manager.sendDiceCheck(
                   sessionId,
                   response.metadata.check_request as Record<string, unknown>
                 );
-                
+
                 // DO NOT send phase back to waiting_input - stay in dice_check
                 return;
               }
-              
+
               // Normal response without dice check
               // Send narrating status before streaming (aligned with Python backend)
-              manager.sendStatus(sessionId, "narrating", "generating_narrative");
+              manager.sendStatus(sessionId, 'narrating', 'generating_narrative');
               await streamContent(sessionId, response.content);
               manager.sendComplete(sessionId, response.content, response.metadata || {});
-              
+
               // Ensure phase is synced after response
               const gameState = ctx.gmAgent.getGameState();
               manager.sendPhaseChange(sessionId, gameState.current_phase);
             } else {
-              manager.sendError(sessionId, response.error || "Unknown error");
+              manager.sendError(sessionId, response.error || 'Unknown error');
             }
-          } else if (messageType === "dice_result") {
+          } else if (messageType === 'dice_result') {
             // 前端直接在顶层发送字段，不是嵌套在 data 中
             const diceResult = {
               total: data.total as number,
@@ -280,24 +267,26 @@ export function createWebSocketHandler(
               outcome: data.outcome as string,
               fate_point_spent: (data.fate_point_spent as boolean) ?? false,
             };
-            const lang = (data.lang as "cn" | "en") || "cn";
+            const lang = (data.lang as 'cn' | 'en') || 'cn';
 
-            console.log(`[WebSocket] Dice result: total=${diceResult.total}, outcome=${diceResult.outcome}`);
+            console.log(
+              `[WebSocket] Dice result: total=${diceResult.total}, outcome=${diceResult.outcome}`
+            );
 
             const ctx = getContext();
             if (!ctx.gmAgent) {
-              manager.sendError(sessionId, "Game engine not initialized");
+              manager.sendError(sessionId, 'Game engine not initialized');
               return;
             }
 
             // Set up status callback to notify frontend which agent is working (aligned with Python backend)
             ctx.gmAgent.setStatusCallback(async (agent: string, message: string | null) => {
-              manager.sendStatus(sessionId, "processing", message || undefined, agent);
+              manager.sendStatus(sessionId, 'processing', message || undefined, agent);
             });
 
-            manager.sendStatus(sessionId, "processing", "processing_dice_result", "gm");
+            manager.sendStatus(sessionId, 'processing', 'processing_dice_result', 'gm');
             // Send processing phase (aligned with Python backend)
-            manager.sendPhaseChange(sessionId, "processing");
+            manager.sendPhaseChange(sessionId, 'processing');
 
             let response;
             try {
@@ -315,35 +304,35 @@ export function createWebSocketHandler(
               if (response.metadata?.requires_dice) {
                 if (response.content) {
                   // Send narrating status before streaming (aligned with Python backend)
-                  manager.sendStatus(sessionId, "narrating", "generating_narrative");
+                  manager.sendStatus(sessionId, 'narrating', 'generating_narrative');
                   await streamContent(sessionId, response.content);
                   manager.sendComplete(sessionId, response.content, response.metadata || {});
                 }
-                
+
                 // Change phase to dice_check (send again to ensure frontend receives it)
                 const gameState = ctx.gmAgent.getGameState();
                 manager.sendPhaseChange(sessionId, gameState.current_phase);
-                
+
                 manager.sendDiceCheck(
                   sessionId,
                   response.metadata.check_request as Record<string, unknown>
                 );
-                
+
                 return;
               }
-              
+
               // Send narrating status before streaming (aligned with Python backend)
-              manager.sendStatus(sessionId, "narrating", "generating_narrative");
+              manager.sendStatus(sessionId, 'narrating', 'generating_narrative');
               await streamContent(sessionId, response.content);
               manager.sendComplete(sessionId, response.content, response.metadata || {});
-              
+
               const gameState = ctx.gmAgent.getGameState();
               manager.sendPhaseChange(sessionId, gameState.current_phase);
             } else {
-              manager.sendError(sessionId, response.error || "Unknown error");
+              manager.sendError(sessionId, response.error || 'Unknown error');
             }
-          } else if (messageType === "ping") {
-            ws.send(JSON.stringify({ type: "pong" }));
+          } else if (messageType === 'ping') {
+            ws.send(JSON.stringify({ type: 'pong' }));
           }
         } catch (error) {
           console.error(`[WebSocket] Error processing message:`, error);

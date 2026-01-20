@@ -19,6 +19,7 @@ vi.mock('react-i18next', () => ({
 // Mock game store
 const mockSpendFatePoint = vi.fn();
 vi.mock('../../stores/gameStore', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useGameStore: (selector: any) => {
     const state = { spendFatePoint: mockSpendFatePoint };
     return selector(state);

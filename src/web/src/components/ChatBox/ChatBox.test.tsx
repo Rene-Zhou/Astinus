@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import ChatBox from './ChatBox';
+import type { Message } from '../../api/types';
 
 // Mock translation
 vi.mock('react-i18next', () => ({
@@ -13,7 +14,7 @@ vi.mock('react-i18next', () => ({
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 describe('ChatBox', () => {
-  const mockMessages: any[] = [
+  const mockMessages: Message[] = [
     {
       role: 'user',
       content: 'Hello GM',

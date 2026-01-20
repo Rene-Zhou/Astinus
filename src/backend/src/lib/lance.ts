@@ -1,6 +1,6 @@
-import * as lancedb from "@lancedb/lancedb";
-import type { Connection, Table } from "@lancedb/lancedb";
-import { getEmbeddingService, QwenEmbedding } from "./embeddings";
+import * as lancedb from '@lancedb/lancedb';
+import type { Connection, Table } from '@lancedb/lancedb';
+import { getEmbeddingService, QwenEmbedding } from './embeddings';
 
 interface VectorRecord {
   id: string;
@@ -30,7 +30,7 @@ export class LanceDBService {
   private embedder: QwenEmbedding | null = null;
   private initPromise: Promise<void> | null = null;
 
-  private static readonly DB_PATH = "../../data/lancedb";
+  private static readonly DB_PATH = '../../data/lancedb';
 
   private constructor() {}
 
@@ -40,8 +40,7 @@ export class LanceDBService {
     }
 
     if (!LanceDBService.instance.initPromise) {
-      LanceDBService.instance.initPromise =
-        LanceDBService.instance.initialize();
+      LanceDBService.instance.initPromise = LanceDBService.instance.initialize();
     }
 
     await LanceDBService.instance.initPromise;
@@ -56,15 +55,15 @@ export class LanceDBService {
     console.log(`[LanceDB] Connecting to database at ${LanceDBService.DB_PATH}`);
     this.connection = await lancedb.connect(LanceDBService.DB_PATH);
 
-    console.log("[LanceDB] Loading embedding service...");
+    console.log('[LanceDB] Loading embedding service...');
     this.embedder = await getEmbeddingService();
 
-    console.log("[LanceDB] Service initialized");
+    console.log('[LanceDB] Service initialized');
   }
 
   public async getOrCreateTable(tableName: string): Promise<Table> {
     if (!this.connection) {
-      throw new Error("LanceDB not initialized");
+      throw new Error('LanceDB not initialized');
     }
 
     const tableNames = await this.connection.tableNames();
@@ -74,7 +73,9 @@ export class LanceDBService {
     }
 
     // Cannot create empty table in LanceDB - caller must provide initial data
-    throw new Error(`Table "${tableName}" does not exist. Use addDocuments to create it with initial data.`);
+    throw new Error(
+      `Table "${tableName}" does not exist. Use addDocuments to create it with initial data.`
+    );
   }
 
   /**
@@ -82,7 +83,7 @@ export class LanceDBService {
    */
   public async getTableIfExists(tableName: string): Promise<Table | null> {
     if (!this.connection) {
-      throw new Error("LanceDB not initialized");
+      throw new Error('LanceDB not initialized');
     }
 
     const tableNames = await this.connection.tableNames();
@@ -101,26 +102,26 @@ export class LanceDBService {
     metadatas?: Record<string, string | number | boolean>[]
   ): Promise<void> {
     if (!this.connection) {
-      throw new Error("LanceDB not initialized");
+      throw new Error('LanceDB not initialized');
     }
 
     if (!this.embedder) {
-      throw new Error("Embedder not initialized");
+      throw new Error('Embedder not initialized');
     }
 
     if (documents.length === 0) {
-      throw new Error("At least one document is required");
+      throw new Error('At least one document is required');
     }
 
     if (documents.length !== ids.length) {
-      throw new Error("documents and ids arrays must have the same length");
+      throw new Error('documents and ids arrays must have the same length');
     }
 
     if (metadatas && metadatas.length !== documents.length) {
-      throw new Error("metadatas array must match documents length");
+      throw new Error('metadatas array must match documents length');
     }
 
-    const embeddings = await this.embedder.embedBatch(documents, "document");
+    const embeddings = await this.embedder.embedBatch(documents, 'document');
 
     const records: VectorRecord[] = documents.map((text, i) => ({
       id: ids[i]!,
@@ -149,7 +150,7 @@ export class LanceDBService {
     filter?: string
   ): Promise<SearchResult[]> {
     if (!this.embedder) {
-      throw new Error("Embedder not initialized");
+      throw new Error('Embedder not initialized');
     }
 
     const table = await this.getTableIfExists(tableName);
@@ -159,7 +160,7 @@ export class LanceDBService {
       return [];
     }
 
-    const queryVector = await this.embedder.embed(queryText, "query");
+    const queryVector = await this.embedder.embed(queryText, 'query');
 
     let query = table.search(queryVector).limit(limit);
 
@@ -179,7 +180,7 @@ export class LanceDBService {
 
   public async deleteTable(tableName: string): Promise<void> {
     if (!this.connection) {
-      throw new Error("LanceDB not initialized");
+      throw new Error('LanceDB not initialized');
     }
 
     await this.connection.dropTable(tableName);
@@ -200,7 +201,7 @@ export class LanceDBService {
    */
   public async getTableMetadata(tableName: string, key: string): Promise<string | null> {
     if (!this.connection) {
-      throw new Error("LanceDB not initialized");
+      throw new Error('LanceDB not initialized');
     }
 
     const metadataTableName = `${tableName}_metadata`;
@@ -235,7 +236,7 @@ export class LanceDBService {
    */
   public async setTableMetadata(tableName: string, key: string, value: string): Promise<void> {
     if (!this.connection) {
-      throw new Error("LanceDB not initialized");
+      throw new Error('LanceDB not initialized');
     }
 
     const metadataTableName = `${tableName}_metadata`;
@@ -246,7 +247,7 @@ export class LanceDBService {
       try {
         // Delete existing table and recreate with new data
         await this.connection.dropTable(metadataTableName);
-      } catch (error) {
+      } catch (_error) {
         // Ignore error if table doesn't exist
       }
     }
@@ -267,7 +268,7 @@ export class LanceDBService {
    */
   public async tableExists(tableName: string): Promise<boolean> {
     if (!this.connection) {
-      throw new Error("LanceDB not initialized");
+      throw new Error('LanceDB not initialized');
     }
 
     const tableNames = await this.connection.tableNames();

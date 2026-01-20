@@ -28,7 +28,7 @@ export class WorldPackLoader {
     }
 
     const packPath = path.join(this.packsDir, `${packId}.json`);
-    
+
     try {
       const content = await fs.readFile(packPath, 'utf-8');
       const rawData = JSON.parse(content);
@@ -237,14 +237,20 @@ export class WorldPackLoader {
     const storedHash = await this.vectorStore.getTableMetadata(collectionName, 'pack_hash');
 
     if (storedHash === currentHash) {
-      console.log(`[WorldPackLoader] Index up-to-date for ${packId} (hash: ${currentHash.slice(0, 8)}...)`);
+      console.log(
+        `[WorldPackLoader] Index up-to-date for ${packId} (hash: ${currentHash.slice(0, 8)}...)`
+      );
       return;
     }
 
     if (storedHash === null) {
-      console.log(`[WorldPackLoader] First-time indexing for ${packId} (${Object.keys(pack.entries).length} entries)`);
+      console.log(
+        `[WorldPackLoader] First-time indexing for ${packId} (${Object.keys(pack.entries).length} entries)`
+      );
     } else {
-      console.log(`[WorldPackLoader] Pack changed, re-indexing ${packId} (hash: ${currentHash.slice(0, 8)}...)`);
+      console.log(
+        `[WorldPackLoader] Pack changed, re-indexing ${packId} (hash: ${currentHash.slice(0, 8)}...)`
+      );
     }
 
     // Prepare for re-indexing - delete old table if exists
@@ -252,7 +258,7 @@ export class WorldPackLoader {
     if (tableExists) {
       try {
         await this.vectorStore.deleteTable(collectionName);
-      } catch (error) {
+      } catch (_error) {
         // Ignore error if table doesn't exist
       }
     }
@@ -266,7 +272,7 @@ export class WorldPackLoader {
       // Chinese document
       if (entry.content.cn) {
         documents.push(entry.content.cn);
-        ids.push(`${entry.uid}`);  // Use uid as id for easy lookup
+        ids.push(`${entry.uid}`); // Use uid as id for easy lookup
         metadatas.push({
           uid: entry.uid,
           keys: entry.key.join(','),

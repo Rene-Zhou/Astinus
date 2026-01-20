@@ -29,19 +29,23 @@ export const AgentsConfigSchema = z.object({
 export type AgentsConfig = z.infer<typeof AgentsConfigSchema>;
 
 // Legacy format support
-export const LegacyLLMConfigSchema = z.object({
-  provider: z.string(),
-  models: z.record(z.string()),
-  api_keys: z.record(z.string()),
-  temperature: z.number().optional(),
-  max_tokens: z.number().optional(),
-}).optional();
+export const LegacyLLMConfigSchema = z
+  .object({
+    provider: z.string(),
+    models: z.record(z.string()),
+    api_keys: z.record(z.string()),
+    temperature: z.number().optional(),
+    max_tokens: z.number().optional(),
+  })
+  .optional();
 
-export const SettingsConfigSchema = z.object({
-  providers: z.array(ProviderConfigSchema).default([]),
-  agents: AgentsConfigSchema.optional(),
-  llm: LegacyLLMConfigSchema,
-  // Other sections can be added as needed, allowing unknown keys for now
-}).passthrough();
+export const SettingsConfigSchema = z
+  .object({
+    providers: z.array(ProviderConfigSchema).default([]),
+    agents: AgentsConfigSchema.optional(),
+    llm: LegacyLLMConfigSchema,
+    // Other sections can be added as needed, allowing unknown keys for now
+  })
+  .passthrough();
 
 export type SettingsConfig = z.infer<typeof SettingsConfigSchema>;

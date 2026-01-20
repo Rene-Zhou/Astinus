@@ -33,7 +33,7 @@ export class ConfigService {
 
       const fileContents = fs.readFileSync(this.configPath, 'utf8');
       const parsed = yaml.load(fileContents);
-      
+
       const validationResult = SettingsConfigSchema.safeParse(parsed);
 
       if (!validationResult.success) {
@@ -42,7 +42,7 @@ export class ConfigService {
       }
 
       this.config = validationResult.data;
-      
+
       // Auto-migrate legacy format if present and new format is empty
       if (this.config.llm && (!this.config.providers || this.config.providers.length === 0)) {
         this.migrateLegacyConfig();

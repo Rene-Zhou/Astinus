@@ -1,6 +1,6 @@
-import { LanceDBService } from "../lib/lance";
-import { WorldPackLoader } from "./world";
-import type { LoreEntry, WorldPack } from "../schemas";
+import { LanceDBService } from '../lib/lance';
+import { WorldPackLoader } from './world';
+import type { LoreEntry, WorldPack } from '../schemas';
 
 const KEYWORD_MATCH_WEIGHT = 2.0;
 const KEYWORD_SECONDARY_WEIGHT = 1.0;
@@ -26,19 +26,19 @@ export class LoreService {
     worldPackId?: string;
     currentLocation?: string;
     currentRegion?: string;
-    lang?: "cn" | "en";
+    lang?: 'cn' | 'en';
   }): Promise<string> {
     const {
       query,
-      context = "",
-      worldPackId = "demo_pack",
+      context = '',
+      worldPackId = 'demo_pack',
       currentLocation,
       currentRegion,
-      lang = "cn",
+      lang = 'cn',
     } = params;
 
     if (!query) {
-      return lang === "cn" ? "未提供查询内容。" : "No query provided.";
+      return lang === 'cn' ? '未提供查询内容。' : 'No query provided.';
     }
 
     try {
@@ -56,9 +56,7 @@ export class LoreService {
       return this.formatLore(loreEntries, query, context, lang);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return lang === "cn"
-        ? `检索背景信息时出错: ${message}`
-        : `Error retrieving lore: ${message}`;
+      return lang === 'cn' ? `检索背景信息时出错: ${message}` : `Error retrieving lore: ${message}`;
     }
   }
 
@@ -88,11 +86,7 @@ export class LoreService {
     const keywordMatchedUids = new Set<number>();
 
     for (const term of searchTerms) {
-      const primaryMatches = this.searchEntriesByKeyword(
-        worldPack,
-        term,
-        false
-      );
+      const primaryMatches = this.searchEntriesByKeyword(worldPack, term, false);
       for (const entry of primaryMatches) {
         keywordMatchedUids.add(entry.uid);
         if (!entryScores.has(String(entry.uid))) {
@@ -105,11 +99,7 @@ export class LoreService {
         }
       }
 
-      const secondaryMatches = this.searchEntriesByKeyword(
-        worldPack,
-        term,
-        true
-      );
+      const secondaryMatches = this.searchEntriesByKeyword(worldPack, term, true);
       for (const entry of secondaryMatches) {
         if (keywordMatchedUids.has(entry.uid)) {
           continue;
@@ -160,7 +150,7 @@ export class LoreService {
         }
       }
     } catch (error) {
-      console.error("[LoreService] Vector search failed:", error);
+      console.error('[LoreService] Vector search failed:', error);
     }
 
     for (const entry of constantEntries) {
@@ -198,15 +188,14 @@ export class LoreService {
     return entryScores.filter((item) => {
       const { entry } = item;
 
-      if (entry.visibility !== "basic" && !entry.constant) {
+      if (entry.visibility !== 'basic' && !entry.constant) {
         return false;
       }
 
       if (
         entry.applicable_locations &&
         entry.applicable_locations.length > 0 &&
-        (!currentLocation ||
-          !entry.applicable_locations.includes(currentLocation))
+        (!currentLocation || !entry.applicable_locations.includes(currentLocation))
       ) {
         return false;
       }
@@ -244,15 +233,14 @@ export class LoreService {
     }
 
     const filtered = Array.from(uniqueEntries.values()).filter((entry) => {
-      if (entry.visibility !== "basic" && !entry.constant) {
+      if (entry.visibility !== 'basic' && !entry.constant) {
         return false;
       }
 
       if (
         entry.applicable_locations &&
         entry.applicable_locations.length > 0 &&
-        (!currentLocation ||
-          !entry.applicable_locations.includes(currentLocation))
+        (!currentLocation || !entry.applicable_locations.includes(currentLocation))
       ) {
         return false;
       }
@@ -273,50 +261,50 @@ export class LoreService {
 
   private extractSearchTerms(query: string): string[] {
     const stopWords = new Set([
-      "的",
-      "了",
-      "是",
-      "在",
-      "我",
-      "你",
-      "他",
-      "她",
-      "它",
-      "有",
-      "没有",
-      "什么",
-      "怎么",
-      "如何",
-      "这",
-      "那",
-      "就",
-      "也",
-      "都",
-      "很",
-      "非常",
-      "a",
-      "an",
-      "the",
-      "is",
-      "are",
-      "was",
-      "were",
-      "be",
-      "been",
-      "being",
-      "have",
-      "has",
-      "had",
-      "do",
-      "does",
-      "did",
-      "will",
-      "would",
-      "should",
+      '的',
+      '了',
+      '是',
+      '在',
+      '我',
+      '你',
+      '他',
+      '她',
+      '它',
+      '有',
+      '没有',
+      '什么',
+      '怎么',
+      '如何',
+      '这',
+      '那',
+      '就',
+      '也',
+      '都',
+      '很',
+      '非常',
+      'a',
+      'an',
+      'the',
+      'is',
+      'are',
+      'was',
+      'were',
+      'be',
+      'been',
+      'being',
+      'have',
+      'has',
+      'had',
+      'do',
+      'does',
+      'did',
+      'will',
+      'would',
+      'should',
     ]);
 
-    const segmenter = new Intl.Segmenter(["zh-CN", "en"], {
-      granularity: "word",
+    const segmenter = new Intl.Segmenter(['zh-CN', 'en'], {
+      granularity: 'word',
     });
     const segments = segmenter.segment(query);
 
@@ -324,9 +312,7 @@ export class LoreService {
     const seen = new Set<string>();
 
     for (const { segment } of segments) {
-      const cleanWord = segment
-        .trim()
-        .replace(/[，。！？：；''()（）\[\]【】""]/g, "");
+      const cleanWord = segment.trim().replace(/[，。！？：；''()（）[\]【】""]/g, '');
 
       if (
         cleanWord &&
@@ -350,29 +336,29 @@ export class LoreService {
     entries: LoreEntry[],
     query: string,
     _context: string,
-    lang: "cn" | "en"
+    lang: 'cn' | 'en'
   ): string {
     if (entries.length === 0) {
-      return lang === "cn"
+      return lang === 'cn'
         ? `没有找到与'${query}'相关的背景信息。`
         : `No background information found related to '${query}'.`;
     }
 
     const formattedParts = entries.map((entry) => {
-      const content = entry.content[lang] || entry.content.en || "";
+      const content = entry.content[lang] || entry.content.en || '';
 
       if (entry.key && entry.key.length > 0) {
-        const keyStr = entry.key.join(" / ");
+        const keyStr = entry.key.join(' / ');
         return `[${keyStr}]\n${content}`;
       }
 
       return content;
     });
 
-    const loreText = formattedParts.join("\n\n");
+    const loreText = formattedParts.join('\n\n');
 
     const header =
-      lang === "cn"
+      lang === 'cn'
         ? `与'${query}'相关的背景信息：\n`
         : `Background information related to '${query}':\n`;
 
@@ -411,13 +397,13 @@ export class LoreService {
     return Object.values(worldPack.entries).find((entry: any) => entry.uid === uid);
   }
 
-  private detectLanguage(text: string): "cn" | "en" {
+  private detectLanguage(text: string): 'cn' | 'en' {
     for (const char of text) {
-      if (char >= "\u4e00" && char <= "\u9fff") {
-        return "cn";
+      if (char >= '\u4e00' && char <= '\u9fff') {
+        return 'cn';
       }
     }
-    return "en";
+    return 'en';
   }
 }
 

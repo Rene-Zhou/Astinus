@@ -1,12 +1,12 @@
-import { generateText, stepCountIs, hasToolCall } from "ai";
-import type { LanguageModel } from "ai";
-import type { GameState, DiceCheckRequest, Message } from "../../schemas";
-import { LocationContextService } from "../../services/location-context";
-import { WorldPackLoader } from "../../services/world";
-import { getLocalizedString } from "../../schemas";
-import type { NPCData } from "../../schemas";
-import { createGMTools } from "./tools";
-import type { LanceDBService } from "../../lib/lance";
+import { generateText, stepCountIs, hasToolCall } from 'ai';
+import type { LanguageModel } from 'ai';
+import type { GameState, DiceCheckRequest, Message } from '../../schemas';
+import { LocationContextService } from '../../services/location-context';
+import { WorldPackLoader } from '../../services/world';
+import { getLocalizedString } from '../../schemas';
+import type { NPCData } from '../../schemas';
+import { createGMTools } from './tools';
+import type { LanceDBService } from '../../lib/lance';
 
 type StatusCallback = (agentName: string, status: string | null) => Promise<void>;
 
@@ -23,7 +23,7 @@ interface AgentResponse {
 
 interface GMProcessInput {
   player_input: string;
-  lang?: "cn" | "en";
+  lang?: 'cn' | 'en';
 }
 
 export class GMAgent {
@@ -63,31 +63,31 @@ export class GMAgent {
       const location = pack.locations[this.gameState.current_location];
       return location?.region_id;
     } catch (error) {
-      console.error("[GMAgent] Failed to get current region:", error);
+      console.error('[GMAgent] Failed to get current region:', error);
       return undefined;
     }
   }
 
   async process(inputData: GMProcessInput): Promise<AgentResponse> {
-    console.log("[GMAgent] Processing input:", inputData);
+    console.log('[GMAgent] Processing input:', inputData);
     const playerInput = inputData.player_input;
-    const lang = inputData.lang || "cn";
+    const lang = inputData.lang || 'cn';
 
     if (!playerInput) {
       return {
-        content: "",
+        content: '',
         success: false,
-        error: "GM Agent: No player input provided",
-        metadata: { agent: "gm_agent" },
+        error: 'GM Agent: No player input provided',
+        metadata: { agent: 'gm_agent' },
       };
     }
 
     if (this.statusCallback) {
-      await this.statusCallback("gm", null);
+      await this.statusCallback('gm', null);
     }
 
     const userMessage: Message = {
-      role: "user",
+      role: 'user',
       content: playerInput,
       timestamp: new Date().toISOString(),
       turn: this.gameState.turn_count,
@@ -97,7 +97,7 @@ export class GMAgent {
 
     // Index user message for future retrieval (fire-and-forget)
     this.indexMessage(this.gameState.session_id, userMessage).catch((error) => {
-      console.error("[GMAgent] Failed to index user message:", error);
+      console.error('[GMAgent] Failed to index user message:', error);
     });
 
     return this.runReActWithTools({
@@ -109,16 +109,16 @@ export class GMAgent {
 
   async resumeAfterDice(
     diceResult: Record<string, unknown>,
-    lang: "cn" | "en" = "cn"
+    lang: 'cn' | 'en' = 'cn'
   ): Promise<AgentResponse> {
     const pendingState = this.gameState.react_pending_state;
 
     if (!pendingState) {
       return {
-        content: "",
+        content: '',
         success: false,
-        error: "No pending ReAct state to resume",
-        metadata: { agent: "gm_agent" },
+        error: 'No pending ReAct state to resume',
+        metadata: { agent: 'gm_agent' },
       };
     }
 
@@ -132,7 +132,7 @@ export class GMAgent {
     };
 
     // 设置处理中阶段（与Python后端一致）
-    this.gameState.current_phase = "processing";
+    this.gameState.current_phase = 'processing';
     this.gameState.react_pending_state = null;
 
     return this.runReActWithTools({
@@ -144,7 +144,7 @@ export class GMAgent {
 
   private async runReActWithTools(params: {
     playerInput: string;
-    lang: "cn" | "en";
+    lang: 'cn' | 'en';
     diceResult: Record<string, unknown> | null;
   }): Promise<AgentResponse> {
     const { playerInput, lang, diceResult } = params;
@@ -163,11 +163,7 @@ export class GMAgent {
       lang
     );
 
-    const context = await this.buildContext(
-      playerInput,
-      lang,
-      diceResult
-    );
+    const context = await this.buildContext(playerInput, lang, diceResult);
 
     const systemPrompt = this.buildSystemPrompt(lang);
 
@@ -178,7 +174,7 @@ export class GMAgent {
         prompt: context,
         tools,
         stopWhen: [
-          hasToolCall("request_dice_check"),  // dice check 后立即停止
+          hasToolCall('request_dice_check'), // dice check 后立即停止
           stepCountIs(maxIterations),
         ],
       });
@@ -189,7 +185,7 @@ export class GMAgent {
       // 检查是否有 request_dice_check tool call（hasToolCall 触发停止时）
       const diceCheckToolCall = steps
         .flatMap((s) => s.toolCalls || [])
-        .find((tc) => tc.toolName === "request_dice_check");
+        .find((tc) => tc.toolName === 'request_dice_check');
 
       if (diceCheckToolCall) {
         // 直接使用 LLM 提供的完整 check_request 参数
@@ -212,22 +208,22 @@ export class GMAgent {
         };
 
         // 设置游戏阶段
-        this.gameState.current_phase = "dice_check";
+        this.gameState.current_phase = 'dice_check';
 
         // 保存 ReAct 状态，包括 check_request（用于 resumeAfterDice）
         this.gameState.react_pending_state = {
           player_input: playerInput,
           iteration: steps.length,
           agent_results: [],
-          check_request: checkRequest,  // 保存以便恢复时获取 intention
+          check_request: checkRequest, // 保存以便恢复时获取 intention
         };
 
         // REQUEST_CHECK 不包含叙事，与 Python 后端行为一致
         return {
-          content: "",  // 返回空 content，节省 LLM 调用
+          content: '', // 返回空 content，节省 LLM 调用
           success: true,
           metadata: {
-            agent: "gm_agent",
+            agent: 'gm_agent',
             requires_dice: true,
             check_request: checkRequest,
           },
@@ -235,7 +231,7 @@ export class GMAgent {
       }
 
       // 兼容旧逻辑：如果 temp_context 中有 pending_check_request（tool.execute 已执行）
-      if (this.gameState.current_phase === "dice_check") {
+      if (this.gameState.current_phase === 'dice_check') {
         const pendingCheckRequest = this.gameState.temp_context?.pending_check_request;
 
         this.gameState.react_pending_state = {
@@ -246,10 +242,10 @@ export class GMAgent {
         };
 
         return {
-          content: "",
+          content: '',
           success: true,
           metadata: {
-            agent: "gm_agent",
+            agent: 'gm_agent',
             requires_dice: true,
             check_request: pendingCheckRequest,
           },
@@ -260,12 +256,12 @@ export class GMAgent {
       this.gameState.updated_at = new Date().toISOString();
 
       const assistantMessage: Message = {
-        role: "assistant",
+        role: 'assistant',
         content: text,
         timestamp: new Date().toISOString(),
         turn: this.gameState.turn_count,
         metadata: {
-          phase: "gm_response",
+          phase: 'gm_response',
         },
       };
 
@@ -273,23 +269,23 @@ export class GMAgent {
 
       // Index assistant message for future retrieval (fire-and-forget)
       this.indexMessage(this.gameState.session_id, assistantMessage).catch((error) => {
-        console.error("[GMAgent] Failed to index assistant message:", error);
+        console.error('[GMAgent] Failed to index assistant message:', error);
       });
 
-      this.gameState.current_phase = "waiting_input";
+      this.gameState.current_phase = 'waiting_input';
 
       return {
         content: text,
         success: true,
-        metadata: { agent: "gm_agent" },
+        metadata: { agent: 'gm_agent' },
       };
     } catch (error) {
-      console.error("[GMAgent] Error in runReActWithTools:", error);
+      console.error('[GMAgent] Error in runReActWithTools:', error);
       return {
-        content: "",
+        content: '',
         success: false,
         error: error instanceof Error ? error.message : String(error),
-        metadata: { agent: "gm_agent" },
+        metadata: { agent: 'gm_agent' },
       };
     }
   }
@@ -297,25 +293,25 @@ export class GMAgent {
   private async prepareAgentContext(
     agentName: string,
     playerInput: string,
-    lang: "cn" | "en",
+    lang: 'cn' | 'en',
     providedContext: Record<string, any>,
     diceResult: Record<string, any> | null
   ): Promise<Record<string, any>> {
-    if (agentName.startsWith("npc_")) {
-      const npcId = agentName.replace("npc_", "");
+    if (agentName.startsWith('npc_')) {
+      const npcId = agentName.replace('npc_', '');
       return this.sliceContextForNpc(npcId, playerInput, lang, diceResult, providedContext);
     }
-    
+
     return {
       player_input: playerInput,
       lang: lang,
-      ...providedContext
+      ...providedContext,
     };
   }
 
   private async buildContext(
     playerInput: string,
-    lang: "cn" | "en",
+    lang: 'cn' | 'en',
     diceResult: Record<string, unknown> | null
   ): Promise<string> {
     const sceneContext = await this.getSceneContext(lang);
@@ -335,8 +331,11 @@ export class GMAgent {
       if (sceneContext.region.narrative_tone) {
         parts.push(`Tone: ${sceneContext.region.narrative_tone}`);
       }
-      if (sceneContext.region.atmosphere_keywords && sceneContext.region.atmosphere_keywords.length > 0) {
-        parts.push(`Atmosphere Keywords: ${sceneContext.region.atmosphere_keywords.join(", ")}`);
+      if (
+        sceneContext.region.atmosphere_keywords &&
+        sceneContext.region.atmosphere_keywords.length > 0
+      ) {
+        parts.push(`Atmosphere Keywords: ${sceneContext.region.atmosphere_keywords.join(', ')}`);
       }
 
       parts.push(`Location: ${sceneContext.location.name}`);
@@ -347,9 +346,12 @@ export class GMAgent {
       if (sceneContext.atmosphere_guidance) {
         parts.push(`Guidance: ${sceneContext.atmosphere_guidance}`);
       }
-      parts.push(`Visible Items: ${sceneContext.location.visible_items.join(", ")}`);
+      parts.push(`Visible Items: ${sceneContext.location.visible_items.join(', ')}`);
 
-      const hiddenHints = this.generateHiddenItemHints(sceneContext.location.hidden_items_remaining || [], lang);
+      const hiddenHints = this.generateHiddenItemHints(
+        sceneContext.location.hidden_items_remaining || [],
+        lang
+      );
       if (hiddenHints) {
         parts.push(`Hidden Clues: ${hiddenHints}`);
       }
@@ -359,27 +361,27 @@ export class GMAgent {
           const pack = await this.worldPackLoader.load(this.gameState.world_pack_id);
           const loc = pack.locations[this.gameState.current_location];
           if (loc && loc.connected_locations) {
-            const connections = loc.connected_locations.map(id => {
+            const connections = loc.connected_locations.map((id) => {
               const target = pack.locations[id];
               const name = target ? getLocalizedString(target.name, lang) : id;
               return `${name} (ID: ${id})`;
             });
-            parts.push(`Can Go To: ${connections.join(", ")}`);
+            parts.push(`Can Go To: ${connections.join(', ')}`);
           }
         } catch (e) {
-          console.error("[GMAgent] Failed to load connected locations:", e);
+          console.error('[GMAgent] Failed to load connected locations:', e);
         }
       }
 
       if (sceneContext.basic_lore.length > 0) {
         parts.push(`\n[Relevant Lore]`);
-        sceneContext.basic_lore.forEach(lore => parts.push(`- ${lore}`));
+        sceneContext.basic_lore.forEach((lore) => parts.push(`- ${lore}`));
       }
 
       if (this.worldPackLoader) {
         try {
           const pack = await this.worldPackLoader.load(this.gameState.world_pack_id);
-          const constantEntries = pack.entries 
+          const constantEntries = pack.entries
             ? Object.values(pack.entries).filter((e: any) => e.is_constant)
             : [];
 
@@ -391,7 +393,7 @@ export class GMAgent {
             });
           }
         } catch (e) {
-          console.error("[GMAgent] Failed to load world background:", e);
+          console.error('[GMAgent] Failed to load world background:', e);
         }
       }
     }
@@ -405,25 +407,27 @@ export class GMAgent {
           if (npc) {
             const name = npc.soul.name;
             const desc = getLocalizedString(npc.soul.description, lang);
-            const brief = desc.length > 100 ? desc.substring(0, 100) + "..." : desc;
+            const brief = desc.length > 100 ? desc.substring(0, 100) + '...' : desc;
             parts.push(`- ID: ${npcId} | Name: ${name} | Description: ${brief}`);
           }
         }
       } catch (e) {
-        console.error("[GMAgent] Failed to load active NPCs context", e);
+        console.error('[GMAgent] Failed to load active NPCs context', e);
       }
     }
 
     if (this.gameState.player) {
       parts.push(`\n[Player Character]`);
       parts.push(`Name: ${this.gameState.player.name}`);
-      const concept = typeof this.gameState.player.concept === 'string'
-        ? this.gameState.player.concept
-        : (this.gameState.player.concept as any)[lang] || JSON.stringify(this.gameState.player.concept);
+      const concept =
+        typeof this.gameState.player.concept === 'string'
+          ? this.gameState.player.concept
+          : (this.gameState.player.concept as any)[lang] ||
+            JSON.stringify(this.gameState.player.concept);
       parts.push(`Concept: ${concept}`);
 
       parts.push(`Traits:`);
-      this.gameState.player.traits.forEach(t => {
+      this.gameState.player.traits.forEach((t) => {
         const name = (t.name as any)[lang] || t.name;
         const desc = (t.description as any)[lang] || t.description;
         const pos = (t.positive_aspect as any)[lang] || t.positive_aspect;
@@ -436,7 +440,7 @@ export class GMAgent {
       });
 
       if (this.gameState.player.tags && this.gameState.player.tags.length > 0) {
-        parts.push(`Current Tags: ${this.gameState.player.tags.join(", ")}`);
+        parts.push(`Current Tags: ${this.gameState.player.tags.join(', ')}`);
       }
     }
 
@@ -460,10 +464,10 @@ export class GMAgent {
       parts.push(`Result: ${diceResult.total} (${diceResult.outcome})`);
     }
 
-    return parts.join("\n");
+    return parts.join('\n');
   }
 
-  private buildSystemPrompt(lang: "cn" | "en"): string {
+  private buildSystemPrompt(lang: 'cn' | 'en'): string {
     return `You are the GM (Game Master) for Astinus TTRPG, using tool calls to process player actions.
 
 ## Available Tools
@@ -506,7 +510,7 @@ When processing player input, follow this sequence:
 ## Narrative Style
 
 - Use second person ("you") to maintain immersion
-- Target language: ${lang === "cn" ? "Chinese (Simplified)" : "English"}
+- Target language: ${lang === 'cn' ? 'Chinese (Simplified)' : 'English'}
 - Narrative should be coherent, vivid, weaving player actions, environment, and NPC reactions together
 - When synthesizing NPC responses, present them as part of the story flow, not as raw tool output`;
   }
@@ -514,7 +518,7 @@ When processing player input, follow this sequence:
   private async sliceContextForNpc(
     npcId: string,
     playerInput: string,
-    lang: "cn" | "en",
+    lang: 'cn' | 'en',
     diceResult: Record<string, any> | null,
     providedContext: Record<string, any> = {}
   ): Promise<Record<string, any>> {
@@ -530,7 +534,7 @@ When processing player input, follow this sequence:
       }
     }
 
-    const narrativeStyle = "detailed";
+    const narrativeStyle = 'detailed';
 
     const context: Record<string, any> = {
       npc_id: npcId,
@@ -541,7 +545,7 @@ When processing player input, follow this sequence:
       context: {
         location: this.gameState.current_location,
         world_pack_id: this.gameState.world_pack_id,
-      }
+      },
     };
 
     if (npcData) {
@@ -559,25 +563,26 @@ When processing player input, follow this sequence:
     return context;
   }
 
-  private generateRoleplayDirection(
-    diceResult: Record<string, any>,
-    _lang: "cn" | "en"
-  ): string {
+  private generateRoleplayDirection(diceResult: Record<string, any>, _lang: 'cn' | 'en'): string {
     const outcome = diceResult.outcome as string;
-    if (!outcome) return "";
+    if (!outcome) return '';
 
     const directions: Record<string, string> = {
-      critical_success: "The NPC should respond very positively, with a notably softened or even warm attitude, willing to proactively offer help or important information.",
-      success: "The NPC should respond positively, with a softened attitude, willing to provide help or information.",
-      partial: "The NPC's attitude should soften somewhat, but remain guarded, perhaps only revealing limited information, giving a warning, or requesting additional conditions.",
-      failure: "The NPC should refuse the request, with a colder or more guarded attitude.",
-      critical_failure: "The NPC should strongly refuse, with worsened attitude, possibly showing hostility or taking confrontational action.",
+      critical_success:
+        'The NPC should respond very positively, with a notably softened or even warm attitude, willing to proactively offer help or important information.',
+      success:
+        'The NPC should respond positively, with a softened attitude, willing to provide help or information.',
+      partial:
+        "The NPC's attitude should soften somewhat, but remain guarded, perhaps only revealing limited information, giving a warning, or requesting additional conditions.",
+      failure: 'The NPC should refuse the request, with a colder or more guarded attitude.',
+      critical_failure:
+        'The NPC should strongly refuse, with worsened attitude, possibly showing hostility or taking confrontational action.',
     };
 
-    return directions[outcome] || "";
+    return directions[outcome] || '';
   }
 
-  private async getSceneContext(lang: "cn" | "en") {
+  private async getSceneContext(lang: 'cn' | 'en') {
     if (!this.locationContextService) {
       return null;
     }
@@ -590,9 +595,9 @@ When processing player input, follow this sequence:
     );
   }
 
-  private generateHiddenItemHints(hiddenItems: string[], _lang: "cn" | "en"): string {
-    if (!hiddenItems || hiddenItems.length === 0) return "";
-    return "There seem to be some subtle details yet to notice...";
+  private generateHiddenItemHints(hiddenItems: string[], _lang: 'cn' | 'en'): string {
+    if (!hiddenItems || hiddenItems.length === 0) return '';
+    return 'There seem to be some subtle details yet to notice...';
   }
 
   // ============================================================
@@ -645,8 +650,8 @@ When processing player input, follow this sequence:
 
       // Extract message IDs and find matching messages
       const retrievedIds = new Set(results.map((r) => r.id));
-      const retrievedMessages = allMessages.filter(
-        (msg) => retrievedIds.has(`${sessionId}_msg_${msg.turn}`)
+      const retrievedMessages = allMessages.filter((msg) =>
+        retrievedIds.has(`${sessionId}_msg_${msg.turn}`)
       );
 
       // Sort by turn for chronological order

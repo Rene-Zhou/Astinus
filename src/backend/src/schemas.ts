@@ -25,10 +25,7 @@ export type LocalizedString = z.infer<typeof LocalizedStringSchema>;
 /**
  * Get localized string with fallback.
  */
-export function getLocalizedString(
-  str: LocalizedString,
-  lang: 'cn' | 'en' = 'cn'
-): string {
+export function getLocalizedString(str: LocalizedString, lang: 'cn' | 'en' = 'cn'): string {
   if (lang === 'en' && str.en) {
     return str.en;
   }
@@ -67,11 +64,7 @@ export type Trait = z.infer<typeof TraitSchema>;
 export const PlayerCharacterSchema = z.object({
   name: z.string().describe('Character name (proper noun, not localized)'),
   concept: LocalizedStringSchema.describe('One-sentence character concept'),
-  traits: z
-    .array(TraitSchema)
-    .min(1)
-    .max(4)
-    .describe('Character traits (1-4 traits)'),
+  traits: z.array(TraitSchema).min(1).max(4).describe('Character traits (1-4 traits)'),
   fate_points: z
     .number()
     .int()
@@ -139,10 +132,8 @@ export const DiceCheckRequestSchema = z.object({
       traits: z.array(z.string()).default([]),
       tags: z.array(z.string()).default([]),
     })
-    .describe("Factors affecting the roll: {traits: [...], tags: [...]}"),
-  dice_formula: z
-    .string()
-    .describe("Dice notation (e.g., '2d6', '3d6kh2', '3d6kl2')"),
+    .describe('Factors affecting the roll: {traits: [...], tags: [...]}'),
+  dice_formula: z.string().describe("Dice notation (e.g., '2d6', '3d6kh2', '3d6kl2')"),
   instructions: LocalizedStringSchema.describe('Explanation of why these modifiers apply'),
 });
 
@@ -176,19 +167,15 @@ export type DiceCheckResult = z.infer<typeof DiceCheckResultSchema>;
  * Player's response to a dice check request.
  */
 export const DiceCheckResponseSchema = z.object({
-  action: z.enum(['roll', 'argue', 'cancel']).describe("Action taken: 'roll', 'argue', or 'cancel'"),
-  dice_result: z
-    .record(z.any())
-    .optional()
-    .describe("DiceResult as dict (if action='roll')"),
-  argument: z
-    .string()
-    .optional()
-    .describe("Player's argument for advantage (if action='argue')"),
+  action: z
+    .enum(['roll', 'argue', 'cancel'])
+    .describe("Action taken: 'roll', 'argue', or 'cancel'"),
+  dice_result: z.record(z.any()).optional().describe("DiceResult as dict (if action='roll')"),
+  argument: z.string().optional().describe("Player's argument for advantage (if action='argue')"),
   trait_claimed: z
     .string()
     .optional()
-    .describe('Which trait player claims helps (if action=\'argue\')'),
+    .describe("Which trait player claims helps (if action='argue')"),
   fate_point_spent: z
     .boolean()
     .default(false)
@@ -237,31 +224,58 @@ export type Message = z.infer<typeof MessageSchema>;
 export const GameStateSchema = z.object({
   // Session metadata
   session_id: z.string().describe('Unique session identifier'),
-  player_name: z.string().default('玩家').describe('Player (user) name - distinct from character name'),
+  player_name: z
+    .string()
+    .default('玩家')
+    .describe('Player (user) name - distinct from character name'),
   created_at: z.string().describe('Session creation time (ISO 8601)'), // datetime
   updated_at: z.string().describe('Last update time (ISO 8601)'), // datetime
 
   // Core state
   player: PlayerCharacterSchema.describe('Player character'),
   current_phase: GamePhaseSchema.default('waiting_input').describe('Current game phase'),
-  next_agent: z.string().nullable().default(null).describe('Which agent should act next (routing target)'),
+  next_agent: z
+    .string()
+    .nullable()
+    .default(null)
+    .describe('Which agent should act next (routing target)'),
 
   // World state
   world_pack_id: z.string().describe('ID of loaded world/story pack'),
   current_location: z.string().describe('Current location ID in world pack'),
   active_npc_ids: z.array(z.string()).default([]).describe('NPCs present in current scene'),
-  discovered_items: z.array(z.string()).default([]).describe('Items player has discovered/interacted with'),
-  flags: z.array(z.string()).default([]).describe("Story flags (e.g., 'found_key', 'knows_secret')"),
+  discovered_items: z
+    .array(z.string())
+    .default([])
+    .describe('Items player has discovered/interacted with'),
+  flags: z
+    .array(z.string())
+    .default([])
+    .describe("Story flags (e.g., 'found_key', 'knows_secret')"),
 
   // Temporal tracking
   game_time: z.string().default('00:00').describe("In-game time (e.g., '23:47')"),
   turn_count: z.number().int().min(0).default(0).describe('Number of turns elapsed'),
 
   // Communication
-  messages: z.array(MessageSchema).default([]).describe("Full conversation history - GM's complete context"),
-  temp_context: z.record(z.any()).default({}).describe('Temporary context for passing data to/from sub-agents'),
-  last_check_result: z.record(z.any()).nullable().default(null).describe('Most recent dice check outcome'),
-  react_pending_state: z.record(z.any()).nullable().default(null).describe('Pending ReAct loop state when waiting for dice roll'),
+  messages: z
+    .array(MessageSchema)
+    .default([])
+    .describe("Full conversation history - GM's complete context"),
+  temp_context: z
+    .record(z.any())
+    .default({})
+    .describe('Temporary context for passing data to/from sub-agents'),
+  last_check_result: z
+    .record(z.any())
+    .nullable()
+    .default(null)
+    .describe('Most recent dice check outcome'),
+  react_pending_state: z
+    .record(z.any())
+    .nullable()
+    .default(null)
+    .describe('Pending ReAct loop state when waiting for dice roll'),
 
   // Settings
   language: z.string().default('cn').describe('Current language (cn/en)'),

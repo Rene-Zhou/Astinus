@@ -10,7 +10,7 @@ export class DicePool {
   roll(): DiceResult {
     const netBonus = this.bonusDice - this.penaltyDice;
     const diceCount = 2 + Math.abs(netBonus);
-    
+
     const allRolls: number[] = [];
     for (let i = 0; i < diceCount; i++) {
       allRolls.push(Math.floor(Math.random() * 6) + 1);

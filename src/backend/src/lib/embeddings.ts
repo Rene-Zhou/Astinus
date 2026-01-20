@@ -14,14 +14,10 @@
  * @module lib/embeddings
  */
 
-import {
-  pipeline,
-  env,
-  type FeatureExtractionPipeline,
-} from "@huggingface/transformers";
+import { pipeline, env, type FeatureExtractionPipeline } from '@huggingface/transformers';
 
 // Configure Transformers.js environment
-env.cacheDir = "../../data/.cache/transformers"; // Store models in data directory
+env.cacheDir = '../../data/.cache/transformers'; // Store models in data directory
 env.allowLocalModels = false; // Always download from HuggingFace
 env.allowRemoteModels = true;
 
@@ -31,9 +27,9 @@ env.allowRemoteModels = true;
  */
 const INSTRUCTIONS = {
   /** Use for search queries - optimized for retrieval */
-  query: "Represent this sentence for searching relevant passages: ",
+  query: 'Represent this sentence for searching relevant passages: ',
   /** Use for documents/passages to be indexed */
-  document: "",
+  document: '',
 } as const;
 
 type InstructionType = keyof typeof INSTRUCTIONS;
@@ -43,7 +39,7 @@ type InstructionType = keyof typeof INSTRUCTIONS;
  * @param progress - Download progress information
  */
 export type DownloadProgressCallback = (progress: {
-  status: "progress" | "ready" | "done";
+  status: 'progress' | 'ready' | 'done';
   file?: string;
   loaded?: number;
   total?: number;
@@ -80,7 +76,7 @@ export class QwenEmbedding {
    * Uses ONNX-optimized quantized version for fast inference
    * Note: The ONNX version is maintained by onnx-community, not Qwen directly
    */
-  private static readonly MODEL_NAME = "onnx-community/Qwen3-Embedding-0.6B-ONNX";
+  private static readonly MODEL_NAME = 'onnx-community/Qwen3-Embedding-0.6B-ONNX';
 
   /**
    * Expected embedding dimension
@@ -106,17 +102,14 @@ export class QwenEmbedding {
    * });
    * ```
    */
-  public static async getInstance(
-    onProgress?: DownloadProgressCallback
-  ): Promise<QwenEmbedding> {
+  public static async getInstance(onProgress?: DownloadProgressCallback): Promise<QwenEmbedding> {
     if (!QwenEmbedding.instance) {
       QwenEmbedding.instance = new QwenEmbedding();
     }
 
     // Initialize pipeline if not already done
     if (!QwenEmbedding.instance.initPromise) {
-      QwenEmbedding.instance.initPromise =
-        QwenEmbedding.instance.initialize(onProgress);
+      QwenEmbedding.instance.initPromise = QwenEmbedding.instance.initialize(onProgress);
     }
 
     await QwenEmbedding.instance.initPromise;
@@ -133,13 +126,13 @@ export class QwenEmbedding {
    * - cuDNN installed
    * - Matching system libraries (libcublasLt.so.12, etc.)
    */
-  private static getPreferredDevice(): "cuda" | "cpu" {
+  private static getPreferredDevice(): 'cuda' | 'cpu' {
     const envDevice = process.env.EMBEDDING_DEVICE?.toLowerCase();
-    if (envDevice === "cuda" || envDevice === "gpu") {
-      return "cuda";
+    if (envDevice === 'cuda' || envDevice === 'gpu') {
+      return 'cuda';
     }
     // Default to CPU for reliability (GPU requires proper CUDA setup)
-    return "cpu";
+    return 'cpu';
   }
 
   /**
@@ -148,28 +141,24 @@ export class QwenEmbedding {
    *
    * @param onProgress - Optional callback for download progress
    */
-  private async initialize(
-    onProgress?: DownloadProgressCallback
-  ): Promise<void> {
+  private async initialize(onProgress?: DownloadProgressCallback): Promise<void> {
     if (this.pipeline) {
       return; // Already initialized
     }
 
     const preferredDevice = QwenEmbedding.getPreferredDevice();
-    console.log(
-      `[QwenEmbedding] Loading model: ${QwenEmbedding.MODEL_NAME}...`
-    );
+    console.log(`[QwenEmbedding] Loading model: ${QwenEmbedding.MODEL_NAME}...`);
     console.log(`[QwenEmbedding] Device: ${preferredDevice}`);
 
-    if (preferredDevice === "cuda") {
-      console.log("[QwenEmbedding] Note: GPU mode requires CUDA 12.x + cuDNN installed");
+    if (preferredDevice === 'cuda') {
+      console.log('[QwenEmbedding] Note: GPU mode requires CUDA 12.x + cuDNN installed');
     }
 
     const progressCallback = onProgress
       ? (progress: any) => {
           onProgress({
-            status: progress.status as "progress" | "ready" | "done",
-            file: progress.file || "",
+            status: progress.status as 'progress' | 'ready' | 'done',
+            file: progress.file || '',
             loaded: progress.loaded || 0,
             total: progress.total || 0,
             progress: progress.progress || 0,
@@ -178,16 +167,12 @@ export class QwenEmbedding {
       : undefined;
 
     // Create pipeline with specified device
-    this.pipeline = await pipeline(
-      "feature-extraction",
-      QwenEmbedding.MODEL_NAME,
-      {
-        device: preferredDevice,
-        // fp16 for GPU (faster), fp32 for CPU (more compatible)
-        dtype: preferredDevice === "cuda" ? "fp16" : "fp32",
-        progress_callback: progressCallback,
-      }
-    );
+    this.pipeline = await pipeline('feature-extraction', QwenEmbedding.MODEL_NAME, {
+      device: preferredDevice,
+      // fp16 for GPU (faster), fp32 for CPU (more compatible)
+      dtype: preferredDevice === 'cuda' ? 'fp16' : 'fp32',
+      progress_callback: progressCallback,
+    });
 
     console.log(`[QwenEmbedding] Model loaded successfully (${preferredDevice})`);
   }
@@ -206,12 +191,9 @@ export class QwenEmbedding {
    * console.log(embedding.length); // 1024
    * ```
    */
-  public async embed(
-    text: string,
-    type: InstructionType = "document"
-  ): Promise<number[]> {
+  public async embed(text: string, type: InstructionType = 'document'): Promise<number[]> {
     if (!this.pipeline) {
-      throw new Error("QwenEmbedding not initialized. Call getInstance() first.");
+      throw new Error('QwenEmbedding not initialized. Call getInstance() first.');
     }
 
     // Add instruction prefix based on type
@@ -219,7 +201,7 @@ export class QwenEmbedding {
 
     // Generate embedding
     const output = await this.pipeline(instructedText, {
-      pooling: "mean", // Mean pooling over token embeddings
+      pooling: 'mean', // Mean pooling over token embeddings
       normalize: true, // L2 normalization for cosine similarity
     });
 
@@ -261,10 +243,10 @@ export class QwenEmbedding {
    */
   public async embedBatch(
     texts: string[],
-    type: InstructionType = "document"
+    type: InstructionType = 'document'
   ): Promise<number[][]> {
     if (!this.pipeline) {
-      throw new Error("QwenEmbedding not initialized. Call getInstance() first.");
+      throw new Error('QwenEmbedding not initialized. Call getInstance() first.');
     }
 
     if (texts.length === 0) {
@@ -291,12 +273,9 @@ export class QwenEmbedding {
   /**
    * Process a single chunk of texts (internal method)
    */
-  private async embedChunk(
-    texts: string[],
-    type: InstructionType
-  ): Promise<number[][]> {
+  private async embedChunk(texts: string[], type: InstructionType): Promise<number[][]> {
     if (!this.pipeline) {
-      throw new Error("QwenEmbedding not initialized.");
+      throw new Error('QwenEmbedding not initialized.');
     }
 
     // Add instruction prefixes
@@ -304,7 +283,7 @@ export class QwenEmbedding {
 
     // Generate embeddings
     const output = await this.pipeline(instructedTexts, {
-      pooling: "mean",
+      pooling: 'mean',
       normalize: true,
     });
 
