@@ -1,88 +1,104 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-01-16
-**Branch:** main
-**Stack:** Python 3.13+ (FastAPI, LangChain) + React 19 (Vite, Tailwind, Zustand)
+**Generated:** 2026-01-20
+**Branch:** migration/Python2TS_2
+**Stack:** TypeScript (Hono + Vercel AI SDK + LanceDB) + React 19 (Vite, Tailwind, Zustand)
 
 ## OVERVIEW
 
-AI-driven TTRPG engine with multi-agent architecture (Star topology). GM Agent orchestrates Rule/NPC/Lore agents via ReAct loop. Uses ChromaDB for vector search, SQLite for persistence, and WebSocket for real-time streaming.
+AI-driven TTRPG engine with multi-agent Star Topology architecture. GM Agent orchestrates NPC/Lore agents via Vercel AI SDK tool loops. LanceDB for vector search, SQLite (Drizzle ORM) for persistence, WebSocket for real-time streaming.
 
 ## STRUCTURE
 
 ```
 ./
 ├── src/
-│   ├── backend/              # FastAPI server + AI agents (Real Entry: main.py)
-│   │   ├── agents/           # [CORE] GM, Rule, NPC, Lore (See AGENTS.md)
-│   │   ├── models/           # [DATA] Pydantic models (See AGENTS.md)
-│   │   └── services/         # [LOGIC] Dice, World, Vector (See AGENTS.md)
-│   └── web/                 # React frontend (See AGENTS.md)
-├── data/                    # SQLite saves, ChromaDB vector store
-├── config/                  # settings.yaml (secrets)
-├── locale/                  # i18n bundles (cn/en)
-├── pm2.config.js           # Dev process manager (Backend + Frontend)
-└── Makefile                # Unified build/test commands
+│   ├── backend/              # Hono server + AI agents (See backend/AGENTS.md)
+│   │   ├── src/
+│   │   │   ├── agents/       # [CORE] GM, NPC agents (See agents/AGENTS.md)
+│   │   │   ├── api/          # Hono routes + WebSocket handler
+│   │   │   ├── db/           # Drizzle ORM schemas (SQLite)
+│   │   │   ├── lib/          # LLM factory, embeddings, LanceDB wrapper
+│   │   │   ├── schemas/      # Zod config schemas
+│   │   │   └── services/     # Dice, World, Lore, LocationContext
+│   │   └── tests/            # Vitest + typed mock factories
+│   └── web/                  # React frontend (See web/AGENTS.md)
+├── data/                     # SQLite saves, LanceDB vector store
+├── config/                   # settings.yaml (API keys, model config)
+├── pm2.config.js            # Dev orchestration (Backend:8000 + Frontend:5173)
+└── Makefile                 # Unified commands: install, check, run-dev, build
 ```
 
 ## WHERE TO LOOK
 
 | Task | Location | Notes |
 |------|----------|-------|
-| **Dev Start** | `pm2.config.js` | `pm2 start pm2.config.js` runs both |
-| **Agent Logic** | `src/backend/agents/` | Logic lives here, prompts in `prompts/*.yaml` |
-| **API Routes** | `src/backend/api/v1/` | FastAPI routers |
-| **Frontend** | `src/web/src/` | React 19 + Tailwind |
-| **Type Definitions** | `docs/API_TYPES.ts` | **MANUAL SYNC REQUIRED** with Pydantic |
-| **Config** | `config/settings.yaml` | Use `settings.example.yaml` as template |
+| **Dev Start** | `make run-dev` | PM2 starts both services |
+| **Agent Logic** | `src/backend/src/agents/` | GM orchestrator + NPC sub-agent |
+| **API Routes** | `src/backend/src/api/v1/` | REST: game.ts, settings.ts |
+| **WebSocket** | `src/backend/src/api/websocket.ts` | Real-time streaming protocol |
+| **Frontend State** | `src/web/src/stores/gameStore.ts` | Zustand + Immer |
+| **DB Schema** | `src/backend/src/db/schema.ts` | Drizzle ORM definitions |
+| **Zod Schemas** | `src/backend/src/schemas.ts` | GameState, NPC, Lore types |
+| **Config** | `config/settings.yaml` | Copy from settings.example.yaml |
 
 ## CODE MAP
 
 | Symbol | Type | Location | Role |
 |--------|------|----------|------|
-| `GMAgent` | Class | `src/backend/agents/gm.py` | Central Orchestrator (Star Topology Hub) |
-| `GameState` | Class | `src/backend/models/game_state.py` | Single Source of Truth |
-| `gameStore` | Store | `src/web/src/stores/gameStore.ts` | Frontend State (Zustand) |
-| `main.py` | File | `src/backend/main.py` | Real Backend Entry Point |
+| `GMAgent` | Class | `agents/gm/index.ts` | Star Topology Hub - ReAct loop orchestrator |
+| `NPCAgent` | Class | `agents/npc/index.ts` | Character roleplay + memory retrieval |
+| `LoreService` | Class | `services/lore.ts` | Hybrid search (keyword + vector) |
+| `LanceDBService` | Class | `lib/lance.ts` | Vector store wrapper |
+| `gameStore` | Store | `web/src/stores/gameStore.ts` | Frontend state + WS sync |
+| `initializeServices` | Func | `index.ts` | Bootstrap embeddings, vector store, agents |
 
 ## CONVENTIONS
 
-### General
-- **Architecture**: Star Topology (GM -> Sub-agents).
-- **Process**: PM2 for local dev orchestration.
-- **CI/CD**: None. Manual `make check` required before commit.
+### Architecture
+- **Star Topology**: GM Agent is the ONLY hub. Sub-agents receive context slices, never full state.
+- **Information Isolation**: NPCs don't know other NPCs' data. GM controls all context flow.
+- **Immersion Rules**: Internal IDs (`village_well`) NEVER appear in narrative. NPCs described by appearance until player learns name.
 
-### Python (Backend)
-- **Async**: All IO (DB, LLM) must be `async`.
-- **Prompts**: Jinja2 templates in `agents/prompts/*.yaml` (No hardcoding).
-- **Services**: Singleton pattern (`get_service()`).
+### Backend
+- **Validation**: Zod schemas in `schemas.ts`. All API input/output validated.
+- **AI SDK**: Vercel AI SDK with `generateText` + tools for ReAct loop.
+- **Streaming**: WebSocket phases: `status` -> `content` -> `complete` / `dice_check`.
 
-### TypeScript (Frontend)
-- **Styling**: TailwindCSS only. No inline styles.
-- **State**: Zustand + Immer.
-- **i18n**: `useTranslation` hook.
+### Frontend
+- **Styling**: TailwindCSS ONLY. No inline styles.
+- **State**: Zustand + Immer. Use selectors to prevent re-renders.
+- **i18n**: All text via `useTranslation`. Support `LocalizedString` objects.
+
+### Testing
+- **Framework**: Vitest for both packages.
+- **Mocks**: Factory functions in `tests/mocks/` (typed, Zod-aligned).
+- **Contract Tests**: `frontend-api-contract.test.ts` validates backend/frontend sync.
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
 | Rule | Reason |
 |------|--------|
-| **NO automated type sync** | `docs/API_TYPES.ts` must be updated MANUALLY. |
-| **NO hardcoded prompts** | Use `src/backend/agents/prompts/`. |
-| **NO root main.py usage** | It is a stub. Use `src/backend/main.py`. |
-| **NO TUI work** | `src/frontend/` is deprecated. Use `src/web/`. |
-| **NO Agent Name Leaks** | Players see "Narrator", not "Rule Agent". |
-| **NO AI Dice Rolls** | Only players roll dice (for transparency). |
+| **NO src/frontend work** | Deprecated TUI. Use `src/web/` only. |
+| **NO Agent Name Leaks** | Players see "Narrator", never "GM Agent" or "Rule Agent". |
+| **NO AI Dice Rolls** | Only players roll dice (transparency). |
+| **NO Direct NPC Roleplay by GM** | GM MUST use `call_agent` tool for NPC dialogue. |
+| **NO Type Suppression** | Never use `as any`, `@ts-ignore`, `@ts-expect-error`. |
+| **NO Hardcoded Strings** | All UI text in i18n bundles. |
 
 ## COMMANDS
 
 ```bash
-make install        # Install backend deps (uv)
-make install-web    # Install frontend deps (npm)
-make check          # Run ALL checks (lint, test, type)
-make run-dev        # Start dev servers (PM2)
+make install         # Install all deps (backend + web)
+make check           # Lint + type-check + test (ALL)
+make run-dev         # Start dev servers via PM2
+make build           # Production build
+pm2 logs             # View real-time logs
 ```
 
 ## NOTES
-- **Dual Entry**: `main.py` (root) is a dummy. Real app is `src/backend/main.py`.
-- **Large File**: `gm.py` (>1200 lines) is a known complexity hotspot.
-- **Git**: `src/astinus.egg-info` is tracked (unusual but required).
+
+- **Monorepo**: Two npm packages under `src/`. No workspace linking - manual type sync.
+- **Types**: Backend uses Zod inference. Frontend mirrors in `api/types.ts`.
+- **Vector Store**: LanceDB tables: `lore_{packId}`, `npc_memory_{sessionId}`, `gm_history_{sessionId}`.
+- **CLAUDE.md**: OUTDATED (references Python/FastAPI). Use this file instead.

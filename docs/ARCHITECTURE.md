@@ -1,186 +1,229 @@
 # Astinus Architecture Documentation
 
-This document defines the technical architecture, directory structure, and engineering standards for the Astinus project. It bridges the gap between the domain logic in `GUIDE.md` and the development standards in `CLAUDE.md`.
+This document defines the technical architecture, directory structure, and engineering standards for the Astinus project.
 
 ## 1. System Overview
 
-Astinus follows a **Client-Server** architecture, even when running locally. This separation ensures scalability and allows the frontend to be decoupled from the heavy AI processing logic.
+Astinus follows a **Client-Server** architecture with an embedded data layer, enabling easy distribution as a desktop application or hosted service.
 
-- **Frontend (Client)**: A React Web Application built with **React 19** + Vite + TypeScript + TailwindCSS. It handles user input, rendering, and state display via REST API and WebSocket.
-- **Backend (Server)**: A `FastAPI` application that hosts the Game Engine, Agents, and Database.
-- **AI Layer**: `LangChain` orchestrates the interaction between the Backend and LLMs using a multi-agent star topology.
-
-> **Note**: The original Textual TUI frontend (`src/frontend/`) has been deprecated in favor of the React Web frontend.
+- **Frontend (Client)**: React 19 + Vite + TypeScript + TailwindCSS. Handles user input, rendering, and state display via REST API and WebSocket.
+- **Backend (Server)**: Node.js + Hono. Lightweight, edge-ready web framework hosting the Game Engine and AI Agents.
+- **AI Layer**: Vercel AI SDK provides LLM abstraction with structured outputs and streaming support.
+- **Data Layer**: LanceDB (embedded vector search) and SQLite (via Drizzle ORM) run directly within the application process.
 
 ## 2. Directory Structure
-
-The project follows a strict separation of concerns:
 
 ```text
 Astinus/
 ├── src/
-│   ├── backend/              # FastAPI Application & Game Logic
-│   │   ├── agents/           # LangChain Agent Implementations
-│   │   │   ├── gm.py         # GM Agent (Central Orchestrator)
-│   │   │   ├── npc.py        # NPC Agent (Soul/Body split)
-│   │   │   ├── rule.py       # Rule Agent (2d6 Mechanics)
-│   │   │   ├── lore.py       # Lore Tools (RAG Function)
-│   │   │   └── director.py   # Director Agent (Pacing & Tension)
-│   │   ├── api/              # API Routers
-│   │   │   ├── v1/
-│   │   │   └── websockets.py # Real-time game stream
-│   │   ├── core/             # Config, Logging, DB setup, Prompt Loader
-│   │   ├── models/           # Pydantic Domain Models
-│   │   │   ├── game_state.py # Central source of truth
-│   │   │   ├── character.py  # Trait-based Player Character
-│   │   │   └── world_pack.py # World modularity & NPC templates
-│   │   ├── services/         # Business Logic Layer
-│   │   │   ├── dice.py       # 2d6 Pool & Mechanics
-│   │   │   ├── world.py      # World Pack Loader with Migration
-│   │   │   ├── narrative.py  # Narrative Graph & Transitions
-│   │   │   ├── location_context.py # Hierarchical context aggregation
-│   │   │   ├── game_logger.py# Dual-stream logging (Debug + JSONL)
-│   │   │   └── vector_store.py # ChromaDB Service
-│   │   └── main.py           # App Entrypoint
-│   │
-│   ├── web/                  # React 19 Frontend
+│   ├── backend/              # Node.js/Hono Application
 │   │   ├── src/
-│   │   │   ├── api/          # API Client (REST + WebSocket)
-│   │   │   ├── components/   # React Components (Chat, StatBlock, Dice)
-│   │   │   ├── stores/       # Zustand state management with Immer
-│   │   │   ├── hooks/        # Custom React hooks
-│   │   │   └── utils/        # i18n and utilities
+│   │   │   ├── agents/       # AI Agent Definitions
+│   │   │   │   ├── gm/       # GM Agent (Orchestrator)
+│   │   │   │   └── npc/      # NPC Agent
+│   │   │   ├── api/          # Hono Routes
+│   │   │   │   ├── v1/       # REST API (game, settings)
+│   │   │   │   └── websocket.ts
+│   │   │   ├── db/           # Database Layer
+│   │   │   │   ├── schema.ts # Drizzle ORM Schemas
+│   │   │   │   └── index.ts  # SQLite Connection
+│   │   │   ├── lib/          # Core Libraries
+│   │   │   │   ├── llm-factory.ts  # Multi-provider LLM setup
+│   │   │   │   ├── lance.ts        # LanceDB Wrapper
+│   │   │   │   └── embeddings.ts   # Transformers.js embeddings
+│   │   │   ├── services/     # Business Logic
+│   │   │   │   ├── world.ts  # World Pack Loader (Zod)
+│   │   │   │   ├── dice.ts   # 2d6 Mechanics
+│   │   │   │   ├── lore.ts   # Hybrid search service
+│   │   │   │   ├── config.ts # Configuration management
+│   │   │   │   └── location-context.ts
+│   │   │   ├── schemas/      # Zod validation schemas
+│   │   │   └── index.ts      # Server Entrypoint
+│   │   ├── tests/            # Vitest tests
+│   │   └── package.json
 │   │
-│   └── shared/               # Manual Type Sync (docs/API_TYPES.ts)
+│   └── web/                  # React 19 Frontend
+│       ├── src/
+│       │   ├── api/          # API Client (REST + WebSocket)
+│       │   ├── components/   # React Components
+│       │   ├── stores/       # Zustand state management
+│       │   ├── hooks/        # Custom React hooks
+│       │   ├── locales/      # i18n bundles (cn/en)
+│       │   └── utils/        # Utilities
+│       └── package.json
 │
-├── data/                     # Data Storage (SQLite, ChromaDB, Packs)
-├── locale/                   # i18n bundles (cn/en)
-├── docs/                     # Architecture, API types, plans
+├── data/
+│   ├── packs/                # World Packs (JSON)
+│   ├── saves/                # SQLite game saves
+│   └── lancedb/              # Vector store data
 ├── config/                   # Configuration (settings.yaml)
-├── pm2.config.js             # Development process management
-└── pyproject.toml            # Dependencies (uv)
+├── docs/                     # Documentation
+└── pm2.config.js             # Development process management
 ```
 
 ## 3. Data & Model Layers
 
-### 3.1 Pydantic Domain Models
-The backend uses Pydantic V2 for strict type validation and documentation.
-- **GameState**: The central source of truth. It stores message history, current phase, story flags, and active NPCs.
-- **PlayerCharacter**: Pure trait-based design. No numerical stats (like Strength/HP). Uses `traits` (with dual aspects) and `tags` (status conditions).
-- **NPCData**: Split-layer design. **Soul** contains narrative personality for the LLM; **Body** contains structured game state (location, inventory, relationships).
-- **LocalizedString**: Core utility for i18n, ensuring all narrative text supports `cn` and `en`.
+### 3.1 Schemas (Zod)
 
-### 3.2 Service Layer
-- **WorldPackLoader**: Handles loading and validating modular world packs. Includes self-migration logic for older pack formats.
-- **NarrativeManager**: Manages the narrative graph, scene transitions, and global story flags.
-- **LocationContextService**: Aggregates hierarchical context (Region > Location) and generates atmosphere strings for agents.
-- **VectorStoreService**: ChromaDB wrapper for RAG. Manages collections for Lore, NPC Memories, and Conversation History.
-- **GameLogger**: Dual-stream logging. `game_debug.log` for human-readable debugging; `llm_raw.jsonl` for raw AI input/output analysis.
+All data validation uses **Zod**, which provides both runtime validation and static TypeScript types.
 
-### 3.3 Persistence
-- **SQLite**: Stores deterministic game state (GameState, Player, NPC Body). Ensures save-game portability.
-- **ChromaDB**: Local persistent storage for semantic search. Uses `all-MiniLM-L6-v2` for embeddings.
+- **GameState**: The central source of truth for game sessions
+- **WorldPack**: Defines the structure of `data/packs/*.json`
+- **ConfigSchema**: Settings validation for LLM providers
+
+### 3.2 Database (Drizzle ORM)
+
+- **SQLite**: Used for relational data (game state, player data)
+- **Drizzle**: Provides type-safe SQL queries with automatic TypeScript inference
+
+### 3.3 Embedded Vector Search (LanceDB)
+
+- **LanceDB**: Embedded vector database, runs in-process with file-based storage
+- **Embeddings**: Uses **Transformers.js** with **Qwen3-Embedding-0.6B-ONNX** for multilingual support
+- **Hybrid Search**: Combines vector similarity with keyword matching for Lore retrieval
 
 ## 4. Frontend Architecture (React 19)
 
 ### 4.1 UI Design
-- **Mobile-First**: Uses bottom panels for mobile devices and a three-column layout for desktop.
-- **GamePhase Enum**: Directly controls UI interactivity (e.g., locking input during `narrating` or `processing`).
-- **Zustand + Immer**: Manages complex state updates immutably.
 
-### 4.2 Real-time Interaction
-- **WebSocket Flow**:
-  1. Client sends `player_input`.
-  2. Server sends `status` (which agent is acting).
-  3. Server streams `content` (typewriter effect).
-  4. If check needed: Server sends `dice_check` -> Client shows roller -> Client sends `dice_result` -> Server resumes.
-  5. Server sends `complete` with updated metadata (HP, Location).
+- **Mobile-First**: Bottom panels for mobile, three-column layout for desktop
+- **GamePhase Enum**: Controls UI interactivity (locks input during `narrating` or `processing`)
+- **Zustand + Immer**: Immutable state management
+
+### 4.2 Real-time Interaction (WebSocket)
+
+```
+1. Client sends `player_action`
+2. Server sends `status` (which agent is acting)
+3. Server streams `content` (typewriter effect)
+4. If check needed: Server sends `dice_check` → Client shows roller → Client sends `dice_result`
+5. Server sends `complete` with updated metadata
+```
 
 ## 5. Multi-Agent Architecture
 
 ### 5.1 Star Topology
-The **GM Agent** acts as the central orchestrator. It is the only agent that interacts with the `GameState`.
 
-### 5.2 ReAct Loop
-The GM Agent operates in a ReAct (Reasoning + Acting) loop:
-1. **Analyze**: Understand player intent.
-2. **Call Agent/Tool**: GM prepares a **Context Slice** for a sub-agent (Rule, NPC) or invokes a **Function Call** (Lore).
-3. **Synthesize**: Integrate sub-agent/tool output into the narrative.
-4. **Iterate**: Repeat 3-5 times if needed before responding.
+The **GM Agent** acts as the central orchestrator. It is the only agent that directly manages game state.
 
-### 5.3 Specialized Agents & Tools
-- **Rule Agent**: Calculates deterministic outcomes (2d6 pool). Does not "guess" rules.
-- **NPC Agent**: Handles character-specific dialogue using the NPC's "Soul".
-- **Lore Retrieval**: Now implemented as a **Function Call** (Tool) rather than a standalone agent. Performs RAG against World Pack lore entries directly within the GM's loop.
-- **Director Agent**: A hidden agent that tracks narrative beats, pacing, and tension to guide the GM's tone.
-
-### 5.4 Context Slicing & Narrative Consistency
-- **Information Leakage Prevention**: GM only sends relevant data to sub-agents (e.g., NPC Agent only knows what that specific NPC knows).
-- **Two-Phase Narrative**: GM connects NPC dialogue or Rule results exactly as generated to maintain consistency.
-- **Dice State Resumption**: GM saves its ReAct state during a `DICE_CHECK`, allowing the loop to resume once the result is received.
-
-### 5.5 Implementation Example: ReAct Context Slice
-```python
-# From gm.py - GM preparing context for NPC Agent
-npc_context = {
-    "npc_id": target_npc_id,
-    "location_id": self.game_state.current_location,
-    "history": self.game_state.get_recent_messages(5),
-    "world_pack_id": self.game_state.world_pack_id,
-    "player_traits": [t.name.cn for t in self.game_state.player.traits],
-}
-response = await self.npc_agent.run(npc_context)
 ```
+        ┌───────────────┐
+        │  GM Agent     │
+        │ (Orchestrator)│
+        └──────┬────────┘
+               │
+    ┌──────────┼──────────┐
+    │          │          │
+    ▼          ▼          ▼
+┌───────┐  ┌───────┐  ┌───────┐
+│  NPC  │  │ Lore  │  │ Dice  │
+│ Agent │  │ Tool  │  │ Tool  │
+└───────┘  └───────┘  └───────┘
+```
+
+### 5.2 Tool Loop (Vercel AI SDK)
+
+The GM Agent operates in a tool-calling loop:
+
+1. **Analyze**: Understand player intent
+2. **Call Tool/Agent**: Invoke Lore search, NPC dialogue, or Dice check
+3. **Synthesize**: Integrate outputs into coherent narrative
+4. **Stream**: Send response to client
+
+### 5.3 Specialized Components
+
+| Component | Type | Purpose |
+|-----------|------|---------|
+| GM Agent | Agent | Central orchestrator, narrative generation |
+| NPC Agent | Agent | Character-specific dialogue and personality |
+| Lore Tool | Tool | RAG-based world knowledge retrieval |
+| Dice Tool | Tool | 2d6 pool mechanics calculation |
+
+### 5.4 Context Slicing
+
+GM Agent provides only relevant context to sub-agents:
+- NPC Agent only receives information that specific NPC would know
+- Lore Tool queries are scoped to relevant world pack data
 
 ## 6. Game Mechanics (2d6 System)
 
-Astinus has migrated from a d20 system to a **2d6-based pool system**.
-
 ### 6.1 Dice Pool Logic
-- **Standard**: Roll 2d6, take both.
-- **Bonus Dice (+N)**: Roll 2+N dice, keep the **highest** 2.
-- **Penalty Dice (-N)**: Roll 2+N dice, keep the **lowest** 2.
-- **Natural Max**: The natural roll (before modifiers) is always capped at 12.
+
+- **Standard**: Roll 2d6, sum both
+- **Bonus Dice (+N)**: Roll 2+N dice, keep **highest** 2
+- **Penalty Dice (-N)**: Roll 2+N dice, keep **lowest** 2
 
 ### 6.2 Outcomes
-- **12+**: Critical Success
-- **10-11**: Success
-- **7-9**: Partial Success (Success at a cost)
-- **6-**: Failure (GM moves)
 
-### 6.3 Implementation Example: Dice Pool
-```python
-# From dice.py
-def roll(self) -> DiceResult:
-    net_bonus = self.bonus_dice - self.penalty_dice
-    dice_count = 2 + abs(net_bonus)
-    all_rolls = [random.randint(1, 6) for _ in range(dice_count)]
-    sorted_rolls = sorted(all_rolls, reverse=True)
+| Roll | Result |
+|------|--------|
+| 12+ | Critical Success |
+| 10-11 | Success |
+| 7-9 | Partial Success (success at a cost) |
+| 6- | Failure (GM moves) |
 
-    if net_bonus >= 0:
-        kept_rolls = sorted_rolls[:2] # Bonus: Highest 2
-    else:
-        kept_rolls = sorted_rolls[-2:] # Penalty: Lowest 2
-    
-    total = sum(kept_rolls) + self.modifier
-    return DiceResult(total=total, ...)
+## 7. API Contract
+
+### REST Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/v1/game/new` | Start new game session |
+| POST | `/api/v1/game/action` | Process player action |
+| POST | `/api/v1/game/dice-result` | Submit dice roll result |
+| GET | `/api/v1/game/state/:sessionId` | Get game state |
+| GET | `/api/v1/world-packs` | List available world packs |
+| GET | `/api/v1/settings` | Get settings |
+| PUT | `/api/v1/settings` | Update settings |
+
+### WebSocket
+
+- **Endpoint**: `WS /ws/game/:sessionId`
+- **Client → Server**: `player_action`, `dice_result`, `ping`
+- **Server → Client**: `status`, `content`, `complete`, `error`, `phase`, `dice_check`
+
+## 8. Technology Stack
+
+### Backend
+
+| Component | Technology |
+|-----------|------------|
+| Runtime | Node.js 20+ |
+| Framework | Hono |
+| AI SDK | Vercel AI SDK |
+| ORM | Drizzle + SQLite |
+| Vector DB | LanceDB |
+| Embeddings | Transformers.js (Qwen3-Embedding-0.6B) |
+| Validation | Zod |
+
+### Frontend
+
+| Component | Technology |
+|-----------|------------|
+| Framework | React 19 |
+| Build Tool | Vite |
+| Styling | TailwindCSS |
+| State | Zustand + Immer |
+| Routing | React Router v7 |
+| Testing | Vitest |
+
+## 9. Development & Operations
+
+### Commands
+
+```bash
+make install      # Install all dependencies
+make check        # Run lint + type-check + test
+make run-dev      # Start dev servers (PM2)
+make build        # Build all
 ```
 
-## 7. Development & Operations
+### Process Management
 
-- **PM2 for Development**: `pm2.config.js` manages both the FastAPI backend and Vite frontend development servers.
-- **Manual Type Sync**: TypeScript types in `src/web/src/api/types.ts` and `docs/API_TYPES.ts` must be manually kept in sync with Pydantic models.
-- **CI/CD & Docker**: Currently, there are no GitHub Actions or Docker configurations. Environment setup relies on `uv` (Python) and `npm` (Node.js).
+`pm2.config.js` manages both backend (tsx watch) and frontend (vite dev) servers.
 
-## 8. Technical Debt
+## 10. Internationalization (i18n)
 
-The following files are identified as refactoring candidates due to complexity:
-- `src/backend/agents/gm.py`: 1240 lines, extreme nesting (328 lines at level 4+).
-- `src/backend/api/v1/game.py`: 631 lines, contains a 215-line fat controller function.
-- `src/backend/agents/npc.py`: 636 lines.
-
-## 9. Internationalization (i18n)
-
-- All user-facing strings are stored in `locale/*.json`.
-- World packs and Lore entries use the `LocalizedString` schema (`{cn: "...", en: "..."}`).
-- Tiered Discovery: Lore entries support `basic` vs `detailed` visibility to control the flow of information.
+- Frontend strings: `src/web/src/locales/{cn,en}.json`
+- World packs use `LocalizedString` schema: `{ cn: "...", en: "..." }`
+- Lore entries support tiered discovery (`basic` vs `detailed` visibility)

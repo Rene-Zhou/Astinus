@@ -1,15 +1,7 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
+# Node.js
+node_modules/
 dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-venv/
-env/
+*.tsbuildinfo
 
 # IDE
 .vscode/
@@ -31,6 +23,7 @@ data/saves/*.db-*
 
 # Vector store
 data/vector_store/
+data/lancedb/
 
 # Logs
 logs/
@@ -43,13 +36,13 @@ Thumbs.db
 # Testing
 .coverage
 htmlcov/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-data/test*/
+coverage/
 
 # Temporary files
 *.tmp
 *.bak
 .cache/
 docs/tmp
+
+# Build artifacts
+.vite/

@@ -4,7 +4,7 @@
  * This file serves as a reference for frontend development.
  * It defines all types used in communication with the backend API.
  *
- * @see docs/WEB_FRONTEND_PLAN.md for full API documentation
+ * @see docs/ARCHITECTURE.md for full architecture documentation
  */
 
 // ============================================================================
@@ -198,8 +198,7 @@ export interface WorldPackDetailResponse {
  * Response from GET /api/v1/game/world-packs
  */
 export interface ListWorldPacksResponse {
-  world_packs: string[];
-  count: number;
+  packs: string[];
 }
 
 // ============================================================================
@@ -323,14 +322,22 @@ export interface DiceCheckResponse {
  * Dice roll result submitted by player
  */
 export interface DiceResult {
-  /** Total value of the roll */
-  total: number;
   /** All dice rolled (e.g., [3, 5, 6] for 3d6) */
   all_rolls: number[];
   /** Dice kept after advantage/disadvantage */
   kept_rolls: number[];
+  /** Dice rolled but not kept */
+  dropped_rolls: number[];
+  /** Modifier applied after dice selection */
+  modifier: number;
+  /** Total value of the roll (kept dice + modifier) */
+  total: number;
   /** Roll outcome */
   outcome: DiceOutcome;
+  /** True if bonus dice were used */
+  is_bonus: boolean;
+  /** True if penalty dice were used */
+  is_penalty: boolean;
 }
 
 /**
@@ -504,7 +511,12 @@ export interface HealthResponse {
   version: string;
   agents: {
     gm_agent: boolean;
-    rule_agent: boolean;
+    npc_agent: boolean;
+  };
+  services: {
+    world_pack_loader: boolean;
+    vector_store: boolean;
+    lore_service: boolean;
   };
 }
 
@@ -514,8 +526,8 @@ export interface RootResponse {
   name: string;
   version: string;
   status: string;
+  runtime: string;
   docs: string;
-  openapi: string;
 }
 
 // ============================================================================
@@ -724,7 +736,7 @@ export function getLocalizedValue(str: LocalizedString, lang: Language): string 
 
 // --- Provider Types ---
 
-export type ProviderType = 'openai' | 'anthropic' | 'google' | 'ollama';
+export type ProviderType = 'openai' | 'anthropic' | 'google' | 'ollama' | 'custom' | 'openai-compatible';
 
 export interface ProviderConfig {
   id: string;
@@ -741,13 +753,13 @@ export interface AgentConfig {
   max_tokens: number;
 }
 
-export type AgentName = 'gm' | 'npc' | 'rule' | 'lore';
+export type AgentName = 'gm' | 'npc' | 'lore';
 
 export interface AgentsConfig {
   gm: AgentConfig;
   npc: AgentConfig;
-  rule: AgentConfig;
-  lore: AgentConfig;
+  rule?: AgentConfig;
+  lore?: AgentConfig;
 }
 
 export interface GameSettings {
@@ -786,7 +798,6 @@ export interface AgentInput {
 export interface AgentsInput {
   gm?: AgentInput;
   npc?: AgentInput;
-  rule?: AgentInput;
   lore?: AgentInput;
 }
 

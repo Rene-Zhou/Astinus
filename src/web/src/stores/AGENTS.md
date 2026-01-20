@@ -1,5 +1,6 @@
 # STORES - State Management
 
+**Generated:** 2026-01-20
 **Scope:** Global state management for the Astinus frontend.
 
 ## OVERVIEW
