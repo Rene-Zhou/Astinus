@@ -1,6 +1,3 @@
-# GitHub Actions CI workflow for Astinus
-# Runs tests, linting, and type checking on pull requests and pushes to main
-
 name: CI
 
 on:
@@ -13,10 +10,9 @@ env:
   NODE_VERSION: "20"
 
 jobs:
-  backend-test:
-    name: Backend Test
+  backend:
+    name: Backend Checks
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,87 +28,27 @@ jobs:
         working-directory: src/backend
         run: npm ci
 
-      - name: Run tests
+      - name: Lint & Format Check
         working-directory: src/backend
-        run: npm test
+        run: |
+          npm run lint
+          npm run format:check
 
-  backend-lint:
-    name: Backend Lint
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: src/backend/package-lock.json
-
-      - name: Install dependencies
-        working-directory: src/backend
-        run: npm ci
-
-      - name: Run ESLint
-        working-directory: src/backend
-        run: npm run lint
-
-      - name: Check formatting
-        working-directory: src/backend
-        run: npm run format:check
-
-  backend-type-check:
-    name: Backend Type Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: src/backend/package-lock.json
-
-      - name: Install dependencies
-        working-directory: src/backend
-        run: npm ci
-
-      - name: Run TypeScript compiler
+      - name: Type Check
         working-directory: src/backend
         run: npm run typecheck
 
-  backend-build:
-    name: Backend Build Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: src/backend/package-lock.json
-
-      - name: Install dependencies
+      - name: Test
         working-directory: src/backend
-        run: npm ci
+        run: npm test
 
-      - name: Build backend
+      - name: Build
         working-directory: src/backend
         run: npm run build
 
-  frontend-test:
-    name: Frontend Test
+  frontend:
+    name: Frontend Checks
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -128,119 +64,36 @@ jobs:
         working-directory: src/web
         run: npm ci
 
-      - name: Run tests
-        working-directory: src/web
-        run: npm test
-
-  frontend-lint:
-    name: Frontend Lint
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: src/web/package-lock.json
-
-      - name: Install dependencies
-        working-directory: src/web
-        run: npm ci
-
-      - name: Run ESLint
+      - name: Lint
         working-directory: src/web
         run: npm run lint
 
-  frontend-type-check:
-    name: Frontend Type Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: src/web/package-lock.json
-
-      - name: Install dependencies
-        working-directory: src/web
-        run: npm ci
-
-      - name: Run TypeScript compiler
+      - name: Type Check
         working-directory: src/web
         run: npx tsc -b --noEmit
 
-  frontend-build:
-    name: Frontend Build Check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: src/web/package-lock.json
-
-      - name: Install dependencies
+      - name: Test
         working-directory: src/web
-        run: npm ci
+        run: npm test
 
-      - name: Build frontend
+      - name: Build
         working-directory: src/web
         run: npm run build
 
-  # Summary job for branch protection
   ci-success:
     name: CI Success
-    needs: [backend-test, backend-lint, backend-type-check, backend-build, frontend-test, frontend-lint, frontend-type-check, frontend-build]
+    needs: [backend, frontend]
     runs-on: ubuntu-latest
     if: always()
-
     steps:
       - name: Check all jobs passed
         run: |
-          if [[ "${{ needs.backend-test.result }}" != "success" ]]; then
-            echo "Backend test job failed"
+          if [[ "${{ needs.backend.result }}" != "success" ]]; then
+            echo "Backend checks failed"
             exit 1
           fi
-          if [[ "${{ needs.backend-lint.result }}" != "success" ]]; then
-            echo "Backend lint job failed"
+          if [[ "${{ needs.frontend.result }}" != "success" ]]; then
+            echo "Frontend checks failed"
             exit 1
           fi
-          if [[ "${{ needs.backend-type-check.result }}" != "success" ]]; then
-            echo "Backend type check job failed"
-            exit 1
-          fi
-          if [[ "${{ needs.backend-build.result }}" != "success" ]]; then
-            echo "Backend build job failed"
-            exit 1
-          fi
-          if [[ "${{ needs.frontend-test.result }}" != "success" ]]; then
-            echo "Frontend test job failed"
-            exit 1
-          fi
-          if [[ "${{ needs.frontend-lint.result }}" != "success" ]]; then
-            echo "Frontend lint job failed"
-            exit 1
-          fi
-          if [[ "${{ needs.frontend-type-check.result }}" != "success" ]]; then
-            echo "Frontend type check job failed"
-            exit 1
-          fi
-          if [[ "${{ needs.frontend-build.result }}" != "success" ]]; then
-            echo "Frontend build job failed"
-            exit 1
-          fi
-          echo "All required CI checks passed!"
+          echo "All checks passed!"
