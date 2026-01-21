@@ -19,7 +19,7 @@ const SavesPage: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
 
   const [confirmDialog, setConfirmDialog] = useState<{
-    type: "load" | "delete" | "overwrite";
+    type: "load" | "delete" | "overwrite" | "overwrite_existing";
     saveId?: number;
     saveName?: string;
   } | null>(null);
@@ -83,6 +83,23 @@ const SavesPage: React.FC = () => {
 
   const handleDeleteClick = (saveId: number, saveName: string) => {
     setConfirmDialog({ type: "delete", saveId, saveName });
+  };
+
+  const handleOverwriteExistingClick = (saveId: number, saveName: string) => {
+    if (!sessionId) {
+      useSaveStore.setState({ error: t("saves.noActiveGameToOverwrite") });
+      return;
+    }
+    setConfirmDialog({ type: "overwrite_existing", saveId, saveName });
+  };
+
+  const handleConfirmOverwriteExisting = async () => {
+    if (!confirmDialog?.saveName) return;
+
+    setIsCreating(true);
+    await createSave(confirmDialog.saveName, undefined, true);
+    setIsCreating(false);
+    setConfirmDialog(null);
   };
 
   const handleConfirmDelete = async () => {
@@ -239,13 +256,22 @@ const SavesPage: React.FC = () => {
                   {t("saves.lastPlayed")}: {formatDate(save.updated_at)}
                 </p>
 
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-wrap gap-2">
                   <Button
                     size="sm"
                     onClick={() => handleLoadClick(save.id, save.slot_name)}
                     disabled={isLoading}
                   >
                     {t("saves.loadSave")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleOverwriteExistingClick(save.id, save.slot_name)}
+                    disabled={isLoading || !sessionId}
+                    title={!sessionId ? t("saves.noActiveGameToOverwrite") : undefined}
+                  >
+                    {t("saves.overwriteSave")}
                   </Button>
                   <Button
                     size="sm"
@@ -268,6 +294,7 @@ const SavesPage: React.FC = () => {
                 {confirmDialog.type === "load" && t("saves.loadSave")}
                 {confirmDialog.type === "delete" && t("saves.deleteSave")}
                 {confirmDialog.type === "overwrite" && t("saves.createSave")}
+                {confirmDialog.type === "overwrite_existing" && t("saves.overwriteSave")}
               </h3>
               <p className="text-gray-600 dark:text-gray-300 mb-6">
                 {confirmDialog.type === "load" && t("saves.confirmLoad")}
@@ -275,6 +302,8 @@ const SavesPage: React.FC = () => {
                   t("saves.confirmDelete", { name: confirmDialog.saveName })}
                 {confirmDialog.type === "overwrite" &&
                   t("saves.confirmOverwrite", { name: confirmDialog.saveName })}
+                {confirmDialog.type === "overwrite_existing" &&
+                  t("saves.confirmOverwriteExisting", { name: confirmDialog.saveName })}
               </p>
               <div className="flex justify-end gap-3">
                 <Button variant="secondary" onClick={() => setConfirmDialog(null)}>
@@ -286,8 +315,9 @@ const SavesPage: React.FC = () => {
                     if (confirmDialog.type === "load") handleConfirmLoad();
                     else if (confirmDialog.type === "delete") handleConfirmDelete();
                     else if (confirmDialog.type === "overwrite") handleConfirmOverwrite();
+                    else if (confirmDialog.type === "overwrite_existing") handleConfirmOverwriteExisting();
                   }}
-                  loading={isLoading}
+                  loading={isLoading || isCreating}
                 >
                   {t("common.confirm")}
                 </Button>

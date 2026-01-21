@@ -1,6 +1,6 @@
 import React from "react";
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps extends Omit<
@@ -37,6 +37,8 @@ export const Button: React.FC<ButtonProps> = ({
       "bg-secondary text-white hover:brightness-110 focus:ring-secondary border border-transparent dark:brightness-110 dark:focus:ring-secondary/50",
     ghost:
       "bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-300 border border-gray-300 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-800 dark:focus:ring-gray-600",
+    danger:
+      "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 border border-transparent dark:bg-red-700 dark:hover:bg-red-600 dark:focus:ring-red-500/50",
   };
   const sizeClass: Record<ButtonSize, string> = {
     sm: "px-3 py-1.5 text-sm",
