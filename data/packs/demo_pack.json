@@ -5,19 +5,19 @@
       "en": "The Dark Manor"
     },
     "description": {
-      "cn": "一个关于神秘庄园与失落真相的哥特式悬疑故事。",
-      "en": "A gothic mystery story about a mysterious manor and lost truths."
+      "cn": "一个关于神秘庄园与失落真相的中式恐怖悬疑故事。",
+      "en": "A Chinese-style horror story about a mysterious manor and lost truths."
     },
     "version": "1.0.0",
-    "author": "Astinus Team",
+    "author": "Rene Zhou",
     "setting": {
       "era": {
-        "cn": "1920年代，民国初期",
-        "en": "1920s, Early Republic of China"
+        "cn": "1980年代，改革开放初期",
+        "en": "1980s, Early stage of reform and opening-up"
       },
       "genre": {
-        "cn": "哥特式悬疑，无魔法的现实主义",
-        "en": "Gothic mystery, realistic without magic"
+        "cn": "中式恐怖，现实主义",
+        "en": "Chinese horror, realistic"
       },
       "tone": {
         "cn": "阴郁、神秘、充满未知",
@@ -25,8 +25,8 @@
       }
     },
     "player_hook": {
-      "cn": "你是一名旅行者，听闻山中有一座古老的庄园，据说那里藏着某位富商遗留的宝藏。怀着好奇与一丝贪念，你踏上了这条崎岖的山路。",
-      "en": "You are a traveler who has heard tales of an ancient manor in the mountains, said to hold treasures left behind by a wealthy merchant. Driven by curiosity and a hint of greed, you set out on this rugged mountain path."
+      "cn": "你是一名旅行者，听闻山中有一座古老的庄园，据说那里藏着某位古代贵族遗留的宝藏。怀着好奇与一丝贪念，你踏上了这条崎岖的山路。",
+      "en": "You are a traveler who has heard tales of an ancient manor in the mountains, said to hold treasures left behind by a wealthy ancient noble family. Driven by curiosity and a hint of greed, you set out on this rugged mountain path."
     }
   },
   "entries": {
@@ -35,8 +35,8 @@
       "key": ["幽暗庄园", "庄园", "Dark Manor", "manor"],
       "secondary_keys": [],
       "content": {
-        "cn": "幽暗庄园是一座建于百年前的哥特式建筑，坐落在云雾缭绕的山巅。据说这里曾是一位神秘贵族的居所，但在一场大火后，贵族一家离奇失踪，只留下这座残破的庄园和无数诡异的传说。",
-        "en": "The Dark Manor is a Gothic structure built a century ago, perched atop a mist-shrouded mountain peak. It is said to have been the residence of a mysterious noble family, but after a great fire, the family vanished without a trace, leaving behind only this crumbling manor and countless eerie legends."
+        "cn": "幽暗庄园是一座建于百年前的中式建筑，坐落在云雾缭绕的山巅。据说这里曾是一位神秘贵族的居所，但在一场大火后，贵族一家离奇失踪，只留下这座残破的庄园和无数诡异的传说。",
+        "en": "The Dark Manor is a Chinese-style structure built a century ago, perched atop a mist-shrouded mountain peak. It is said to have been the residence of a mysterious noble family, but after a great fire, the family vanished without a trace, leaving behind only this crumbling manor and countless eerie legends."
       },
       "comment": {
         "cn": "主要场景背景 - 玩家需要通过检定或NPC对话才能获知",

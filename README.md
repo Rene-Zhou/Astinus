@@ -1,12 +1,12 @@
 # Astinus
 
-> AI 驱动的叙事向单人 TTRPG 引擎
+> AI 驱动的叙事向单人类 TTRPG 引擎
 
-Astinus 是一个基于 AI 多智能体架构的叙事导向桌面角色扮演游戏引擎，通过自然语言交互提供沉浸式的单人 TTRPG 体验。
+Astinus 是一个基于 AI 多智能体和 ReAct 架构的叙事导向类桌面角色扮演游戏引擎，通过自然语言交互提供沉浸式的单人 TTRPG 体验。
 
 ## 项目状态
 
-✅ MVP
+✔ MVP：基础功能已经得到验证
 
 ## 快速开始
 
@@ -119,11 +119,11 @@ Astinus 提供现代化的 Web 界面，可在任何现代浏览器中运行，�
 
 **桌面端 - 三栏布局**
 
-![游戏界面-桌面端](docs/.assets/游戏界面-桌面端.png)
+![游戏界面-桌面端](docs/.assets/image-desktop.png)
 
 **移动端 - 底部面板设计**
 
-![游戏界面-移动端](docs/.assets/游戏界面-移动端-1.png)
+![游戏界面-移动端](docs/.assets/image-mobile.png)
 
 ### 主要组件
 
