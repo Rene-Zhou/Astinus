@@ -20,6 +20,9 @@ data/saves/*.db
 data/saves/*.db-*
 *.sqlite
 *.sqlite3
+astinus.db
+astinus.db-*
+
 
 # Vector store
 data/vector_store/
