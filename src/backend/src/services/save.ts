@@ -216,10 +216,7 @@ export class SaveService {
   }
 
   public async deleteSave(id: number): Promise<boolean> {
-    const result = await db
-      .delete(schema.saveSlots)
-      .where(eq(schema.saveSlots.id, id))
-      .returning();
+    const result = await db.delete(schema.saveSlots).where(eq(schema.saveSlots.id, id)).returning();
 
     return result.length > 0;
   }
