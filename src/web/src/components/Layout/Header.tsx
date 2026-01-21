@@ -20,6 +20,7 @@ export const Header: React.FC<HeaderProps> = ({ rightSlot }) => {
     { to: "/", label: t("nav.menu") },
     { to: "/character", label: t("nav.character") },
     { to: "/game", label: t("nav.game") },
+    { to: "/saves", label: t("nav.saves") },
     { to: "/settings", label: t("nav.settings") },
   ];
 

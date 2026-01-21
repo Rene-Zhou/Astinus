@@ -6,6 +6,7 @@ import { serve } from '@hono/node-server';
 
 import { gameRouter } from './api/v1/game';
 import { settingsRouter } from './api/v1/settings';
+import { saveRouter } from './api/v1/save';
 import { createWebSocketHandler } from './api/websocket';
 import { getEmbeddingService } from './lib/embeddings';
 import { getVectorStoreService } from './lib/lance';
@@ -80,6 +81,7 @@ app.get('/health', (c) => {
 
 app.route('/api/v1', gameRouter);
 app.route('/api/v1/settings', settingsRouter);
+app.route('/api/v1/saves', saveRouter);
 
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 const wsHandler = createWebSocketHandler(upgradeWebSocket, () => appContext);

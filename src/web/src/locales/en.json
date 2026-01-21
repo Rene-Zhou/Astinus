@@ -20,7 +20,8 @@
     "menu": "Menu",
     "character": "Character",
     "game": "Game",
-    "settings": "Settings"
+    "settings": "Settings",
+    "saves": "Saves"
   },
   "game": {
     "status": {
@@ -161,6 +162,36 @@
     "success": "Success",
     "error": "Error",
     "select": "Select",
-    "selected": "Selected"
+    "selected": "Selected",
+    "save": "Save",
+    "delete": "Delete",
+    "back": "Back"
+  },
+  "saves": {
+    "title": "Save Management",
+    "createSave": "Create Save",
+    "loadSave": "Load Save",
+    "deleteSave": "Delete Save",
+    "slotName": "Save Name",
+    "slotNamePlaceholder": "Enter save name...",
+    "description": "Description (optional)",
+    "descriptionPlaceholder": "Enter description...",
+    "confirmLoad": "Loading this save will replace your current progress. Continue?",
+    "confirmDelete": "Delete save \"{{name}}\"? This cannot be undone.",
+    "confirmOverwrite": "Save \"{{name}}\" already exists. Overwrite?",
+    "limitReached": "Save limit (10) reached. Delete old saves first.",
+    "noSaves": "No saves yet",
+    "noSavesHint": "After starting a game, you can create saves here.",
+    "lastPlayed": "Last played",
+    "turn": "Turn",
+    "location": "Location",
+    "character": "Character",
+    "autoSave": "Auto Save",
+    "saveSuccess": "Save created successfully",
+    "loadSuccess": "Save loaded successfully",
+    "deleteSuccess": "Save deleted successfully",
+    "noActiveGame": "No active game",
+    "noActiveGameHint": "Please start a new game from the menu first before creating a save.",
+    "goToMenu": "Go to Menu"
   }
 }

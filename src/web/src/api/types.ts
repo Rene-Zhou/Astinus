@@ -604,3 +604,51 @@ export interface ProviderTypeInfo {
 export interface ProviderTypesResponse {
   types: ProviderTypeInfo[];
 }
+
+export interface SaveSlotPreview {
+  id: number;
+  slot_name: string;
+  description: string | null;
+  world_pack_id: string;
+  current_location: string;
+  turn_count: number;
+  player_name: string;
+  character_name: string;
+  last_message: string | null;
+  is_auto_save: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListSavesResponse {
+  saves: SaveSlotPreview[];
+}
+
+export interface CreateSaveRequest {
+  slot_name: string;
+  description?: string;
+  overwrite?: boolean;
+}
+
+export interface CreateSaveResponse {
+  success?: boolean;
+  save?: SaveSlotPreview;
+  exists?: boolean;
+  existing_id?: number;
+  error?: string;
+}
+
+export interface LoadSaveRequest {
+  reconnect_websocket?: boolean;
+}
+
+export interface LoadSaveResponse {
+  success: boolean;
+  session_id: string;
+  game_state: GameState;
+  world_info: WorldInfo | null;
+}
+
+export interface DeleteSaveResponse {
+  success: boolean;
+}

@@ -5,6 +5,7 @@ import MenuPage from "./pages/MenuPage";
 import GamePage from "./pages/GamePage";
 import CharacterPage, { NotFoundPage } from "./pages/CharacterPage";
 import SettingsPage from "./pages/SettingsPage";
+import SavesPage from "./pages/SavesPage";
 import { useUIStore } from "./stores/uiStore";
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
           <Route path="/game" element={<GamePage />} />
           <Route path="/character" element={<CharacterPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/saves" element={<SavesPage />} />
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>

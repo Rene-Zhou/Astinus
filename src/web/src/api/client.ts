@@ -1,11 +1,17 @@
 import type {
   ActionRequest,
   ActionResponse,
+  CreateSaveRequest,
+  CreateSaveResponse,
+  DeleteSaveResponse,
   DiceResultRequest,
   DiceResultResponse,
   GetGameStateResponse,
   GetMessagesResponse,
   HealthResponse,
+  ListSavesResponse,
+  LoadSaveRequest,
+  LoadSaveResponse,
   NewGameRequest,
   NewGameResponse,
   ProviderTypesResponse,
@@ -23,7 +29,7 @@ import type {
  * Uses fetch with JSON helpers and returns typed responses.
  */
 
-type HttpMethod = "GET" | "POST" | "PUT";
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 type HeadersInit = Record<string, string>;
 
 export interface RequestOptions<TBody = unknown> {
@@ -216,6 +222,40 @@ export const apiClient = {
     return request<ProviderTypesResponse>({
       path: "/api/v1/settings/provider-types",
       method: "GET",
+      signal,
+    });
+  },
+
+  async listSaves(signal?: AbortSignal) {
+    return request<ListSavesResponse>({
+      path: "/api/v1/saves",
+      method: "GET",
+      signal,
+    });
+  },
+
+  async createSave(body: CreateSaveRequest, signal?: AbortSignal) {
+    return request<CreateSaveResponse>({
+      path: "/api/v1/saves",
+      method: "POST",
+      body,
+      signal,
+    });
+  },
+
+  async loadSave(saveId: number, body?: LoadSaveRequest, signal?: AbortSignal) {
+    return request<LoadSaveResponse>({
+      path: `/api/v1/saves/${saveId}/load`,
+      method: "POST",
+      body: body ?? {},
+      signal,
+    });
+  },
+
+  async deleteSave(saveId: number, signal?: AbortSignal) {
+    return request<DeleteSaveResponse>({
+      path: `/api/v1/saves/${saveId}`,
+      method: "DELETE" as HttpMethod,
       signal,
     });
   },
